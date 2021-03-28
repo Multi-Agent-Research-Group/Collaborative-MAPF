@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="key0" for="node" attr.name="state" attr.type="string" />
+  <graph id="G" edgedefault="undirected" parse.nodeids="free" parse.edgeids="canonical" parse.order="nodesfirst">
+    <node id="n0">
+      <data key="key0">0.941593 0 -2.47059 -0.1 -2.76 -1.14286 -2.45455 </data>
+    </node>
+    <node id="n1">
+      <data key="key0">1.74159 1 -1.81176 1.5 -4.09333 -0.228571 -1.36364 </data>
+    </node>
+    <node id="n2">
+      <data key="key0">2.54159 0.5 -1.15294 -0.74 -0.0933333 0.685714 -0.272727 </data>
+    </node>
+    <node id="n3">
+      <data key="key0">2.94159 -0.5 -0.823529 0.06 -3.42667 1.14286 0.272727 </data>
+    </node>
+    <node id="n4">
+      <data key="key0">3.74159 -1.75 -0.164706 1.66 0.573333 -1.07755 1.36364 </data>
+    </node>
+    <node id="n5">
+      <data key="key0">4.14159 0.25 0.164706 2.46 -4.53778 -0.620408 1.90909 </data>
+    </node>
+    <node id="n6">
+      <data key="key0">4.54159 -0.75 0.494118 -0.58 -2.53778 -0.163265 2.45455 </data>
+    </node>
+    <node id="n7">
+      <data key="key0">5.34159 -1.25 1.15294 1.02 -3.87111 0.75102 -2.40496 </data>
+    </node>
+    <node id="n8">
+      <data key="key0">0.572362 0.75 1.48235 1.82 -1.87111 1.20816 -1.8595 </data>
+    </node>
+    <node id="n9">
+      <data key="key0">0.972362 -0.25 1.81176 2.62 0.128889 -1.46939 -1.31405 </data>
+    </node>
+    <node id="n10">
+      <data key="key0">1.37236 1.75 2.14118 -0.42 -3.20444 -1.01224 -0.768595 </data>
+    </node>
+    <node id="n11">
+      <data key="key0">2.17236 0.125 -2.78062 1.18 0.795556 -0.0979592 0.322314 </data>
+    </node>
+    <node id="n12">
+      <data key="key0">2.57236 -0.875 -2.45121 1.98 -4.31556 0.359184 0.867769 </data>
+    </node>
+    <node id="n13">
+      <data key="key0">2.97236 1.125 -2.1218 2.78 -2.31556 0.816327 1.41322 </data>
+    </node>
+    <node id="n14">
+      <data key="key0">3.37236 -1.375 -1.79239 -0.26 -0.315556 1.27347 1.95868 </data>
+    </node>
+    <node id="n15">
+      <data key="key0">3.77236 0.625 -1.46298 0.54 -3.64889 -1.40408 2.50413 </data>
+    </node>
+    <node id="n16">
+      <data key="key0">4.17236 -0.375 -1.13356 1.34 -1.64889 -0.946939 -2.90083 </data>
+    </node>
+    <node id="n17">
+      <data key="key0">4.97236 -1.625 -0.47474 2.94 -2.98222 -0.0326531 -1.80992 </data>
+    </node>
+    <node id="n18">
+      <data key="key0">5.37236 0.375 -0.145329 -0.868 -0.982222 0.42449 -1.26446 </data>
+    </node>
+    <node id="n19">
+      <data key="key0">0.603131 -0.625 0.184083 -0.068 1.01778 0.881633 -0.719008 </data>
+    </node>
+    <node id="n20">
+      <data key="key0">1.00313 1.375 0.513495 0.732 -4.68593 1.33878 -0.173554 </data>
+    </node>
+    <node id="n21">
+      <data key="key0">1.80313 0.875 1.17232 2.332 -0.685926 -0.881633 0.917355 </data>
+    </node>
+    <node id="n22">
+      <data key="key0">2.20313 -0.125 1.50173 -0.708 -4.01926 -0.42449 1.46281 </data>
+    </node>
+    <node id="n23">
+      <data key="key0">2.60313 1.875 1.83114 0.092 -2.01926 0.0326531 2.00826 </data>
+    </node>
+    <node id="n24">
+      <data key="key0">3.40313 0.0625 2.48997 1.692 -3.35259 0.946939 -2.85124 </data>
+    </node>
+    <node id="n25">
+      <data key="key0">3.80313 -0.9375 -2.76125 2.492 -1.35259 1.40408 -2.30579 </data>
+    </node>
+    <node id="n26">
+      <data key="key0">4.60313 -1.4375 -2.10242 0.252 -4.4637 -0.816327 -1.21488 </data>
+    </node>
+    <node id="n27">
+      <data key="key0">5.40313 -0.4375 -1.4436 1.852 -0.463704 0.0979592 -0.123967 </data>
+    </node>
+    <node id="n28">
+      <data key="key0">1.4339 0.3125 -0.455363 0.412 0.202963 1.46939 1.5124 </data>
+    </node>
+    <node id="n29">
+      <data key="key0">1.8339 -0.6875 -0.125952 1.212 -3.13037 -1.20816 2.05785 </data>
+    </node>
+    <node id="n30">
+      <data key="key0">2.2339 1.3125 0.20346 2.012 -1.13037 -0.75102 2.60331 </data>
+    </node>
+    <node id="n31">
+      <data key="key0">2.6339 -1.1875 0.532872 2.812 0.86963 -0.293878 -2.80165 </data>
+    </node>
+    <node id="n32">
+      <data key="key0">3.0339 0.8125 0.862284 -0.228 -4.24148 0.163265 -2.2562 </data>
+    </node>
+    <node id="n33">
+      <data key="key0">3.4339 -0.1875 1.1917 0.572 -2.24148 0.620408 -1.71074 </data>
+    </node>
+    <node id="n34">
+      <data key="key0">4.6339 0.1875 2.17993 2.972 -1.57481 -1.59067 -0.0743802 </data>
+    </node>
+    <node id="n35">
+      <data key="key0">5.0339 -0.8125 2.50934 -0.836 0.425185 -1.13353 0.471074 </data>
+    </node>
+    <edge id="e0" source="n1" target="n0">
+    </edge>
+    <edge id="e1" source="n16" target="n0">
+    </edge>
+    <edge id="e2" source="n3" target="n0">
+    </edge>
+    <edge id="e3" source="n32" target="n0">
+    </edge>
+    <edge id="e4" source="n2" target="n0">
+    </edge>
+    <edge id="e5" source="n12" target="n1">
+    </edge>
+    <edge id="e6" source="n20" target="n1">
+    </edge>
+    <edge id="e7" source="n3" target="n1">
+    </edge>
+    <edge id="e8" source="n32" target="n1">
+    </edge>
+    <edge id="e9" source="n28" target="n2">
+    </edge>
+    <edge id="e10" source="n11" target="n2">
+    </edge>
+    <edge id="e11" source="n19" target="n2">
+    </edge>
+    <edge id="e12" source="n14" target="n2">
+    </edge>
+    <edge id="e13" source="n3" target="n2">
+    </edge>
+    <edge id="e14" source="n12" target="n3">
+    </edge>
+    <edge id="e15" source="n33" target="n3">
+    </edge>
+    <edge id="e16" source="n22" target="n3">
+    </edge>
+    <edge id="e17" source="n20" target="n3">
+    </edge>
+    <edge id="e18" source="n27" target="n4">
+    </edge>
+    <edge id="e19" source="n14" target="n4">
+    </edge>
+    <edge id="e20" source="n21" target="n4">
+    </edge>
+    <edge id="e21" source="n11" target="n4">
+    </edge>
+    <edge id="e22" source="n30" target="n4">
+    </edge>
+    <edge id="e23" source="n15" target="n5">
+    </edge>
+    <edge id="e24" source="n29" target="n5">
+    </edge>
+    <edge id="e25" source="n12" target="n5">
+    </edge>
+    <edge id="e26" source="n13" target="n5">
+    </edge>
+    <edge id="e27" source="n3" target="n5">
+    </edge>
+    <edge id="e28" source="n22" target="n6">
+    </edge>
+    <edge id="e29" source="n15" target="n6">
+    </edge>
+    <edge id="e30" source="n3" target="n6">
+    </edge>
+    <edge id="e31" source="n29" target="n6">
+    </edge>
+    <edge id="e32" source="n23" target="n6">
+    </edge>
+    <edge id="e33" source="n33" target="n7">
+    </edge>
+    <edge id="e34" source="n24" target="n7">
+    </edge>
+    <edge id="e35" source="n17" target="n7">
+    </edge>
+    <edge id="e36" source="n32" target="n7">
+    </edge>
+    <edge id="e37" source="n16" target="n7">
+    </edge>
+    <edge id="e38" source="n33" target="n8">
+    </edge>
+    <edge id="e39" source="n9" target="n8">
+    </edge>
+    <edge id="e40" source="n20" target="n8">
+    </edge>
+    <edge id="e41" source="n10" target="n8">
+    </edge>
+    <edge id="e42" source="n21" target="n8">
+    </edge>
+    <edge id="e43" source="n21" target="n9">
+    </edge>
+    <edge id="e44" source="n19" target="n9">
+    </edge>
+    <edge id="e45" source="n30" target="n9">
+    </edge>
+    <edge id="e46" source="n10" target="n9">
+    </edge>
+    <edge id="e47" source="n32" target="n10">
+    </edge>
+    <edge id="e48" source="n22" target="n10">
+    </edge>
+    <edge id="e49" source="n23" target="n10">
+    </edge>
+    <edge id="e50" source="n20" target="n10">
+    </edge>
+    <edge id="e51" source="n33" target="n10">
+    </edge>
+    <edge id="e52" source="n28" target="n11">
+    </edge>
+    <edge id="e53" source="n14" target="n11">
+    </edge>
+    <edge id="e54" source="n27" target="n11">
+    </edge>
+    <edge id="e55" source="n13" target="n12">
+    </edge>
+    <edge id="e56" source="n29" target="n12">
+    </edge>
+    <edge id="e57" source="n30" target="n13">
+    </edge>
+    <edge id="e58" source="n15" target="n13">
+    </edge>
+    <edge id="e59" source="n3" target="n13">
+    </edge>
+    <edge id="e60" source="n28" target="n14">
+    </edge>
+    <edge id="e61" source="n6" target="n14">
+    </edge>
+    <edge id="e62" source="n29" target="n15">
+    </edge>
+    <edge id="e63" source="n12" target="n15">
+    </edge>
+    <edge id="e64" source="n3" target="n15">
+    </edge>
+    <edge id="e65" source="n17" target="n16">
+    </edge>
+    <edge id="e66" source="n25" target="n16">
+    </edge>
+    <edge id="e67" source="n33" target="n16">
+    </edge>
+    <edge id="e68" source="n27" target="n16">
+    </edge>
+    <edge id="e69" source="n18" target="n16">
+    </edge>
+    <edge id="e70" source="n25" target="n17">
+    </edge>
+    <edge id="e71" source="n27" target="n17">
+    </edge>
+    <edge id="e72" source="n26" target="n17">
+    </edge>
+    <edge id="e73" source="n33" target="n18">
+    </edge>
+    <edge id="e74" source="n27" target="n18">
+    </edge>
+    <edge id="e75" source="n35" target="n18">
+    </edge>
+    <edge id="e76" source="n3" target="n18">
+    </edge>
+    <edge id="e77" source="n28" target="n19">
+    </edge>
+    <edge id="e78" source="n11" target="n19">
+    </edge>
+    <edge id="e79" source="n8" target="n19">
+    </edge>
+    <edge id="e80" source="n32" target="n20">
+    </edge>
+    <edge id="e81" source="n22" target="n20">
+    </edge>
+    <edge id="e82" source="n30" target="n21">
+    </edge>
+    <edge id="e83" source="n23" target="n21">
+    </edge>
+    <edge id="e84" source="n34" target="n21">
+    </edge>
+    <edge id="e85" source="n29" target="n21">
+    </edge>
+    <edge id="e86" source="n29" target="n22">
+    </edge>
+    <edge id="e87" source="n23" target="n22">
+    </edge>
+    <edge id="e88" source="n29" target="n23">
+    </edge>
+    <edge id="e89" source="n33" target="n24">
+    </edge>
+    <edge id="e90" source="n17" target="n24">
+    </edge>
+    <edge id="e91" source="n10" target="n24">
+    </edge>
+    <edge id="e92" source="n34" target="n24">
+    </edge>
+    <edge id="e93" source="n27" target="n25">
+    </edge>
+    <edge id="e94" source="n11" target="n25">
+    </edge>
+    <edge id="e95" source="n13" target="n25">
+    </edge>
+    <edge id="e96" source="n3" target="n26">
+    </edge>
+    <edge id="e97" source="n12" target="n26">
+    </edge>
+    <edge id="e98" source="n16" target="n26">
+    </edge>
+    <edge id="e99" source="n7" target="n26">
+    </edge>
+    <edge id="e100" source="n30" target="n28">
+    </edge>
+    <edge id="e101" source="n30" target="n29">
+    </edge>
+    <edge id="e102" source="n15" target="n30">
+    </edge>
+    <edge id="e103" source="n16" target="n31">
+    </edge>
+    <edge id="e104" source="n8" target="n31">
+    </edge>
+    <edge id="e105" source="n27" target="n31">
+    </edge>
+    <edge id="e106" source="n21" target="n31">
+    </edge>
+    <edge id="e107" source="n34" target="n31">
+    </edge>
+    <edge id="e108" source="n33" target="n32">
+    </edge>
+    <edge id="e109" source="n3" target="n32">
+    </edge>
+    <edge id="e110" source="n7" target="n34">
+    </edge>
+    <edge id="e111" source="n6" target="n34">
+    </edge>
+    <edge id="e112" source="n4" target="n35">
+    </edge>
+    <edge id="e113" source="n6" target="n35">
+    </edge>
+    <edge id="e114" source="n33" target="n35">
+    </edge>
+    <edge id="e115" source="n23" target="n35">
+    </edge>
+  </graph>
+</graphml>
