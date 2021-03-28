@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<root>
+   <agent start_id="3" goal_id="8"/>
+   <agent start_id="9" goal_id="6"/>
+   <agent start_id="1" goal_id="5"/>
+   <agent start_id="2" goal_id="3"/>
+   <agent start_id="8" goal_id="1"/>
+   <agent start_id="6" goal_id="0"/>
+   <agent start_id="4" goal_id="9"/>
+</root>
