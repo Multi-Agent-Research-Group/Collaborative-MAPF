@@ -31,6 +31,8 @@
 #include "LoadGraphfromFile.hpp"
 #include "tensorProductGenerator.hpp"
 
+#include <boost/graph/topological_sort.hpp>
+
 #define INF std::numeric_limits<double>::infinity()
 
 namespace ICTS {
@@ -122,15 +124,17 @@ ICTS::ICTS()
 	};
 
 	struct meta_data{
-	std::pair <int, int> start;
-	std::pair <int, int> goal;
+		std::pair <int, int> start;
+		std::pair <int, int> goal;
 
-	std::vector <int> agent_list;
+		std::vector <int> agent_list;
 
-	int  start_time;
-	int end_time;
+		int  start_time;
+		int end_time;
 
-	int slack = 0;
+		int slack = 0;
+
+		bool CollisionFree = false;
 	};
 
 	typedef property<meta_data_t, meta_data> MetaData;
