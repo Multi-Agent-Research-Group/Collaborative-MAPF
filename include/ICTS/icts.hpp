@@ -1,4 +1,4 @@
-/* Authors: Kushal Kedia */
+/* Authors: Kushal Kedia, Rajat Kumar Jenamani */
 
 #ifndef ICTS_HPP_
 #define ICTS_HPP_
@@ -115,218 +115,76 @@ public:
 namespace ICTS
 {
 
-ICTS::ICTS(cv::Mat img, std::string& leftRoadmapFileName, std::string& rightRoadmapFileName,
-		Eigen::VectorXd _start_config, Eigen::VectorXd _goal_config, bool insert_start_goal, bool use_dijkstra)
-	: mImage(img)
-	, mLeftRoadmapFileName(leftRoadmapFileName)
-	, mRightRoadmapFileName(rightRoadmapFileName)
+ICTS::ICTS()
 {
+	struct meta_data_t {
+		typedef vertex_property_tag kind;
+	};
 
-	Vertex left_start_vertex;
-	Vertex left_goal_vertex;
+	struct meta_data{
+	std::pair <int, int> start;
+	std::pair <int, int> goal;
 
-	Vertex right_start_vertex;
-	Vertex right_goal_vertex;
+	std::vector <int> agent_list;
 
-	Eigen::VectorXd left_start_config(2);
-	for (size_t ui = 0; ui < 2; ui++)
+	int  start_time;
+	int end_time;
+
+	int slack = 0;
+	};
+
+	typedef property<meta_data_t, meta_data> MetaData;
+	typedef adjacency_list<vecS, vecS, directedS, 
+	                     MetaData> PrecedenceConstraintGraph;
+
+	typedef std::pair<int,int> Pair;
+
+	typedef boost::graph_traits<PrecedenceConstraintGraph>::vertex_descriptor Vertex;
+	typedef std::vector< Vertex > container;
+
+	Pair edge_array[11] = { Pair(0,1), Pair(1,2), Pair(2,5), 
+	                        Pair(3,5), Pair(4,6), Pair(5,7), 
+	                        Pair(5,8), Pair(6,9), Pair(7,10), 
+	                        Pair(8,11), Pair(9,11) };
+	  
+	PrecedenceConstraintGraph G(12);
+
+	for (int i = 0; i < 11; ++i)
+	  add_edge(edge_array[i].first, edge_array[i].second, G);
+
+	property_map<PrecedenceConstraintGraph, meta_data_t>::type
+	name = get(meta_data_t(), G);
+	  
+	meta_data random = {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0, 1}, 0, 5, 10,};
+
+	name[0] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0}, 0, 5, 0,};
+	name[1] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0}, 6, 15, 0,};
+	name[2] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0}, 16, 20, 0,};
+	name[3] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {1}, 0, 10, 10,};
+	name[4] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {2}, 0, 10, 0,};
+	name[5] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0, 1}, 21, 30, 0,};
+	name[6] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {2}, 10, 15, 0,};
+	name[7] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0}, 31, 40, 0,};
+	name[8] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {1}, 31, 35, 0,};
+	name[9] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {2}, 16, 25, 10,};
+	name[10] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0, 1}, 41, 50, 0,};
+	name[11] = meta_data {std::make_pair(1, 2), std::make_pair(1, 2), std::vector <int> {0, 1}, 36, 45, 5,};
+
+	container c;
+	topological_sort(G, std::back_inserter(c));
+
+	std::cout << "A topological ordering: ";
+	for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
 	{
-		left_start_config[ui] = _start_config[ui];
+	  std::cout << std::endl;
+	  meta_data vertex = get(name, *ii);
+	  std::cout << vertex.start_time << " ";
+	  std::cout << vertex.end_time << " ";   
+	  for(auto agent: vertex.agent_list){
+	    std::cout << agent << " ";   
+	  }
 	}
-
-	Eigen::VectorXd left_goal_config(2);
-	for (size_t ui = 0; ui < 2; ui++)
-	{
-		left_goal_config[ui] = _goal_config[ui];
-	}
-
-	Eigen::VectorXd right_start_config(2);
-	for (size_t ui = 2; ui < 4; ui++)
-	{
-		right_start_config[ui-2] = _start_config[ui];
-	}
-
-	Eigen::VectorXd right_goal_config(2);
-	for (size_t ui = 2; ui < 4; ui++)
-	{
-		right_goal_config[ui-2] = _goal_config[ui];
-	}
-
-	if (insert_start_goal)
-	{
-		double mConnectionRadius = 0.2;
-
-		create_vertices(left_graph,get(&VProp::state,left_graph),mLeftRoadmapFileName,2,get(&EProp::prior,left_graph));
-		create_edges(left_graph,get(&EProp::length,left_graph));
-
-		VertexIter ind_vi, ind_vi_end;
-		size_t i=0;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(left_graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-		{
-			put(&VProp::vertex_index,left_graph,*ind_vi,i);
-		}
-
-		create_vertices(right_graph,get(&VProp::state,right_graph),mRightRoadmapFileName,2,get(&EProp::prior,right_graph));
-		create_edges(right_graph,get(&EProp::length,right_graph));
-
-		i=0;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(right_graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-		{
-			put(&VProp::vertex_index,right_graph,*ind_vi,i);
-		}
-
-		left_start_vertex = add_vertex(left_graph);
-		left_graph[left_start_vertex].state = left_start_config;
-		left_graph[left_start_vertex].vertex_index = boost::num_vertices(left_graph) - 1;
-
-		left_goal_vertex = add_vertex(left_graph);
-		left_graph[left_goal_vertex].state = left_goal_config;
-		left_graph[left_goal_vertex].vertex_index = boost::num_vertices(left_graph) - 1;
-
-		size_t startDegree = 0;
-		size_t goalDegree = 0;
-
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(left_graph); ind_vi != ind_vi_end; ++ind_vi)
-		{
-			double startDist = getDistance(left_graph[left_start_vertex].state, left_graph[*ind_vi].state);
-			double goalDist = getDistance(left_graph[left_goal_vertex].state, left_graph[*ind_vi].state);
-
-			if (startDist < mConnectionRadius)
-			{
-				if(left_start_vertex == *ind_vi)
-					continue;
-				std::pair<Edge,bool> newEdge = boost::add_edge(left_start_vertex, *ind_vi, left_graph);
-				left_graph[newEdge.first].length = startDist;
-				left_graph[newEdge.first].prior = 1.0;
-				left_graph[newEdge.first].isEvaluated = false;
-				left_graph[newEdge.first].status = CollisionStatus::FREE;
-				startDegree++;
-			}
-
-			if (goalDist < mConnectionRadius)
-			{
-				if(left_goal_vertex == *ind_vi)
-					continue;
-				std::pair<Edge,bool> newEdge = boost::add_edge(left_goal_vertex, *ind_vi, left_graph);
-				left_graph[newEdge.first].length = goalDist;
-				left_graph[newEdge.first].prior = 1.0;
-				left_graph[newEdge.first].isEvaluated = false;
-				left_graph[newEdge.first].status = CollisionStatus::FREE;
-				goalDegree++;
-			}
-		}
-
-		right_start_vertex = add_vertex(right_graph);
-		right_graph[right_start_vertex].state = right_start_config;
-		right_graph[right_start_vertex].vertex_index = boost::num_vertices(right_graph) - 1;
-
-
-		right_goal_vertex = add_vertex(right_graph);
-		right_graph[right_goal_vertex].state = right_goal_config;
-		right_graph[right_goal_vertex].vertex_index = boost::num_vertices(right_graph) - 1;
-
-		startDegree = 0;
-		goalDegree = 0;
-
-		// VertexIter ind_vi, ind_vi_end;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(right_graph); ind_vi != ind_vi_end; ++ind_vi)
-		{
-			double startDist = getDistance(right_graph[right_start_vertex].state, right_graph[*ind_vi].state);
-			double goalDist = getDistance(right_graph[right_goal_vertex].state, right_graph[*ind_vi].state);
-
-			if (startDist < mConnectionRadius)
-			{
-				if(right_start_vertex == *ind_vi)
-					continue;
-				std::pair<Edge,bool> newEdge = boost::add_edge(right_start_vertex, *ind_vi, right_graph);
-				right_graph[newEdge.first].length = startDist;
-				right_graph[newEdge.first].prior = 1.0;
-				right_graph[newEdge.first].isEvaluated = false;
-				right_graph[newEdge.first].status = CollisionStatus::FREE;
-				startDegree++;
-			}
-
-			if (goalDist < mConnectionRadius)
-			{
-				if(right_goal_vertex == *ind_vi)
-					continue;
-				std::pair<Edge,bool> newEdge = boost::add_edge(right_goal_vertex, *ind_vi, right_graph);
-				right_graph[newEdge.first].length = goalDist;
-				right_graph[newEdge.first].prior = 1.0;
-				right_graph[newEdge.first].isEvaluated = false;
-				right_graph[newEdge.first].status = CollisionStatus::FREE;
-				goalDegree++;
-			}
-		}
-	}
-	else
-	{
-		create_vertices(left_graph,get(&VProp::state,left_graph),mLeftRoadmapFileName,2,get(&EProp::prior,left_graph));
-		create_edges(left_graph,get(&EProp::length,left_graph));
-
-		VertexIter ind_vi, ind_vi_end;
-		size_t i=0;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(left_graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-		{
-			put(&VProp::vertex_index,left_graph,*ind_vi,i);
-			if(left_start_config.isApprox(left_graph[*ind_vi].state))
-				left_start_vertex = *ind_vi;
-			if(left_goal_config.isApprox(left_graph[*ind_vi].state))
-				left_goal_vertex = *ind_vi;	
-		}
-
-		create_vertices(right_graph,get(&VProp::state,right_graph),mRightRoadmapFileName,2,get(&EProp::prior,right_graph));
-		create_edges(right_graph,get(&EProp::length,right_graph));
-
-		i=0;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(right_graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-		{
-			put(&VProp::vertex_index,right_graph,*ind_vi,i);
-			if(right_start_config.isApprox(right_graph[*ind_vi].state))
-				right_start_vertex = *ind_vi;
-			if(right_goal_config.isApprox(right_graph[*ind_vi].state))
-				right_goal_vertex = *ind_vi;
-		}
-	}
-
-	// std::cout<<"Left Graph: #Vertices: "<<boost::num_vertices(left_graph)<<" #Edges: "<<boost::num_edges(left_graph)<<std::endl;
-	// std::cout<<"Right Graph: #Vertices: "<<boost::num_vertices(right_graph)<<" #Edges: "<<boost::num_edges(right_graph)<<std::endl;
-
-	// std::cout<<"Press [ENTER] to preprocess graphs: ";
-	// std::cin.get();
-
-	preprocess_graph(left_graph, left_goal_vertex, use_dijkstra);
-	preprocess_graph(right_graph, right_goal_vertex, use_dijkstra);
-
-	// Add start and goal vertices to the graph
-	mStartVertex = boost::add_vertex(graph); 
-	graph[mStartVertex].state_type = 1;
-	graph[mStartVertex].left_vertex = left_start_vertex;
-	graph[mStartVertex].right_vertex = right_start_vertex;
-	graph[mStartVertex].vertex_index = boost::num_vertices(graph) - 1;
-
-	mGoalVertex = boost::add_vertex(graph);
-	graph[mGoalVertex].state_type = 1;
-	graph[mGoalVertex].left_vertex = left_goal_vertex;
-	graph[mGoalVertex].right_vertex = right_goal_vertex;
-	graph[mGoalVertex].vertex_index = boost::num_vertices(graph) - 1;
-
-	// Assign default values
-	graph[mStartVertex].distance = 0;
-	graph[mStartVertex].heuristic = left_graph[left_start_vertex].heuristic + right_graph[right_start_vertex].heuristic;
-	graph[mStartVertex].parent = -1;
-	graph[mStartVertex].visited = false;
-	graph[mStartVertex].status = CollisionStatus::FREE;
-
-	graph[mGoalVertex].distance = std::numeric_limits<double>::infinity();
-	graph[mGoalVertex].heuristic = 0;
-	graph[mGoalVertex].parent = -1;
-	graph[mGoalVertex].visited = false;
-	graph[mGoalVertex].status = CollisionStatus::FREE;
-
-	// Populate the tensor product generator class
-	mTPG.populateMaps(graph,mStartVertex,mGoalVertex);
-	// displayPath(std::vector<Eigen::VectorXd>());
+	std::cout <<std::endl;
 }
 
 ICTS::~ICTS()
@@ -347,7 +205,7 @@ std::vector<CompositeVertex> ICTS::printPaths(vector<vector<int>> paths) {
     }
 }
 
-std::vector<CompositeVertex> C_MINT_2::ICTS_run(vector<Agent> agentList, list<Node> queue) {
+std::vector<CompositeVertex> ICTS::ICTS_run(vector<Agent> agentList, list<Node> queue) {
     Node currentNode = queue.front();
     queue.pop_front();
     vector<int> optimalCostList = currentNode.data;
