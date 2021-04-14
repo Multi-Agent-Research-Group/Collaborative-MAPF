@@ -13,6 +13,7 @@ struct meta_data_t {
   typedef vertex_property_tag kind;
 };
 
+int count = 0;
 struct meta_data{
   std::pair <int, int> start;
   std::pair <int, int> goal;
@@ -23,24 +24,10 @@ struct meta_data{
   int end_time;
 
   int slack = 0;
-  public:
-    bool compare(const meta_data & param)
-    {
-      //...compare structs here like:
-      if (start != param.start)
-        return false;
-        //write something
-
-      //etc...
-
-      //at the end you can also return bool that indicates that structs are equal or not
-      return true;
-    }
 };
 
 typedef property<meta_data_t, meta_data> MetaData;
-typedef adjacency_list<vecS, vecS, directedS, 
-                       MetaData> PrecedenceConstraintGraph;
+typedef adjacency_list<vecS, vecS, directedS, MetaData> PrecedenceConstraintGraph;
 
 typedef std::pair<int,int> Pair;
 
@@ -48,27 +35,10 @@ typedef boost::graph_traits<PrecedenceConstraintGraph>::vertex_descriptor Vertex
 typedef std::vector< Vertex > container;
 /// Boost graph out edge iterator
 typedef boost::graph_traits<PrecedenceConstraintGraph>::out_edge_iterator OutEdgeIter;
-
-
-void print_topological(PrecedenceConstraintGraph &G){
-  container c;
-  topological_sort(G, std::back_inserter(c));
-  property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-  std::cout << "A topological ordering: ";
-  for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
-  {
-    std::cout << std::endl;
-    meta_data vertex = get(name, *ii);
-    std::cout << vertex.start_time << " ";
-    std::cout << vertex.end_time << " ";   
-    for(auto agent: vertex.agent_list){
-      std::cout << agent << " ";   
-    }
-  }
-  std::cout <<std::endl;
-}
+typedef boost::graph_traits<PrecedenceConstraintGraph>::vertex_iterator VertexIter;
 
 bool checkpathpossible(PrecedenceConstraintGraph &G){
+  count +=1;
   container c;
   topological_sort(G, std::back_inserter(c));
   property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
@@ -105,17 +75,13 @@ bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T,
       predecessors.push_back(curPred);
   }
 
-  container::iterator jj = ii;
-  jj++;
-
   if(predecessors.size() == 0){
-    return checkpathpossible(G) || generatePaths(G, G_T, c, jj);
+    return generatePaths(G, G_T, c, ii+1);
   }
 
-  meta_data *curr_vertex = &get(name_t, *ii); 
+  meta_data *curr_vertex = &get(name, *ii); 
 
-  
-  if(generatePaths(G, G_T, c, jj))
+  if(generatePaths(G, G_T, c, ii+1))
     return true;
   
   int slack = curr_vertex->slack;
@@ -127,14 +93,53 @@ bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T,
         meta_data *vertex = &get(name, pred);
         vertex->slack+=1;
       }
-      if(generatePaths(G, G_T, c, jj))
+      if(generatePaths(G, G_T, c, ii+1))
         return true;
   }
   curr_vertex->slack = slack;
   for(auto pred:predecessors){
     meta_data *vertex = &get(name, pred);
-    vertex->slack+=1;
+    vertex->slack-=slack;
   }
+  return false;
+}
+
+bool ICTS(PrecedenceConstraintGraph &G, int maxIter){
+  property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
+  container c;
+  topological_sort(G, std::back_inserter(c));
+
+  PrecedenceConstraintGraph G_T;
+  
+
+  transpose_graph(G, G_T);
+  for(int i=0; i<maxIter; i++){
+
+    if(generatePaths(G, G_T, c, c.begin())){
+      return true;
+    }
+
+    VertexIter v, vend;
+    for (boost::tie(v, vend) = vertices(G); v != vend; ++v) {
+
+      container successors;
+      OutEdgeIter ei, ei_end;
+
+      for (boost::tie(ei, ei_end) = out_edges(*v, G); ei != ei_end; ++ei) 
+      {
+          Vertex curSuc = target(*ei, G);
+          successors.push_back(curSuc);
+      }
+
+      if(successors.size() == 0){
+        meta_data *vertex = &get(name, *v);
+        vertex->slack+=1;
+      }
+
+    }
+
+  }
+  
   return false;
 }
 
@@ -168,23 +173,8 @@ int main()
   for (int i = 0; i < 11; ++i)
     add_edge(edge_array[i].first, edge_array[i].second, G);
 
-  container c;
-  topological_sort(G, std::back_inserter(c));
-
-  PrecedenceConstraintGraph G_T;
-  transpose_graph(G, G_T);
-
-  // print_graph(G_T, name_map);
-  // std::unordered_map <container::iterator ii, container::iterator ii> parents;
-  // typedef boost::graph_traits<Graph>::vertex_iterator VertexIter;
-
-  // VertexIter vi, vend;
-  // for (boost::tie(vi, vi_end) = boost::vertices(graph); vi != vi_end; ++vi)
-  // {
-  // }
-  // print_topological(G_T);
-  generatePaths(G, G_T, c, c.begin());
-  // print_topological(G);
+  ICTS(G, 2);
+  std::cout << count << std::endl;
 }
 
 
