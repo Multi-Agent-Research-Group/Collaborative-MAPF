@@ -1,8 +1,8 @@
 #ifndef CBS_DEFINITIONS_
 #define CBS_DEFINITIONS_
 #include <bits/stdc++.h>
-#include "BGLDefinitions.h"
-#include "LoadGraphfromFile.h"
+#include "BGLDefinitions.hpp"
+#include "LoadGraphfromFile.hpp"
 
 namespace CMAPF {
 
@@ -24,12 +24,13 @@ struct pair_hash {
 
 struct Constraint
 {
-	int contraint_type = 1;  // 1 -> vertex constraint 2 -> edge constraint
+	int constraint_type;  // 1 -> vertex constraint 2 -> edge constraint
 	Vertex v;
 	Edge e;	//edge
 	size_t t; //time . for edge, time is time of target vertex
 
-	Constraint(Vertex _v, size_t _t) : v(_v), t(_t), contraint_type(1) {}
+	Constraint() : constraint_type(1) {}
+	Constraint(Vertex _v, size_t _t) : v(_v), t(_t), constraint_type(1) {}
 	Constraint(Edge _e, size_t _t) : e(_e), t(_t), constraint_type(2) {}
 };
 
@@ -86,13 +87,13 @@ public:
 	CBSPriorityQueue(size_t numAgents)
 	{ 
 		mNumAgents = numAgents;
-		Element a(std::vector(mNumAgents, -1),std::vector(mNumAgents, std::vector<Constraint>()),std::vector(mNumAgents,std::vector<Vertex>()));
+		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
 		PQ.push_back(a);
 	}
 	void reset()
 	{
 		PQ.clear();
-		Element a(std::vector(mNumAgents, -1),std::vector(mNumAgents, std::vector<Constraint>()),std::vector(mNumAgents,std::vector<Vertex>()));
+		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
 		PQ.push_back(a);
 	}
 	int PQsize()
@@ -102,7 +103,7 @@ public:
 	double topKey()
 	{
 		double cost = 0;
-		for(int i=0; i<costs.size(); i++)
+		for(int i=0; i<PQ[1].costs.size(); i++)
 			cost += PQ[1].costs[i];
 		return cost;
 	}
@@ -114,7 +115,7 @@ public:
 		min_heapify(1);
 		return temp;
 	}
-	void insert(std::vector<double> _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<Vertex> _shortestPaths)
+	void insert(std::vector<double> _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<std::vector<Vertex>> _shortestPaths)
 	{
 		Element a(_cost, _constraints, _shortestPaths);
 		PQ.push_back(a);
@@ -138,8 +139,8 @@ public:
 		for(int i=1;i<PQ.size();i++)
 		{
 			cout<<"Cost: ";
-			for(int i=0; i<costs.size(); i++)
-				cout<<PQ[i].costs[i]<<" ";
+			for(int j=0; j<PQ[i].costs.size(); j++)
+				cout<<PQ[i].costs[j]<<" ";
 			cout<<endl;
 
 			cout<<"Constraints: "<<endl;
@@ -149,7 +150,7 @@ public:
 				std::cout<<" Agent: "<<agent_id<<" - ";
 				for(auto it=PQ[i].constraints[agent_id].begin(); it != PQ[i].constraints[agent_id].end(); it++)
 				{
-					if((*it).contraint_type == 1)
+					if((*it).constraint_type == 1)
 						cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).t<<endl;
 					else
 						cout<<"Edge: "<<(*it).e<<" Time: "<<(*it).t<<endl;
