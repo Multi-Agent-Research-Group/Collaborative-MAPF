@@ -190,9 +190,6 @@ public:
 			if(left == 0)
 				break;
 
-			bool col_type = -1; // 1 -> source vertices, 2 -> target vertices, 3 -> edges
-			int agent_id_1 = -1;
-			int agent_id_2 = -1;
 			for(size_t i=0; i<mNumAgents; i++)
 			for(size_t j=i+1; j<mNumAgents; j++)
 			{
@@ -257,8 +254,12 @@ public:
 		
 		PQ.insert(start_costs, constraints, start_shortestPaths);
 
+		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
+			numSearches++;
+			if(numSearches%1000 == 0)
+				std::cout<<"numSearches: "<<numSearches<<std::endl;
 			Element p = PQ.pop();
 
 			double total_cost = 0;
@@ -294,6 +295,8 @@ public:
 			//agent_id_1
 
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_1 = p.constraints;
+
+			// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
 			increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 
 			double cost_agent_id_1;
@@ -306,7 +309,6 @@ public:
 
 			if(costs_agent_id_1[agent_id_1] != INF)
 				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
-			
 			
 			//agent_id_2
 
@@ -443,7 +445,7 @@ public:
 		while(pq.PQsize()!=0)
 		{
 			numSearches++;
-			std::cout<<"Queue pop no: "<<numSearches<<std::endl;
+			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
 			std::pair<int,size_t> top_element = pq.pop();
 			size_t index = top_element.first;
 			size_t timestep = top_element.second;
@@ -533,7 +535,7 @@ public:
 			return std::vector<Vertex>();
 		}
 
-		std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
+		// std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
 		std::vector<Vertex> finalPath;
 		Vertex node = goal;
 
