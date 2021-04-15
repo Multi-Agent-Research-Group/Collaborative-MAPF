@@ -35,7 +35,7 @@
 
 #define INF std::numeric_limits<double>::infinity()
 
-namespace ICTS {
+namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
@@ -111,11 +111,6 @@ public:
 	void displayPath(std::vector<Eigen::VectorXd> path);
 
 }; // class ICTS
-
-} // namespace ICTS
-
-namespace ICTS
-{
 
 ICTS::ICTS()
 {
@@ -196,8 +191,6 @@ ICTS::~ICTS()
 	// Do nothing.
 }
 
-} // namespace ICTS
-
 struct Node{
 	vector <int> cost;
 	vector <vector <GraphVertex>> paths;
@@ -236,5 +229,7 @@ std::vector <vector <GraphVertex>> ICTS::ICTS_run(std::vector<Agent> agentList, 
         ICTS_run(agentList, queue);
     }
 }
+
+} // namespace CMAPF
 
 #endif // ICTS_ICTS_HPP_
