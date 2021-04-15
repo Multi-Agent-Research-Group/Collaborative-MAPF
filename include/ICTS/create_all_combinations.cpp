@@ -20,7 +20,7 @@ struct meta_data{
 
   std::vector <int> agent_list;
 
-  int  start_time;
+  int start_time;
   int end_time;
 
   int slack = 0;
@@ -85,10 +85,13 @@ bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T,
     return true;
   
   int slack = curr_vertex->slack;
+  int start_time = curr_vertex->start_time;
+  int end_time = curr_vertex->end_time;
 
   while(curr_vertex->slack){
       curr_vertex->slack--;
-      
+      curr_vertex->start_time++;
+      curr_vertex->end_time++;
       for(auto pred:predecessors){
         meta_data *vertex = &get(name, pred);
         vertex->slack+=1;
@@ -97,6 +100,8 @@ bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T,
         return true;
   }
   curr_vertex->slack = slack;
+  curr_vertex->start_time = start_time;
+  curr_vertex->end_time = end_time;
   for(auto pred:predecessors){
     meta_data *vertex = &get(name, pred);
     vertex->slack-=slack;
@@ -173,7 +178,7 @@ int main()
   for (int i = 0; i < 11; ++i)
     add_edge(edge_array[i].first, edge_array[i].second, G);
 
-  ICTS(G, 2);
+  ICTS(G, 1);
   std::cout << count << std::endl;
 }
 
