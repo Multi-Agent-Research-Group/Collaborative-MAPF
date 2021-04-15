@@ -29,8 +29,8 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include "BGLDefinitions.hpp"
-#include "time_priority_queue.h"
-#include "CBSDefinitions.h"
+#include "time_priority_queue.hpp"
+#include "CBSDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
 
 #define INF std::numeric_limits<double>::infinity()
@@ -64,6 +64,7 @@ public:
 	std::vector<Eigen::VectorXd> mGoalConfig;
 	std::vector<Vertex> mGoalVertex;
 
+	double mUnitEdgeLength = 0.625;
 
 	CBS(cv::Mat img, size_t numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, Eigen::VectorXd _goal_config)
 		: mImage(img)
@@ -100,9 +101,9 @@ public:
 			for (boost::tie(ind_vi, ind_vi_end) = vertices(graph); ind_vi != ind_vi_end; ++ind_vi,++i)
 			{
 				put(&VProp::vertex_index,graph,*ind_vi,i);
-				if(start_configs[agent_id].isApprox(graph[*ind_vi].state))
+				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
 					start_vertex = *ind_vi;
-				if(goal_configs[agent_id].isApprox(graph[*ind_vi].state))
+				if(mGoalConfig[agent_id].isApprox(graph[*ind_vi].state))
 					goal_vertex = *ind_vi;  
 			}
 
@@ -200,11 +201,8 @@ public:
 					agent_id_1 = i;
 					agent_id_2 = j;
 
-					Constraint con_1(source_vertices[i],timeStep);
-					constraint_1 = con_1;
-
-					Constraint con_2(source_vertices[j],timeStep);
-					constraint_2 = con_2;
+					constraint_1 = Constraint(source_vertices[i],timeStep);
+					constraint_2 = Constraint(source_vertices[j],timeStep);
 
 					return true;	
 				}
@@ -214,11 +212,8 @@ public:
 					agent_id_1 = i;
 					agent_id_2 = j;
 
-					Constraint con_1(target_vertices[i],timeStep+1);
-					constraint_1 = con_1;
-
-					Constraint con_2(target_vertices[j],timeStep+1);
-					constraint_2 = con_2;
+					constraint_1 = Constraint(target_vertices[i],timeStep+1);
+					constraint_2 = Constraint(target_vertices[j],timeStep+1);
 
 					return true;
 				}
@@ -229,12 +224,10 @@ public:
 					agent_id_2 = j;
 
 					Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[i]).first;
-					Constraint con_1(edge_1,timeStep+1);
-					constraint_1 = con_1;
+					constraint_1 = Constraint(edge_1,timeStep+1);
 
 					Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[i]).first;
-					Constraint con_2(edge_2,timeStep+1);
-					constraint_2 = con_2;
+					constraint_2 = Constraint(edge_2,timeStep+1);
 
 					return true;
 				}
@@ -245,7 +238,7 @@ public:
 		return false;
 	}
 
-	std::vector<std::vector<Eigen::VectorXd>> findPath()
+	std::vector<std::vector<Eigen::VectorXd>> solve()
 	{
 		CBSPriorityQueue PQ(mNumAgents);
 
@@ -278,7 +271,7 @@ public:
 			int agent_id_2 = -1;
 			Constraint constraint_2;
 
-			if(!checkCoupling(p.shortestPath, agent_id_1, constraint_1, agent_id_2, constraint_2))
+			if(!checkCoupling(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
 				std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
@@ -287,10 +280,10 @@ public:
 				{
 					std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
 					std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
-					for(Vertex &nodes: p.shortestPath[agent_id])
+					for(Vertex &nodes: p.shortestPaths[agent_id])
 					{
-						std::cout<<mGraph[agent_id][nodes].vertex_index<<" ";
-						collision_free_path[agent_id].push_back(mGraph[agent_id][nodes].state);
+						std::cout<<mGraphs[agent_id][nodes].vertex_index<<" ";
+						collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes].state);
 					}
 				}
 
@@ -306,33 +299,33 @@ public:
 			double cost_agent_id_1;
 
 			std::vector< double> costs_agent_id_1 = p.costs;
-			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPath;
+			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
 			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], cost_agent_id_1);
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
-			if(costs_agent_id_1[agent_id_1] != INF_VAL)
+			if(costs_agent_id_1[agent_id_1] != INF)
 				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 			
 			
 			//agent_id_2
 
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_2 = p.constraints;
-			increase_constraints_agent_id_2[agent_id_2] = constraint_2;
+			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
 
 			double cost_agent_id_2;
 
 			std::vector< double> costs_agent_id_2 = p.costs;
-			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPath;
+			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
 			
 			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2], cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
-			if(costs_agent_id_2[agent_id_2] != INF_VAL)
+			if(costs_agent_id_2[agent_id_2] != INF)
 				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 		}
 
-		return std::vector(mNumAgents,std::vector<VectorXd>());
+		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 	}
 
 	bool evaluateIndividualConfig(Eigen::VectorXd config)
@@ -413,18 +406,18 @@ public:
 		return checkResult;
 	}
 
-	std::vector<Vertex> getNeighbors(Graph &herb_map, Vertex &v)
+	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
 	{
 		std::vector<Vertex> neighbors;
 		OutEdgeIter ei, ei_end;
 
-		for (boost::tie(ei, ei_end) = out_edges(node, g); ei != ei_end; ++ei) 
+		for (boost::tie(ei, ei_end) = out_edges(v, graph); ei != ei_end; ++ei) 
 		{
-			Vertex curSucc = target(*ei, g);
+			Vertex curSucc = target(*ei, graph);
 			Edge e = *ei;
-			if(!g[e].isEvaluated)
-				evaluateIndividualEdge(g,e);
-			if(g[e].status == CollisionStatus::FREE)
+			if(!graph[e].isEvaluated)
+				evaluateIndividualEdge(graph,e);
+			if(graph[e].status == CollisionStatus::FREE)
 				neighbors.push_back(curSucc);
 		}
 		return neighbors;
@@ -459,11 +452,11 @@ public:
 			if(index == graph[goal].vertex_index)
 			{
 				goal_timestep = timestep;
-				costOut = mDistance[std::make_pair(goal,goal_timestep)]
+				costOut = mDistance[std::make_pair(goal,goal_timestep)];
 				break;
 			}
 			Vertex curr_node = nodeMap[index];
-			std::vector<Vertex> neighbors = getNeighbors(curr_node);
+			std::vector<Vertex> neighbors = getNeighbors(graph,curr_node);
 			neighbors.push_back(curr_node);
 			// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
 
@@ -536,7 +529,7 @@ public:
 		if(goal_timestep == -1)
 		{
 			std::cout<<"ALL_COL!"<<std::endl;
-			costOut = INF_VAL;
+			costOut = INF;
 			return std::vector<Vertex>();
 		}
 
@@ -544,7 +537,7 @@ public:
 		std::vector<Vertex> finalPath;
 		Vertex node = goal;
 
-		while(node!=mStartNode)
+		while(node!=start)
 		{
 			// std::cin.get();
 			// std::cout<<"INF LOOP LOL!";
@@ -554,7 +547,7 @@ public:
 			node=mPrev[std::make_pair(temp_node,temp_timestep)].first;
 			goal_timestep=mPrev[std::make_pair(temp_node,temp_timestep)].second;
 		}
-		finalPath.push_back(mStartNode);
+		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 		return finalPath;
 	}

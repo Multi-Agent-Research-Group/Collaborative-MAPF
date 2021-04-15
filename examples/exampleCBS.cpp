@@ -19,7 +19,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 // Custom header files
-#include "C_MINT/C_MINT.hpp"
+#include "CMAPF/CBS.hpp"
 
 namespace po = boost::program_options;
 
@@ -76,10 +76,10 @@ int main(int argc, char *argv[])
 		graph_files.push_back(graph_file);
 	
 	// Setup planner
-	CBS::CBS planner(image,numAgents,graph_files,start_config,goal_config);
+	CMAPF::CBS planner(image,numAgents,graph_files,start_config,goal_config);
 
 	std::cout<<"CALLING SOLVE!"<<std::endl;
-	std::vector<Eigen::VectorXd> path = planner.solve();
+	std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 
 	// if (display)
 	// 	displayPath(obstacle_file, path);
