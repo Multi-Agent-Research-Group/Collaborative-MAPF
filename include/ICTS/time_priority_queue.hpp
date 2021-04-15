@@ -2,6 +2,10 @@
 
 using namespace std;
 
+namespace CMAPF {
+
+using namespace BGL_DEFINITIONS;
+
 class timePriorityQueue
 {
 private:
@@ -115,3 +119,5 @@ public:
 		cout<<endl;
 	}
 };
+
+} // namespace CMAPF

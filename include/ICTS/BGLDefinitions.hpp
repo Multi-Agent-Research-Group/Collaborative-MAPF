@@ -24,7 +24,7 @@
 
 #define epsilon_value 0.0025
 
-namespace ICTS {
+namespace CMAPF {
 
 namespace BGL_DEFINITIONS {
 
@@ -223,6 +223,6 @@ namespace BGL_DEFINITIONS {
 
 } // namespace BGL_DEFINITIONS
 
-} // namespace ICTS
+} // namespace CMAPF
 
 #endif

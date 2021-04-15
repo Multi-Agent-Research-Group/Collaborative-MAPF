@@ -4,6 +4,10 @@
 #include "BGLDefinitions.h"
 #include "LoadGraphfromFile.h"
 
+namespace CMAPF {
+
+using namespace BGL_DEFINITIONS;
+
 using namespace std;
 
 struct pair_hash {
@@ -159,5 +163,7 @@ public:
 		cout<<endl;
 	}
 };
+
+} // namespace CMAPF
 
 #endif

@@ -35,7 +35,7 @@
 
 #define INF std::numeric_limits<double>::infinity()
 
-namespace CBS {
+namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
@@ -636,6 +636,6 @@ public:
 };
 
 
-} // namespace CBS
+} // namespace CMAPF
 
 #endif 
