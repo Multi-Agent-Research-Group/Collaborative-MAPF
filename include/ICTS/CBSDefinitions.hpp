@@ -110,7 +110,7 @@ public:
 		min_heapify(1);
 		return temp;
 	}
-	void insert(double _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<Vertex> _shortestPaths)
+	void insert(std::vector<double> _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<Vertex> _shortestPaths)
 	{
 		Element a(_cost, _constraints, _shortestPaths);
 		PQ.push_back(a);

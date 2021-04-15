@@ -1,8 +1,0 @@
-<?xml version="1.0" ?>
-<root>
-   <agent start_id="8" goal_id="90"/>
-   <agent start_id="113" goal_id="31"/>
-   <agent start_id="44" goal_id="137"/>
-   <agent start_id="57" goal_id="25"/>
-   <agent start_id="119" goal_id="88"/>
-</root>
