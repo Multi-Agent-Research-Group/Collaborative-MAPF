@@ -1,13 +1,13 @@
-  #include <iostream>                  // for std::cout
-  #include <utility>                   // for std::pair
-  #include <algorithm>                 // for std::for_each
-  #include <boost/graph/graph_traits.hpp>
-  #include <boost/graph/adjacency_list.hpp>
-  #include <boost/graph/transpose_graph.hpp>
-  #include <boost/graph/topological_sort.hpp>
-  #include <bits/stdc++.h>
-  using namespace boost;
-  // using namespace std;
+#include <iostream>                  // for std::cout
+#include <utility>                   // for std::pair
+#include <algorithm>                 // for std::for_each
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/transpose_graph.hpp>
+#include <boost/graph/topological_sort.hpp>
+#include <bits/stdc++.h>
+using namespace boost;
+// using namespace std;
 
 struct meta_data_t {
   typedef vertex_property_tag kind;
