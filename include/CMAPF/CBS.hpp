@@ -64,6 +64,9 @@ public:
 	std::vector<Eigen::VectorXd> mGoalConfig;
 	std::vector<Vertex> mGoalVertex;
 
+	std::vector<size_t> mStartTimestep;
+	std::vector<size_t> mGoalTimestep;
+
 	double mUnitEdgeLength = 0.625;
 
 	CBS(cv::Mat img, size_t numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, Eigen::VectorXd _goal_config)
@@ -141,73 +144,51 @@ public:
 
 	bool getEdgesCollisionStatus(Eigen::VectorXd left_source, Eigen::VectorXd left_target, Eigen::VectorXd right_source, Eigen::VectorXd right_target)
 	{
-		double resolution = 0.0025;
-		double length = (left_source - left_target).norm(); // assuming length is same for both edges (grid edge)
-		unsigned int nStates = std::ceil(length / resolution-0.000000001)+1;
-
-		// Just start and goal
-		if(nStates < 2u)
-		{
-			nStates = 2u;
-		}
-
-		// Evaluate the States in between
-		for (unsigned int i = 1; i < nStates-1; i++)
-		{
-			if(getVerticesCollisionStatus(left_source + (resolution*i/length)*(left_target-left_source),
-						right_source + (resolution*i/length)*(right_target-right_source)))
-				return true;
-		}
-
+		if ( (left_source - right_target).norm() < 0.0141 &&  (right_source - left_target).norm() < 0.0141)
+			return true;
 		return false;
 	}
 
 	bool checkCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1, int &agent_id_2, Constraint &constraint_2)
 	{
 		size_t timeStep = 0;
-		while(true)
+		size_t maximum_timestep = 0;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
+		while(timeStep < maximum_timestep)
 		{
 			std::vector<Vertex> source_vertices;
 			std::vector<Vertex> target_vertices;
-
-			int left = 0;
+			std::vector<size_t> agent_ids;
 			
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			{
-				if(paths[agent_id].size() >= timeStep+1)
+				if( timeStep - mStartTimestep[agent_id] >= 0 &&  mGoalTimestep[agent_id] - timeStep >= 1)
 				{
-					left++;
-					source_vertices.push_back(paths[agent_id].at(timeStep));
-					target_vertices.push_back(paths[agent_id].at(timeStep+1));
-				}
-				else
-				{
-					source_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
-					target_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
+					agent_ids.push_back(agent_id);
+					source_vertices.push_back(paths[agent_id].at(timeStep - mStartTimestep[agent_id]));
+					target_vertices.push_back(paths[agent_id].at(timeStep - mStartTimestep[agent_id]+1));
 				}
 			}
 
-			if(left == 0)
-				break;
-
-			for(size_t i=0; i<mNumAgents; i++)
-			for(size_t j=i+1; j<mNumAgents; j++)
+			for(size_t i=0; i<agent_ids.size(); i++)
+			for(size_t j=i+1; j<agent_ids.size(); j++)
 			{
-				if(getVerticesCollisionStatus(mGraphs[i][source_vertices[i]].state, mGraphs[j][source_vertices[j]].state))
+				// if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state))
+				// {
+				// 	agent_id_1 = agent_ids[i];
+				// 	agent_id_2 = agent_ids[j];
+
+				// 	constraint_1 = Constraint(source_vertices[i],timeStep);
+				// 	constraint_2 = Constraint(source_vertices[j],timeStep);
+
+				// 	return true;	
+				// }
+
+				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, mGraphs[agent_ids[j]][target_vertices[j]].state))
 				{
-					agent_id_1 = i;
-					agent_id_2 = j;
-
-					constraint_1 = Constraint(source_vertices[i],timeStep);
-					constraint_2 = Constraint(source_vertices[j],timeStep);
-
-					return true;	
-				}
-
-				if(getVerticesCollisionStatus(mGraphs[i][target_vertices[i]].state, mGraphs[j][target_vertices[j]].state))
-				{
-					agent_id_1 = i;
-					agent_id_2 = j;
+					agent_id_1 = agent_ids[i];
+					agent_id_2 = agent_ids[j];
 
 					constraint_1 = Constraint(target_vertices[i],timeStep+1);
 					constraint_2 = Constraint(target_vertices[j],timeStep+1);
@@ -215,15 +196,15 @@ public:
 					return true;
 				}
 				
-				if(getEdgesCollisionStatus(mGraphs[i][source_vertices[i]].state, mGraphs[i][target_vertices[i]].state, mGraphs[j][source_vertices[j]].state, mGraphs[j][target_vertices[j]].state))
+				if(getEdgesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[i]][target_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state, mGraphs[agent_ids[j]][target_vertices[j]].state))
 				{
-					agent_id_1 = i;
-					agent_id_2 = j;
+					agent_id_1 = agent_ids[i];
+					agent_id_2 = agent_ids[j];
 
-					Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[i]).first;
+					Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
 					constraint_1 = Constraint(edge_1,timeStep+1);
 
-					Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[i]).first;
+					Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[agent_ids[j]]).first;
 					constraint_2 = Constraint(edge_2,timeStep+1);
 
 					return true;
@@ -448,12 +429,12 @@ public:
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
 			std::pair<int,size_t> top_element = pq.pop();
 			size_t index = top_element.first;
-			size_t timestep = top_element.second;
-			if(timestep > maximum_timestep)
+			size_t timeStep = top_element.second;
+			if(timeStep > maximum_timestep)
 				break;
 			if(index == graph[goal].vertex_index)
 			{
-				goal_timestep = timestep;
+				goal_timestep = timeStep;
 				costOut = mDistance[std::make_pair(goal,goal_timestep)];
 				break;
 			}
@@ -469,7 +450,7 @@ public:
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						if( successor == c.v && c.t == timestep + 1)
+						if( successor == c.v && c.t == timeStep + 1)
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
 							col =true;
@@ -479,19 +460,19 @@ public:
 
 					if(!col)
 					{
-						double new_cost = mDistance[std::make_pair(curr_node,timestep)] + mUnitEdgeLength;
+						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
 						
-						if(mDistance.count(std::make_pair(successor,timestep+1))==0 || 
-							new_cost < mDistance[std::make_pair(successor,timestep+1)])
+						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || 
+							new_cost < mDistance[std::make_pair(successor,timeStep+1)])
 						{
-							mDistance[std::make_pair(successor,timestep+1)]= new_cost;
+							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
 							double priority;
 							// std::cout<<"FOUND FREE EDGE!!"<<std::endl;
 							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timestep+1,priority,0.0);
+							pq.insert(graph[successor].vertex_index,timeStep+1,priority,0.0);
 							if(nodeMap.count(graph[successor].vertex_index)==0)
 								nodeMap[graph[successor].vertex_index]=successor;
-							mPrev[std::make_pair(successor,timestep+1)]=std::make_pair(curr_node,timestep);
+							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
 						}
 					}
 				}
@@ -502,7 +483,7 @@ public:
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						if( (successor == c.v && c.t == timestep + 1) || (uv_edge == c.e && c.t == timestep + 1) )
+						if( (successor == c.v && c.t == timeStep + 1) || (uv_edge == c.e && c.t == timeStep + 1) )
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
 							col =true;
@@ -512,16 +493,16 @@ public:
 
 					if(!col)
 					{					
-						double new_cost = mDistance[std::make_pair(curr_node,timestep)] + mUnitEdgeLength;
-						if(mDistance.count(std::make_pair(successor,timestep+1))==0 || new_cost < mDistance[std::make_pair(successor,timestep+1)])
+						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
+						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || new_cost < mDistance[std::make_pair(successor,timeStep+1)])
 						{
-							mDistance[std::make_pair(successor,timestep+1)]= new_cost;
+							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
 							double priority;
 							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timestep+1,priority,0.0);
+							pq.insert(graph[successor].vertex_index,timeStep+1,priority,0.0);
 							if(nodeMap.count(graph[successor].vertex_index)==0)
 								nodeMap[graph[successor].vertex_index]=successor;
-							mPrev[std::make_pair(successor,timestep+1)]=std::make_pair(curr_node,timestep);
+							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
 						}
 					}
 				}
