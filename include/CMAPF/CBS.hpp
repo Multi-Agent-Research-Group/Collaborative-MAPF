@@ -253,7 +253,7 @@ public:
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
-				std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
+				// std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
 				// std::cin.get();
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
@@ -267,7 +267,7 @@ public:
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
-			if(numSearches == 2000)
+			if(numSearches == 100)
 			{
 				std::cout<<"numSearches: "<<numSearches<<std::endl;
 				break;
@@ -309,7 +309,7 @@ public:
 
 			} 
 
-			// if(numSearches%100 == 0)
+			if(numSearches%100 == 0)
 			{
 				std::cout<<"numSearches"<<numSearches<<std::endl;
 				if(constraint_1.constraint_type == 1)
@@ -342,11 +342,11 @@ public:
 
 			// std::cout<<"K";std::cin.get();
 
-			std::cout<<"Agent id 1: "<<agent_id_1<<std::endl;
+			// std::cout<<"Agent id 1: "<<agent_id_1<<std::endl;
 
 			if(costs_agent_id_1[agent_id_1] != INF)
 			{
-				std::cout<<"inserting left!"<<std::endl;
+				// std::cout<<"inserting left!"<<std::endl;
 				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 			}
 
@@ -365,10 +365,10 @@ public:
 			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2],  mStartTimestep[agent_id_2], mGoalTimestep[agent_id_2], cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
-			std::cout<<"Agent id 2: "<<agent_id_2<<std::endl;
+			// std::cout<<"Agent id 2: "<<agent_id_2<<std::endl;
 			if(costs_agent_id_2[agent_id_2] != INF)
 			{
-				std::cout<<"inserting right!"<<std::endl;
+				// std::cout<<"inserting right!"<<std::endl;
 				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 			}
 		}
@@ -727,7 +727,7 @@ public:
 				continue;
 			if(index == graph[goal].vertex_index && timeStep == final_timestep)
 			{
-				std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
+				// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
 				goal_timestep = timeStep;
 				costOut = mDistance[std::make_pair(goal,goal_timestep)];
 				break;
@@ -805,7 +805,7 @@ public:
 
 		if(goal_timestep == -1)
 		{
-			std::cout<<"ALL_COL!"<<std::endl;
+			// std::cout<<"ALL_COL!"<<std::endl;
 			costOut = INF;
 			return std::vector<Vertex>();
 		}
@@ -814,28 +814,28 @@ public:
 		std::vector<Vertex> finalPath;
 		Vertex node = goal;
 
-		std::cout<<"timesteps: ";
+		// std::cout<<"timesteps: ";
 		while(!(node == start && goal_timestep == initial_timestep))
 		{
 			// std::cin.get();
 			// std::cout<<"INF LOOP LOL!";
-			std::cout<<goal_timestep<<" ";
+			// std::cout<<goal_timestep<<" ";
 			finalPath.push_back(node);
 			Vertex temp_node = node;
 			int temp_timestep = goal_timestep;
 			node=mPrev[std::make_pair(temp_node,temp_timestep)].first;
 			goal_timestep=mPrev[std::make_pair(temp_node,temp_timestep)].second;
 		}
-		std::cout<<std::endl;
+		// std::cout<<std::endl;
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
-		std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
+		// std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
 
-		std::cout<<"Path: ";
-		for(int i=0; i<finalPath.size(); i++)
-			std::cout<<" ("<<int( (graph[finalPath[i]].state[0]+0.001)/0.0625)<<","<<int( (graph[finalPath[i]].state[1]+0.001)/0.0625)<<") ";
-		std::cout<<std::endl;
+		// std::cout<<"Path: ";
+		// for(int i=0; i<finalPath.size(); i++)
+		// 	std::cout<<" ("<<int( (graph[finalPath[i]].state[0]+0.001)/0.0625)<<","<<int( (graph[finalPath[i]].state[1]+0.001)/0.0625)<<") ";
+		// std::cout<<std::endl;
 		return finalPath;
 	}
 

@@ -50,15 +50,20 @@ class PCSolver
 
 public:
 
+	int mCount = 0;
+
 	bool checkpathpossible(PrecedenceConstraintGraph &G)
 	{
-		// count +=1;
+		mCount +=1;
+		std::cout << "PC Iteration: "<<mCount<<std::endl;
+		// if(mCount < 2519)
+			// return false;
+
 		container c;
 		topological_sort(G, std::back_inserter(c));
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-		std::cout << "A topological ordering: ";
 
-		int numAgents = 6;
+		int numAgents = 12;
 		Eigen::VectorXd start_config(numAgents*2);
 		Eigen::VectorXd goal_config(numAgents*2);
 
@@ -110,7 +115,7 @@ public:
 		if(path[0].size() == 0)
 			return false;
 
-		std::vector<std::vector< Eigen::VectorXd>> agent_paths(2,std::vector< Eigen::VectorXd>());
+		std::vector<std::vector< Eigen::VectorXd>> agent_paths(4,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
 		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
@@ -147,7 +152,7 @@ public:
 
 		std::cout<<"Press [ENTER] to display path: ";
 		std::cin.get();
-		planner.mNumAgents = 2;
+		planner.mNumAgents = 4;
 		planner.displayPath(path_configs);
 
 		return true;
