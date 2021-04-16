@@ -128,7 +128,7 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			double ind_cost;
-			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], constraints[agent_id], mGoalTimestep[agent_id] - mStartTimestep[agent_id], ind_cost);
+			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], constraints[agent_id], mStartTimestep[agent_id], mGoalTimestep[agent_id], ind_cost);
 			shortestPaths.push_back(path);
 			costs.push_back(ind_cost);
 		}
@@ -309,13 +309,18 @@ public:
 
 			} 
 
-			if(numSearches%100 == 0)
+			// if(numSearches%100 == 0)
 			{
 				std::cout<<"numSearches"<<numSearches<<std::endl;
 				if(constraint_1.constraint_type == 1)
-					std::cout<<"Vertex Constraint: "<<constraint_1.v<<" at "<<constraint_1.t<<std::endl;
+					std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
 				else
-					std::cout<<"Edge Constraint: "<<constraint_1.e<<" at "<<constraint_1.t<<std::endl;
+				{
+					std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
+				}
 			}
 
 			// std::cout<<"K";std::cin.get();
@@ -332,13 +337,18 @@ public:
 			std::vector< double> costs_agent_id_1 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
-			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mGoalTimestep[agent_id_1] - mStartTimestep[agent_id_1], cost_agent_id_1);
+			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mStartTimestep[agent_id_1], mGoalTimestep[agent_id_1], cost_agent_id_1);
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
 			// std::cout<<"K";std::cin.get();
 
+			std::cout<<"Agent id 1: "<<agent_id_1<<std::endl;
+
 			if(costs_agent_id_1[agent_id_1] != INF)
+			{
+				std::cout<<"inserting left!"<<std::endl;
 				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
+			}
 
 			// std::cout<<"K";std::cin.get();
 			
@@ -352,11 +362,15 @@ public:
 			std::vector< double> costs_agent_id_2 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
 			
-			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2], mGoalTimestep[agent_id_2] - mStartTimestep[agent_id_2], cost_agent_id_2);
+			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2],  mStartTimestep[agent_id_2], mGoalTimestep[agent_id_2], cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
+			std::cout<<"Agent id 2: "<<agent_id_2<<std::endl;
 			if(costs_agent_id_2[agent_id_2] != INF)
+			{
+				std::cout<<"inserting right!"<<std::endl;
 				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
+			}
 		}
 
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
@@ -685,18 +699,18 @@ public:
 		cv::waitKey(0);
 	}
 
-	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int final_timestep, double& costOut)
+	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, double& costOut)
 	{
 		timePriorityQueue pq;
 		std::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
 		std::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
 		std::unordered_map<int , Vertex> nodeMap;
 
-		pq.insert(graph[start].vertex_index,0,graph[start].heuristic,0.0);
+		pq.insert(graph[start].vertex_index,initial_timestep,graph[start].heuristic,0.0);
 		nodeMap[graph[start].vertex_index]=start;
 
 		VertexIter vi, viend;
-		mDistance[std::make_pair(start,0)]=0;
+		mDistance[std::make_pair(start,initial_timestep)]=0;
 
 		int numSearches = 0;
 		int maximum_timestep = 10000;
@@ -713,6 +727,7 @@ public:
 				continue;
 			if(index == graph[goal].vertex_index && timeStep == final_timestep)
 			{
+				std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
 				goal_timestep = timeStep;
 				costOut = mDistance[std::make_pair(goal,goal_timestep)];
 				break;
@@ -799,18 +814,28 @@ public:
 		std::vector<Vertex> finalPath;
 		Vertex node = goal;
 
-		while(node!=start)
+		std::cout<<"timesteps: ";
+		while(!(node == start && goal_timestep == initial_timestep))
 		{
 			// std::cin.get();
 			// std::cout<<"INF LOOP LOL!";
+			std::cout<<goal_timestep<<" ";
 			finalPath.push_back(node);
 			Vertex temp_node = node;
 			int temp_timestep = goal_timestep;
 			node=mPrev[std::make_pair(temp_node,temp_timestep)].first;
 			goal_timestep=mPrev[std::make_pair(temp_node,temp_timestep)].second;
 		}
+		std::cout<<std::endl;
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
+
+		std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
+
+		std::cout<<"Path: ";
+		for(int i=0; i<finalPath.size(); i++)
+			std::cout<<" ("<<int( (graph[finalPath[i]].state[0]+0.001)/0.0625)<<","<<int( (graph[finalPath[i]].state[1]+0.001)/0.0625)<<") ";
+		std::cout<<std::endl;
 		return finalPath;
 	}
 
