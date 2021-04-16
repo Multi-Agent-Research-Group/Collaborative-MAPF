@@ -20,10 +20,6 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
-// #include <dart/dart.hpp>
-
-#define epsilon_value 0.0025
-
 namespace CMAPF {
 
 namespace BGL_DEFINITIONS {
@@ -119,107 +115,6 @@ namespace BGL_DEFINITIONS {
 
   /// Map each edge to its existence prior
   typedef boost::property_map<Graph, double EProp::*>::type EPPriorMap; 
-
-
-  /////////////////////// DEFINITIONS FOR COMPOSITE ROADMAP
-
-  // Properties associated with each roadmap vertex.
-  struct CompositeVProp
-  {
-    
-    /// 1 -> vertex, vertex 
-    /// 2 -> vertex, edge
-    /// 3 -> edge, vertex
-    size_t state_type;
-
-    Vertex left_vertex;
-    Vertex left_target_vertex;
-
-    Vertex right_vertex;
-    Vertex right_target_vertex;
-
-    size_t t_value = 0;
-
-    /// Cost-to-Come
-    double distance = std::numeric_limits<double>::infinity();
-
-    /// Cost-to-Come
-    double distance_lookahead = std::numeric_limits<double>::infinity();
-
-    /// Heuristic value
-    double heuristic = std::numeric_limits<double>::infinity();
-
-    /// Parent
-    std::size_t parent;
-
-    /// Visited
-    bool visited = false;
-
-    /// Collision status
-    CollisionStatus status = CollisionStatus::FREE;
-
-    /// Vertex Index
-    size_t vertex_index;
-
-  }; // struct CompositeVProp
-
-  // Properties associated with each roadmap edge.
-  struct CompositeEProp
-  {
-    /// The length of the edge using the space distance metric
-    double length;
-
-    /// Flag to check if edge is evaluated
-    bool isEvaluated = false;
-
-    /// Collision status
-    CollisionStatus status = CollisionStatus::FREE;
-
-    /// Prior over existence of edge
-    double prior;
-
-  }; // struct CompositeEProp
-
-  // Helpful alias declarations
-  /// Undirected Boost graph
-  typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CompositeVProp, CompositeEProp> CompositeGraph;
-
-  /// Boost vertex
-  typedef boost::graph_traits<CompositeGraph>::vertex_descriptor CompositeVertex;
-
-  /// Boost vertex iterator
-  typedef boost::graph_traits<CompositeGraph>::vertex_iterator CompositeVertexIter;
-
-  /// Boost edge
-  typedef boost::graph_traits<CompositeGraph>::edge_descriptor CompositeEdge;
-
-  /// Boost edge iterator
-  typedef boost::graph_traits<CompositeGraph>::edge_iterator CompositeEdgeIter;
-
-  /// Boost InEdge iterator
-  typedef boost::graph_traits<CompositeGraph>::in_edge_iterator CompositeInEdgeIter;
-
-  /// Boost OutEdge iterator
-  typedef boost::graph_traits<CompositeGraph>::out_edge_iterator CompositeOutEdgeIter;
-
-  /// Boost graph neighbor iterator
-  typedef boost::graph_traits<CompositeGraph>::adjacency_iterator CompositeNeighborIter;
-
-  /// Map each vertex to a unique ID
-  typedef boost::property_map<CompositeGraph, size_t CompositeVProp::*>::type CompositeVPIndexMap;
-
-  /// Map each vertex to the underlying state [read from the graphml file]
-  typedef boost::property_map<CompositeGraph, Eigen::VectorXd CompositeVProp::*>::type CompositeVPStateMap;
-
-  /// Map each edge to a unique ID
-  typedef boost::property_map<CompositeGraph, boost::edge_index_t CompositeEProp::*>::type CompositeEdgeIndexMap;
-
-  /// Map each edge to its length
-  typedef boost::property_map<CompositeGraph, double CompositeEProp::*>::type CompositeEPLengthMap;
-
-  /// Map each edge to its existence prior
-  typedef boost::property_map<CompositeGraph, double CompositeEProp::*>::type CompositeEPPriorMap;
-
 
 } // namespace BGL_DEFINITIONS
 
