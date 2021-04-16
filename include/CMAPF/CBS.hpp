@@ -485,7 +485,7 @@ public:
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
-			ss << "/home/rajat/Downloads/numbers_BTP/";
+			ss << "./src/CMAPF/data/viz/";
 			ss << (i+1);
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
