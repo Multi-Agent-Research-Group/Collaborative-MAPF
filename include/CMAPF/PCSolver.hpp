@@ -94,7 +94,7 @@ public:
 
 		// Space Information
 		cv::Mat image = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
-		// cv::Mat image = cv::imread("/home/kushal/ros_ws/src/CMAPF/data/obstacles/0.png", 0);
+		// cv::Mat image = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
 		std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
@@ -120,8 +120,10 @@ public:
 			if(agent_paths[vertex.agent_list[0]].size() == 0)
 				agent_paths[vertex.agent_list[0]] = path[task_count];
 			else
-				agent_paths[vertex.agent_list[0]].insert(agent_paths[vertex.agent_list[0]].end(),
-						path[task_count].begin(), path[task_count].end());
+			{
+				for(int i=1; i<path[task_count].size(); i++)
+					agent_paths[vertex.agent_list[0]].push_back(path[task_count][i]);
+			}
 			task_count++;
 		}
 
