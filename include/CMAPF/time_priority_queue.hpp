@@ -1,3 +1,7 @@
+#ifndef TPQ_
+#define TPQ_
+
+
 #include<bits/stdc++.h>
 
 using namespace std;
@@ -121,3 +125,5 @@ public:
 };
 
 } // namespace CMAPF
+
+#endif 
