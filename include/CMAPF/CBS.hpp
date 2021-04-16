@@ -185,14 +185,14 @@ public:
 					// }
 					// else
 					// {
-					// 	source_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
-					// 	target_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
+					//  source_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
+					//  target_vertices.push_back(paths[agent_id].at(paths[agent_id].size()-1));
 					// }
 				}
 			}
 
 			// for(int i=0; i<agent_ids.size(); i++)
-			// 	std::cout<<agent_ids[i]<<" ";
+			//  std::cout<<agent_ids[i]<<" ";
 			// std::cout<<std::endl;
 			// std::cin.get();
 
@@ -201,13 +201,13 @@ public:
 			{
 				// if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state))
 				// {
-				// 	agent_id_1 = agent_ids[i];
-				// 	agent_id_2 = agent_ids[j];
+				//  agent_id_1 = agent_ids[i];
+				//  agent_id_2 = agent_ids[j];
 
-				// 	constraint_1 = Constraint(source_vertices[i],timeStep);
-				// 	constraint_2 = Constraint(source_vertices[j],timeStep);
+				//  constraint_1 = Constraint(source_vertices[i],timeStep);
+				//  constraint_2 = Constraint(source_vertices[j],timeStep);
 
-				// 	return true;	
+				//  return true;    
 				// }
 
 				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, mGraphs[agent_ids[j]][target_vertices[j]].state))
@@ -255,6 +255,7 @@ public:
 			{
 				std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
 				// std::cin.get();
+				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
 		}
 
@@ -458,6 +459,232 @@ public:
 		return neighbors;
 	}
 
+	void displayPath(std::vector<Eigen::VectorXd> path)
+	{
+		cv::Mat image;
+		cv::cvtColor(mImage, image, CV_GRAY2BGR);
+		// cv::Mat image = cv::merge(mImage,mImage,mImage);  // going from one to 3 channel
+		int numberOfRows = image.rows;
+		int numberOfColumns = image.cols;
+
+		std::vector<cv::Mat4b> number_images(10);
+		for(int i=0; i<number_images.size(); i++)
+		{
+			std::stringstream ss;
+			ss << "/home/rajat/Downloads/numbers_BTP/";
+			ss << (i+1);
+			ss << ".png";
+			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
+			double scale = 0.037;
+			if(i>0)
+				scale = 0.025;
+			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
+		}
+
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			EdgeIter ei, ei_end;
+			for(boost::tie(ei,ei_end) = edges(mGraphs[agent_id]); ei!=ei_end;++ei)
+			{
+				cv::Point source_Point((int)(mGraphs[agent_id][source(*ei,mGraphs[agent_id])].state[0]*numberOfColumns), 
+					(int)((1-mGraphs[agent_id][source(*ei,mGraphs[agent_id])].state[1])*numberOfColumns));
+				cv::Point target_Point((int)(mGraphs[agent_id][target(*ei,mGraphs[agent_id])].state[0]*numberOfColumns), 
+					(int)((1-mGraphs[agent_id][target(*ei,mGraphs[agent_id])].state[1])*numberOfColumns));
+				cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 2);
+			}
+
+			VertexIter vi, vi_end;
+			for (boost::tie(vi, vi_end) = vertices(mGraphs[agent_id]); vi != vi_end; ++vi)
+			{
+				double x_point = mGraphs[agent_id][*vi].state[0]*numberOfColumns;
+				double y_point = (1 - mGraphs[agent_id][*vi].state[1])*numberOfRows;
+				cv::Point centre_Point((int)x_point, (int)y_point);
+				cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
+			}
+		}   
+
+		// Get state count
+		int pathSize = path.size();
+
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
+
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
+				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
+				cv::line(image, uPoint, vPoint, cv::Scalar(0, 140, 255), 2);
+			}   
+		}
+
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			VertexIter vi, vi_end;
+			for (boost::tie(vi, vi_end) = vertices(mGraphs[agent_id]); vi != vi_end; ++vi)
+			{
+				double x_point = mGraphs[agent_id][*vi].state[0]*numberOfColumns;
+				double y_point = (1 - mGraphs[agent_id][*vi].state[1])*numberOfRows;
+				cv::Point centre_Point((int)x_point, (int)y_point);
+				cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
+			}
+		} 
+
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
+
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
+				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
+		
+				if(i==0)
+				{
+					std::string text = "S" + std::to_string(agent_id+1);
+					cv::circle(image, uPoint, 7,  cv::Scalar(255,255,255), -1);
+					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				}
+				if(i==pathSize-2)
+				{
+					std::string text = "G" + std::to_string(agent_id+1);
+					cv::circle(image, vPoint, 7,  cv::Scalar(255,255,255), -1);
+					cv::circle(image, vPoint, 8,  cv::Scalar(0,0,0), 1);
+					cv::putText(image, text, cv::Point(vPoint.x - 6,vPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				}
+			}   
+		}
+
+		bool firstTime = true;
+
+		cv::Mat new_image;
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
+
+			double resolution = 0.005;
+
+			std::vector<Eigen::VectorXd> source_configs(mNumAgents,Eigen::VectorXd());
+			std::vector<Eigen::VectorXd> target_configs(mNumAgents,Eigen::VectorXd());
+			std::vector<double> edge_lengths(mNumAgents,0);
+			std::vector<unsigned int> nStates(mNumAgents,0u);
+
+			unsigned int max_nStates = 0u;
+
+			for(int agent_id=0;agent_id<mNumAgents;agent_id++)
+			{
+				source_configs[agent_id] = u.segment(2*agent_id,2);
+				target_configs[agent_id] = v.segment(2*agent_id,2);
+				edge_lengths[agent_id] = (source_configs[agent_id] - target_configs[agent_id]).norm();
+				nStates[agent_id] = std::ceil(edge_lengths[agent_id] / resolution)+1;
+
+				if(nStates[agent_id] < 2u)
+					nStates[agent_id] = 2u;
+				max_nStates = std::max(max_nStates,nStates[agent_id]);
+			}
+		
+			for (unsigned int i = 0; i < max_nStates-1; i++)
+			{
+				new_image = image.clone();
+				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
+				{
+					Eigen::VectorXd intermediate_config(2);
+					if(i < nStates[agent_id] - 1 && !source_configs[agent_id].isApprox(target_configs[agent_id]))
+						intermediate_config <<  source_configs[agent_id] + (resolution*i/edge_lengths[agent_id])*(target_configs[agent_id]-source_configs[agent_id]);
+					else
+						intermediate_config << target_configs[agent_id];
+
+					double x_point = intermediate_config[0]*numberOfColumns;
+					double y_point = (1 - intermediate_config[1])*numberOfRows;
+					cv::Point _Point((int)x_point, (int)y_point);
+					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,255,0), 1);
+					int x = x_point - number_images[agent_id].cols/2;
+					int y = y_point - number_images[agent_id].rows/2;
+					double alpha = 0.9; // alpha in [0,1]
+
+					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+					for (int r = 0; r < roi.rows; ++r)
+						for (int c = 0; c < roi.cols; ++c)
+						{
+							
+							const cv::Vec4b& vf = number_images[agent_id](r,c);
+							
+							if (vf[3] > 0) // alpha channel > 0
+							{
+								// Blending
+								cv::Vec3b& vb = roi(r,c);
+								
+								// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+								// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+								// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+								vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+								vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+							}
+						}
+				}
+
+				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
+				cv::imshow("Agents", new_image);
+				cv::waitKey(100);
+				if(firstTime)
+				{
+					sleep(5);
+					firstTime = false;
+				}
+			}
+			{
+				new_image = image.clone();
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				{   
+					double x_point = v[agent_id*2]*numberOfColumns;
+					double y_point = (1 - v[agent_id*2+1])*numberOfRows;
+					cv::Point _Point((int)x_point, (int)y_point);
+					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,255,0), 1);
+					int x = x_point - number_images[agent_id].cols/2;
+					int y = y_point - number_images[agent_id].rows/2;
+					double alpha = 0.9; // alpha in [0,1]
+
+					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+					for (int r = 0; r < roi.rows; ++r)
+						for (int c = 0; c < roi.cols; ++c)
+						{
+							
+							const cv::Vec4b& vf = number_images[agent_id](r,c);
+							
+							if (vf[3] > 0) // alpha channel > 0
+							{
+								// Blending
+								cv::Vec3b& vb = roi(r,c);
+								
+								// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+								// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+								// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+								vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+								vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+							}
+						}
+				}
+				
+				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
+				cv::imshow("Agents", new_image);
+				cv::waitKey(100);
+			}
+		}
+		cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
+		cv::imshow("Graph Visualization", image);
+		cv::waitKey(0);
+	}
+
 	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int final_timestep, double& costOut)
 	{
 		timePriorityQueue pq;
@@ -544,7 +771,7 @@ public:
 					}
 
 					if(!col)
-					{					
+					{                   
 						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
 						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || new_cost < mDistance[std::make_pair(successor,timeStep+1)])
 						{
