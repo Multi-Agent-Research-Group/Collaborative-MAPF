@@ -93,9 +93,9 @@ public:
 
 
 		// Space Information
-		// cv::Mat image = cv::imread("/home/rajat/melodic_ws/src/CMAPF/include/CMAPF/test_final.png", 0);
-		cv::Mat image = cv::imread("/home/rajat/melodic_ws/src/CMAPF/data/obstacles/0.png", 0);
-		std::string graph_file = std::string("/home/rajat/melodic_ws/src/CMAPF/data/graphs/graph0.graphml");
+		cv::Mat image = cv::imread("/home/kushal/ros_ws/src/CMAPF/include/CMAPF/test_final.png", 0);
+		// cv::Mat image = cv::imread("/home/kushal/ros_ws/src/CMAPF/data/obstacles/0.png", 0);
+		std::string graph_file = std::string("/home/kushal/ros_ws/src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
