@@ -308,6 +308,15 @@ public:
 
 			} 
 
+			if(numSearches%100 == 0)
+			{
+				std::cout<<"numSearches"<<numSearches<<std::endl;
+				if(constraint_1.constraint_type == 1)
+					std::cout<<"Vertex Constraint: "<<constraint_1.v<<" at "<<constraint_1.t<<std::endl;
+				else
+					std::cout<<"Edge Constraint: "<<constraint_1.e<<" at "<<constraint_1.t<<std::endl;
+			}
+
 			// std::cout<<"K";std::cin.get();
 
 			//agent_id_1
@@ -493,7 +502,7 @@ public:
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						if( successor == c.v && c.t == timeStep + 1)
+						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
 							col =true;
@@ -526,7 +535,7 @@ public:
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						if( (successor == c.v && c.t == timeStep + 1) || (uv_edge == c.e && c.t == timeStep + 1) )
+						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && uv_edge == c.e && c.t == timeStep + 1) )
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
 							col =true;
