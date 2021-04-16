@@ -128,7 +128,7 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			double ind_cost;
-			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], constraints[agent_id], mGoalTimestep[agent_id], ind_cost);
+			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], constraints[agent_id], mGoalTimestep[agent_id] - mStartTimestep[agent_id], ind_cost);
 			shortestPaths.push_back(path);
 			costs.push_back(ind_cost);
 		}
@@ -331,7 +331,7 @@ public:
 			std::vector< double> costs_agent_id_1 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
-			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mGoalTimestep[agent_id_1], cost_agent_id_1);
+			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mGoalTimestep[agent_id_1] - mStartTimestep[agent_id_1], cost_agent_id_1);
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
 			// std::cout<<"K";std::cin.get();
@@ -351,7 +351,7 @@ public:
 			std::vector< double> costs_agent_id_2 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
 			
-			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2], mGoalTimestep[agent_id_2], cost_agent_id_2);
+			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2], mGoalTimestep[agent_id_2] - mStartTimestep[agent_id_2], cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
 			if(costs_agent_id_2[agent_id_2] != INF)
@@ -458,7 +458,7 @@ public:
 		return neighbors;
 	}
 
-	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int &final_timestep, double& costOut)
+	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int final_timestep, double& costOut)
 	{
 		timePriorityQueue pq;
 		std::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
@@ -482,7 +482,7 @@ public:
 			std::pair<int,int> top_element = pq.pop();
 			int index = top_element.first;
 			int timeStep = top_element.second;
-			if(timeStep > maximum_timestep)
+			if(timeStep > final_timestep)
 				break;
 			if(index == graph[goal].vertex_index && timeStep == final_timestep)
 			{
