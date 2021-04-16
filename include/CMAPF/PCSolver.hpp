@@ -109,6 +109,45 @@ public:
 		
 		if(path[0].size() == 0)
 			return false;
+
+		std::vector<std::vector< Eigen::VectorXd>> agent_paths(2,std::vector< Eigen::VectorXd>());
+
+		int task_count = 0;
+		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		{
+			// std::cout << std::endl;
+			meta_data vertex = get(name, *ii);
+			if(agent_paths[vertex.agent_list[0]].size() == 0)
+				agent_paths[vertex.agent_list[0]] = path[task_count];
+			else
+				agent_paths[vertex.agent_list[0]].insert(agent_paths[vertex.agent_list[0]].end(),
+						path[task_count].begin(), path[task_count].end());
+			task_count++;
+		}
+
+		for(int i=0; i<agent_paths.size(); i++)
+			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+		std::cin.get();
+
+		std::vector<Eigen::VectorXd> path_configs;
+
+		for(int i=0; i<agent_paths[0].size(); i++)
+		{
+			Eigen::VectorXd config(agent_paths.size()*2);
+			for(int j=0; j<agent_paths.size(); j++)
+			{
+				config[2*j]=agent_paths[j][i][0];
+				config[2*j+1]=agent_paths[j][i][1];
+			}
+			path_configs.push_back(config);
+		}
+		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
+
+		std::cout<<"Press [ENTER] to display path: ";
+		std::cin.get();
+		planner.mNumAgents = 2;
+		planner.displayPath(path_configs);
+
 		return true;
 	}
 
