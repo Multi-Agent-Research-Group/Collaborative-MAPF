@@ -93,9 +93,9 @@ public:
 
 
 		// Space Information
-		cv::Mat image = cv::imread("/home/kushal/ros_ws/src/CMAPF/include/CMAPF/test_final.png", 0);
+		cv::Mat image = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
 		// cv::Mat image = cv::imread("/home/kushal/ros_ws/src/CMAPF/data/obstacles/0.png", 0);
-		std::string graph_file = std::string("/home/kushal/ros_ws/src/CMAPF/data/graphs/graph0.graphml");
+		std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
@@ -104,7 +104,7 @@ public:
 		// Setup planner
 		CBS planner(image,numAgents,graph_files,start_config,goal_config,startTimesteps,goalTimesteps);
 
-		std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
+		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 		
 		if(path[0].size() == 0)

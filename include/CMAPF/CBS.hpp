@@ -254,7 +254,7 @@ public:
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
 				std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
-				std::cin.get();
+				// std::cin.get();
 			}
 		}
 
@@ -474,7 +474,7 @@ public:
 			int index = top_element.first;
 			int timeStep = top_element.second;
 			if(timeStep > final_timestep)
-				break;
+				continue;
 			if(index == graph[goal].vertex_index && timeStep == final_timestep)
 			{
 				goal_timestep = timeStep;
