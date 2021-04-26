@@ -56,8 +56,8 @@ public:
 	{
 		mCount +=1;
 		std::cout << "PC Iteration: "<<mCount<<std::endl;
-		// if(mCount < 2519)
-			// return false;
+		if(mCount < 2800)
+			return false;
 
 		container c;
 		topological_sort(G, std::back_inserter(c));
