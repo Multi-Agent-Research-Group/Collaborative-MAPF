@@ -481,16 +481,23 @@ public:
 		int numberOfRows = image.rows;
 		int numberOfColumns = image.cols;
 
-		std::vector<cv::Mat4b> number_images(10);
+		std::vector<cv::Mat4b> number_images(4);
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
 			ss << "./src/CMAPF/data/viz/";
-			ss << (i+1);
+			if(i==1)
+				ss << 3;
+			else if (i==2)
+				ss << 2;
+			else if(i==3)
+				ss<< 1;
+			else 
+				ss << 4;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
 			double scale = 0.037;
-			if(i>0)
+			if(i<3)
 				scale = 0.025;
 			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
 		}
@@ -545,6 +552,59 @@ public:
 			}
 		} 
 
+		std::vector< std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> > tasks;
+
+		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_4;
+		agent_tasks_4.push_back(std::make_pair(std::make_pair(5,2),std::make_pair(6,9)));
+		agent_tasks_4.push_back(std::make_pair(std::make_pair(6,10),std::make_pair(6,11)));
+		tasks.push_back(agent_tasks_4);
+
+		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_3;
+		agent_tasks_3.push_back(std::make_pair(std::make_pair(8,1),std::make_pair(6,7)));
+		agent_tasks_3.push_back(std::make_pair(std::make_pair(6,8),std::make_pair(6,12)));
+		tasks.push_back(agent_tasks_3);
+
+		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_2;
+		agent_tasks_2.push_back(std::make_pair(std::make_pair(5,1),std::make_pair(6,5)));
+		agent_tasks_2.push_back(std::make_pair(std::make_pair(6,6),std::make_pair(6,13)));
+		tasks.push_back(agent_tasks_2);
+
+		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_1;
+		agent_tasks_1.push_back(std::make_pair(std::make_pair(8,4),std::make_pair(6,3)));
+		agent_tasks_1.push_back(std::make_pair(std::make_pair(6,4),std::make_pair(6,14)));
+		tasks.push_back(agent_tasks_1);
+
+		for(int i=0; i<tasks.size(); i++)
+		{
+			cv::Scalar col;
+			if(i==0) 
+				col = cv::Scalar(255,0,0);
+			else if(i==1) 
+				col = cv::Scalar(0,255,255);
+			else if(i==2) 
+				col = cv::Scalar(255,255,255);
+			else
+				col = cv::Scalar(0,0,255);
+			for(int j=0; j<tasks[i].size(); j++)
+			{
+				{
+					cv::Point uPoint((int)(tasks[i][j].first.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].first.second*0.0625)*numberOfRows)); 
+					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
+					cv::circle(image, uPoint, 7,  col, -1);
+					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				}
+
+				{
+					cv::Point uPoint((int)(tasks[i][j].second.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].second.second*0.0625)*numberOfRows)); 
+					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
+					cv::circle(image, uPoint, 7, col, -1);
+					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				}
+			}
+		}
+
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
 			Eigen::VectorXd u = path[i];
@@ -555,20 +615,20 @@ public:
 				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
 				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
 		
-				if(i==0)
-				{
-					std::string text = "S" + std::to_string(agent_id+1);
-					cv::circle(image, uPoint, 7,  cv::Scalar(255,255,255), -1);
-					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-				}
-				if(i==pathSize-2)
-				{
-					std::string text = "G" + std::to_string(agent_id+1);
-					cv::circle(image, vPoint, 7,  cv::Scalar(255,255,255), -1);
-					cv::circle(image, vPoint, 8,  cv::Scalar(0,0,0), 1);
-					cv::putText(image, text, cv::Point(vPoint.x - 6,vPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-				}
+				// if(i==0)
+				// {
+				// 	std::string text = "S" + std::to_string(agent_id+1);
+				// 	cv::circle(image, uPoint, 7,  cv::Scalar(255,255,255), -1);
+				// 	cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+				// 	cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				// }
+				// if(i==pathSize-2)
+				// {
+				// 	std::string text = "G" + std::to_string(agent_id+1);
+				// 	cv::circle(image, vPoint, 7,  cv::Scalar(255,255,255), -1);
+				// 	cv::circle(image, vPoint, 8,  cv::Scalar(0,0,0), 1);
+				// 	cv::putText(image, text, cv::Point(vPoint.x - 6,vPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				// }
 			}   
 		}
 
@@ -616,10 +676,10 @@ public:
 					double y_point = (1 - intermediate_config[1])*numberOfRows;
 					cv::Point _Point((int)x_point, (int)y_point);
 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,255,0), 1);
+					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
 					int x = x_point - number_images[agent_id].cols/2;
 					int y = y_point - number_images[agent_id].rows/2;
-					double alpha = 0.9; // alpha in [0,1]
+					double alpha = 1.0; // alpha in [0,1]
 
 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
@@ -664,8 +724,9 @@ public:
 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,255,0), 1);
 					int x = x_point - number_images[agent_id].cols/2;
 					int y = y_point - number_images[agent_id].rows/2;
-					double alpha = 0.9; // alpha in [0,1]
+					double alpha = 1.0; // alpha in [0,1]
 
+					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
 					for (int r = 0; r < roi.rows; ++r)
