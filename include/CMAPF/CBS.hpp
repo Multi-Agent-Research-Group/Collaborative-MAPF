@@ -69,29 +69,26 @@ public:
 	double mUnitEdgeLength = 0.0625;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, 
-		std::vector<std::vector<std::pair<int,std::pair<Vertex,Vertex>>>> _tasks_list)
+		std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mTasksList(_tasks_list)
 	{
 
-		for(int i=0; i<mTasksList.size(); i++)
-		{
-			std::unordered_map<Vertex,bool> special_positions;
-			for(int j=0; j<mTasksList[i].size(); j++)
-			{
-				special_positions[mTasksList[i][j].second.first]=true;
-				special_positions[mTasksList[i][j].second.second]=true;
-			}
-			mSpecialPosition.push_back(special_positions);
-		}
 		for(int i=0; i<mNumAgents;i++)
 		{
 			Eigen::VectorXd start_config(2);
 			for (int ui = i*2; ui < i*2+2; ui++)
 				start_config[ui-i*2] = _start_config[ui];
 			mStartConfig.push_back(start_config);
+		}
+
+		for(int i=0; i<_tasks_list.size(); i++)
+		{
+			std::vector<std::pair<int,std::pair<Vertex,Vertex>>> agent_tasks_list;
+			for(int j=0; j<_tasks_list[i].size(); j++)
+				agent_tasks_list.push_back(std::make_pair(_tasks_list[i][j].first,std::make_pair(0,0)));
+			mTasksList.push_back(agent_tasks_list);
 		}
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -109,10 +106,26 @@ public:
 				put(&VProp::vertex_index,graph,*ind_vi,i);
 				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
 					start_vertex = *ind_vi;
+				for(int i=0; i<_tasks_list[agent_id].size(); i++)
+					if(_tasks_list[agent_id][i].second.first.isApprox(graph[*ind_vi].state))
+						mTasksList[agent_id][i].second.first = *ind_vi;
+					else if(_tasks_list[agent_id][i].second.second.isApprox(graph[*ind_vi].state))
+						mTasksList[agent_id][i].second.second = *ind_vi;
 			}
 
 			mGraphs.push_back(graph);
 			mStartVertex.push_back(start_vertex);
+		}
+
+		for(int i=0; i<mTasksList.size(); i++)
+		{
+			std::unordered_map<Vertex,bool> special_positions;
+			for(int j=0; j<mTasksList[i].size(); j++)
+			{
+				special_positions[mTasksList[i][j].second.first]=true;
+				special_positions[mTasksList[i][j].second.second]=true;
+			}
+			mSpecialPosition.push_back(special_positions);
 		}
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -308,25 +321,25 @@ public:
 			}
 		}
 
-		std::cout<<"K";std::cin.get();
+		
 		
 		PQ.insert(start_costs, collision_constraints, collaboration_constraints, non_collaboration_constraints, start_shortestPaths);
 
-		std::cout<<"K";std::cin.get();
+		
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
 			if(numSearches == 100)
 			{
-				std::cout<<"numSearches: "<<numSearches<<std::endl;
+				std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				break;
 			}
 
 			Element p = PQ.pop();
-			std::cout<<"K";std::cin.get();
+			
 
-			// std::cout<<"K";std::cin.get();
+			// 
 
 			double total_cost = 0;
 			for(int i=0; i<p.costs.size(); i++)
@@ -386,7 +399,7 @@ public:
 			std::vector<int> agent_id_2;
 			CollisionConstraint constraint_2;
 
-			// std::cout<<"K";std::cin.get();
+			// 
 
 			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
@@ -420,7 +433,7 @@ public:
 						p.non_collaboration_constraints, shortestPaths_agent_id_1);
 				}
 
-				// std::cout<<"K";std::cin.get();
+				// 
 				
 				//agent_id_2
 
@@ -896,11 +909,11 @@ public:
 
 		costOut = INF;
 
-		std::cout<<"K";std::cin.get();
+		
 
 		while(pq.PQsize()!=0)
 		{
-			std::cout<<"K";std::cin.get();
+			
 			numSearches++;
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
 			SearchState current_state = pq.pop();
@@ -909,7 +922,10 @@ public:
 			int current_tasks_completed = current_state.tasks_completed;
 			bool current_in_delivery = current_state.in_delivery;
 
-			std::cout<<"K";std::cin.get();
+			if(numSearches%1000 == 0)
+				std::cout<<"numSearches: "<<numSearches<<std::endl;
+
+			
 
 			if(current_tasks_completed == mTasksList[agent_id].size())
 			{
@@ -919,7 +935,7 @@ public:
 				break;
 			}
 
-			std::cout<<"K";std::cin.get();
+			
 			if(collaboration_constraints.size()!=0)
 			{
 				if(collabMap.count(current_timestep) != 0)
@@ -960,7 +976,7 @@ public:
 				}
 			}
 
-			std::cout<<"K1";std::cin.get();
+			// std::cout<<"K1";std::cin.get();
 
 			if(mSpecialPosition[agent_id].count(current_vertex)!= 0
 				&& mTasksList[agent_id][current_tasks_completed].second.first == current_vertex)
@@ -997,7 +1013,7 @@ public:
 				}
 			}
 
-			std::cout<<"K";std::cin.get();
+			
 
 			{
 				bool col = false;
@@ -1029,7 +1045,7 @@ public:
 				}	
 			}
 
-			std::cout<<"K";std::cin.get();
+			
 
 			std::vector<Vertex> neighbors = getNeighbors(graph,current_vertex);
 			
@@ -1071,7 +1087,7 @@ public:
 				}
 			}
 
-			std::cout<<"K";std::cin.get();
+			
 		}
 
 		if(costOut == INF)
