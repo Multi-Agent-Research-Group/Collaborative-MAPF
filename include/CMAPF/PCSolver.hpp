@@ -49,51 +49,32 @@ class PCSolver
 {
 
 public:
-
-	int mCount = 0;
-
-	bool checkpathpossible(PrecedenceConstraintGraph &G)
+	bool solve(std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list)
 	{
-		mCount +=1;
-		std::cout << "PC Iteration: "<<mCount<<std::endl;
-		if(mCount < 2800)
-			return false;
+		int numAgents = _tasks_list.size();
+		return false;
+		// int numAgents = 12;
+		// Eigen::VectorXd start_config(numAgents*2);
+		// Eigen::VectorXd goal_config(numAgents*2);
 
-		container c;
-		topological_sort(G, std::back_inserter(c));
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
+		// std::vector<int> startTimesteps;
+		// std::vector<int> goalTimesteps;
 
-		int numAgents = 12;
-		Eigen::VectorXd start_config(numAgents*2);
-		Eigen::VectorXd goal_config(numAgents*2);
+		// int j = 0;
+		// for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		// {
+		// 	// std::cout << std::endl;
+		// 	meta_data vertex = get(name, *ii);
 
-		std::vector<int> startTimesteps;
-		std::vector<int> goalTimesteps;
+		// 	start_config[j] = vertex.start.first;
+		// 	start_config[j+1] = vertex.start.second;
 
+		// 	goal_config[j] = vertex.goal.first;
+		// 	goal_config[j+1] = vertex.goal.second;
 
-		int j = 0;
-		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
-		{
-			// std::cout << std::endl;
-			meta_data vertex = get(name, *ii);
-			startTimesteps.push_back(vertex.start_time);
-			goalTimesteps.push_back(vertex.end_time + vertex.slack);
-			// std::cout << vertex.start_time << " ";
-			// std::cout << vertex.end_time << " ";   
-			// for(auto agent: vertex.agent_list){
-			// 	std::cout << agent << " ";   
-			// }
-			// std::cout << vertex.slack << " ";   
-			// cout << boost::index(*ii) << std::endl;
-
-			start_config[j] = vertex.start.first;
-			start_config[j+1] = vertex.start.second;
-
-			goal_config[j] = vertex.goal.first;
-			goal_config[j+1] = vertex.goal.second;
-
-			j+=2;
-		}
+		// 	j+=2;
+		// }
+		
 		// std::cout <<std::endl;
 
 
@@ -106,7 +87,8 @@ public:
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
 			graph_files.push_back(graph_file);
 
-		std::vector<std::vector<std::pair<int,std::pair<Vertex,Vertex>>>> _tasks_list;
+		std::vector <pair < int , int > 
+		
 		
 		// Setup planner
 		CBS planner(image,numAgents,graph_files,start_config,_tasks_list);
@@ -159,98 +141,5 @@ public:
 
 		return true;
 	}
-
-	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii){
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name_t = get(meta_data_t(), G_T);
-			
-		if(c.rbegin().base()-1 == ii){
-			return checkpathpossible(G);
-		}
-
-		container predecessors;
-		PCOutEdgeIter ei, ei_end;
-		for (boost::tie(ei, ei_end) = out_edges(*ii, G_T); ei != ei_end; ++ei) 
-		{
-				PCVertex curPred = target(*ei, G_T);
-				predecessors.push_back(curPred);
-		}
-
-		if(predecessors.size() == 0){
-			return generatePaths(G, G_T, c, ii+1);
-		}
-
-		meta_data *curr_vertex = &get(name, *ii); 
-
-		if(generatePaths(G, G_T, c, ii+1))
-			return true;
-		
-		int slack = curr_vertex->slack;
-		int start_time = curr_vertex->start_time;
-		int end_time = curr_vertex->end_time;
-
-		while(curr_vertex->slack){
-				curr_vertex->slack--;
-				curr_vertex->start_time++;
-				curr_vertex->end_time++;
-				for(auto pred:predecessors){
-					meta_data *vertex = &get(name, pred);
-					vertex->slack+=1;
-				}
-				if(generatePaths(G, G_T, c, ii+1))
-					return true;
-		}
-		curr_vertex->slack = slack;
-		curr_vertex->start_time = start_time;
-		curr_vertex->end_time = end_time;
-		for(auto pred:predecessors){
-			meta_data *vertex = &get(name, pred);
-			vertex->slack-=slack;
-		}
-		return false;
-	}
-
-	bool ICTS(PrecedenceConstraintGraph &G, int maxIter){
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-		container c;
-		topological_sort(G, std::back_inserter(c));
-
-		PrecedenceConstraintGraph G_T;
-		
-
-		transpose_graph(G, G_T);
-		for(int i=0; i<maxIter; i++){
-
-			if(generatePaths(G, G_T, c, c.begin())){
-				return true;
-			}
-
-			PCVertexIter v, vend;
-			for (boost::tie(v, vend) = vertices(G); v != vend; ++v) {
-
-				container successors;
-				PCOutEdgeIter ei, ei_end;
-
-				for (boost::tie(ei, ei_end) = out_edges(*v, G); ei != ei_end; ++ei) 
-				{
-						PCVertex curSuc = target(*ei, G);
-						successors.push_back(curSuc);
-				}
-
-				if(successors.size() == 0){
-					meta_data *vertex = &get(name, *v);
-					vertex->slack+=1;
-				}
-
-			}
-
-		}
-		
-		return false;
-	}
-};
-
-
-} // namespace CMAPF
 
 #endif 

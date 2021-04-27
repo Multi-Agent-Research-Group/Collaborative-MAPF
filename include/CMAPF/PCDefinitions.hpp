@@ -22,16 +22,10 @@ using namespace boost;
 
 		std::vector <int> agent_list;
 
-		int start_time;
-		int end_time;
-
-		int slack = 0;
-
-		int start_vertex;
-		int goal_vertex;
+		int task_id;
 
 		meta_data() {}
-		meta_data(std::pair <float, float> _start, std::pair <float, float> _goal, std::vector <int> _agent_list, int _start_time, int _end_time, int _slack) : start(_start), goal(_goal), agent_list(_agent_list), start_time(_start_time), end_time(_end_time), slack(_slack) {}
+		meta_data(std::pair <float, float> _start, std::pair <float, float> _goal, std::vector <int> _agent_list, int _task_id) : start(_start), goal(_goal), agent_list(_agent_list), task_id(_task_id) {}
 	};
 
 	typedef property<meta_data_t, meta_data> MetaData;
