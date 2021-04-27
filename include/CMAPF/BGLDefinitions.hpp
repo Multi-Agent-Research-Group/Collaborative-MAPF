@@ -46,7 +46,7 @@ namespace BGL_DEFINITIONS {
     double heuristic = std::numeric_limits<double>::infinity();
 
     /// Parent
-    std::size_t parent;
+    int parent;
 
     /// Visited
     bool visited = false;
@@ -55,7 +55,7 @@ namespace BGL_DEFINITIONS {
     CollisionStatus status = CollisionStatus::FREE;
 
     /// Vertex Index
-    size_t vertex_index;
+    int vertex_index;
 
   }; // struct VProp
 
@@ -102,7 +102,7 @@ namespace BGL_DEFINITIONS {
   typedef boost::graph_traits<Graph>::adjacency_iterator NeighborIter;
 
   /// Map each vertex to a unique ID
-  typedef boost::property_map<Graph, size_t VProp::*>::type VPIndexMap;
+  typedef boost::property_map<Graph, int VProp::*>::type VPIndexMap;
 
   /// Map each vertex to the underlying state [read from the graphml file]
   typedef boost::property_map<Graph, Eigen::VectorXd VProp::*>::type VPStateMap;
