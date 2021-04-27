@@ -33,6 +33,9 @@
 #include "CBSDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
 
+#include <chrono>
+using namespace std::chrono;
+
 #define INF std::numeric_limits<double>::infinity()
 
 namespace CMAPF {
@@ -66,6 +69,10 @@ public:
 
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
+
+	int mHashUsed = 0;
+	int mNotHashUsed = 0;
+	int total_time = 0;
 
 	double mUnitEdgeLength = 0.0625;
 
@@ -763,9 +770,9 @@ public:
 	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, double& costOut)
 	{
 		timePriorityQueue pq;
-		std::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
-		std::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
-		std::unordered_map<int , Vertex> nodeMap;
+		boost::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
+		boost::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
+		boost::unordered_map<int , Vertex> nodeMap;
 
 		pq.insert(graph[start].vertex_index,initial_timestep,graph[start].heuristic,0.0);
 		nodeMap[graph[start].vertex_index]=start;
@@ -866,7 +873,6 @@ public:
 
 		if(goal_timestep == -1)
 		{
-			// std::cout<<"ALL_COL!"<<std::endl;
 			costOut = INF;
 			return std::vector<Vertex>();
 		}
@@ -890,13 +896,6 @@ public:
 		// std::cout<<std::endl;
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
-
-		// std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
-
-		// std::cout<<"Path: ";
-		// for(int i=0; i<finalPath.size(); i++)
-		// 	std::cout<<" ("<<int( (graph[finalPath[i]].state[0]+0.001)/0.0625)<<","<<int( (graph[finalPath[i]].state[1]+0.001)/0.0625)<<") ";
-		// std::cout<<std::endl;
 		return finalPath;
 	}
 

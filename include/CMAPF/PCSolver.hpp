@@ -51,19 +51,19 @@ class PCSolver
 public:
 
 	int mCount = 0;
-
-	bool checkpathpossible(PrecedenceConstraintGraph &G)
+	
+	bool checkpathpossible(PrecedenceConstraintGraph &G, int &numAgents, int &numRobots)
 	{
 		mCount +=1;
 		std::cout << "PC Iteration: "<<mCount<<std::endl;
-		if(mCount < 2800)
-			return false;
+		// if(mCount < 2800)
+		// 	return false;
 
 		container c;
 		topological_sort(G, std::back_inserter(c));
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 
-		int numAgents = 12;
+		// int numAgents = 12;
 		Eigen::VectorXd start_config(numAgents*2);
 		Eigen::VectorXd goal_config(numAgents*2);
 
@@ -115,7 +115,7 @@ public:
 		if(path[0].size() == 0)
 			return false;
 
-		std::vector<std::vector< Eigen::VectorXd>> agent_paths(4,std::vector< Eigen::VectorXd>());
+		std::vector<std::vector< Eigen::VectorXd>> agent_paths(numRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
 		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
@@ -134,7 +134,7 @@ public:
 
 		for(int i=0; i<agent_paths.size(); i++)
 			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
-		std::cin.get();
+		// std::cin.get();
 
 		std::vector<Eigen::VectorXd> path_configs;
 
@@ -150,20 +150,20 @@ public:
 		}
 		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: ";
-		std::cin.get();
-		planner.mNumAgents = 4;
-		planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		planner.mNumAgents = numRobots;
+		// planner.displayPath(path_configs);
 
 		return true;
 	}
 
-	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii){
+	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii, int &numAgents, int &numRobots){
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name_t = get(meta_data_t(), G_T);
 			
 		if(c.rbegin().base()-1 == ii){
-			return checkpathpossible(G);
+			return checkpathpossible(G, numAgents, numRobots);
 		}
 
 		container predecessors;
@@ -175,12 +175,12 @@ public:
 		}
 
 		if(predecessors.size() == 0){
-			return generatePaths(G, G_T, c, ii+1);
+			return generatePaths(G, G_T, c, ii+1, numAgents, numRobots);
 		}
 
 		meta_data *curr_vertex = &get(name, *ii); 
 
-		if(generatePaths(G, G_T, c, ii+1))
+		if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
 			return true;
 		
 		int slack = curr_vertex->slack;
@@ -195,7 +195,7 @@ public:
 					meta_data *vertex = &get(name, pred);
 					vertex->slack+=1;
 				}
-				if(generatePaths(G, G_T, c, ii+1))
+				if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
 					return true;
 		}
 		curr_vertex->slack = slack;
@@ -208,18 +208,17 @@ public:
 		return false;
 	}
 
-	bool ICTS(PrecedenceConstraintGraph &G, int maxIter){
+	bool ICTS(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots){
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 		container c;
 		topological_sort(G, std::back_inserter(c));
 
 		PrecedenceConstraintGraph G_T;
-		
 
 		transpose_graph(G, G_T);
 		for(int i=0; i<maxIter; i++){
 
-			if(generatePaths(G, G_T, c, c.begin())){
+			if(generatePaths(G, G_T, c, c.begin(), numAgents, numRobots)){
 				return true;
 			}
 
