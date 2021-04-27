@@ -63,22 +63,29 @@ public:
 	std::vector<Eigen::VectorXd> mStartConfig;
 	std::vector<Vertex> mStartVertex;
 
-	/// Goal vertex.
-	std::vector<Eigen::VectorXd> mGoalConfig;
-	std::vector<Vertex> mGoalVertex;
-
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
 	double mUnitEdgeLength = 0.0625;
 
-	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, Eigen::VectorXd _goal_config, std::vector<int> startTimesteps, std::vector<int> goalTimesteps)
+	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, 
+		std::vector<std::vector<std::pair<int,std::pair<Vertex,Vertex>>>> _tasks_list)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mStartTimestep(startTimesteps)
-		, mGoalTimestep(goalTimesteps)
+		, mTasksList(_tasks_list)
 	{
+
+		for(int i=0; i<mTasksList.size(); i++)
+		{
+			std::unordered_map<Vertex,bool> special_positions;
+			for(int j=0; j<mTasksList[i].size(); j++)
+			{
+				special_positions[mTasksList[i][j].second.first]=true;
+				special_positions[mTasksList[i][j].second.second]=true;
+			}
+			mSpecialPosition.push_back(special_positions);
+		}
 		for(int i=0; i<mNumAgents;i++)
 		{
 			Eigen::VectorXd start_config(2);
@@ -87,19 +94,10 @@ public:
 			mStartConfig.push_back(start_config);
 		}
 
-		for(int i=0; i<mNumAgents;i++)
-		{
-			Eigen::VectorXd goal_config(2);
-			for (int ui = i*2; ui < i*2+2; ui++)
-				goal_config[ui-i*2] = _goal_config[ui];
-			mGoalConfig.push_back(goal_config);
-		}
-
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			Graph graph;
 			Vertex start_vertex;
-			Vertex goal_vertex;
 
 			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[agent_id],2,get(&EProp::prior,graph));
 			create_edges(graph,get(&EProp::length,graph));
@@ -111,17 +109,14 @@ public:
 				put(&VProp::vertex_index,graph,*ind_vi,i);
 				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
 					start_vertex = *ind_vi;
-				if(mGoalConfig[agent_id].isApprox(graph[*ind_vi].state))
-					goal_vertex = *ind_vi;  
 			}
 
 			mGraphs.push_back(graph);
 			mStartVertex.push_back(start_vertex);
-			mGoalVertex.push_back(goal_vertex);
 		}
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			preprocess_graph(mGraphs[agent_id], mGoalVertex[agent_id]);
+			preprocess_graph(mGraphs[agent_id]);
 	}
 
 
@@ -313,10 +308,11 @@ public:
 			}
 		}
 
-		// std::cout<<"K";std::cin.get();
+		std::cout<<"K";std::cin.get();
 		
 		PQ.insert(start_costs, collision_constraints, collaboration_constraints, non_collaboration_constraints, start_shortestPaths);
 
+		std::cout<<"K";std::cin.get();
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
@@ -328,6 +324,7 @@ public:
 			}
 
 			Element p = PQ.pop();
+			std::cout<<"K";std::cin.get();
 
 			// std::cout<<"K";std::cin.get();
 
@@ -874,7 +871,6 @@ public:
 	{
 		Graph graph = mGraphs[agent_id];
 		Vertex start = mStartVertex[agent_id];
-		Vertex goal = mGoalVertex[agent_id];
 
 		std::unordered_map<int, SearchState> collabMap;
 		for( CollaborationConstraint &c: collaboration_constraints)
@@ -899,8 +895,12 @@ public:
 		SearchState goal_state = SearchState();
 
 		costOut = INF;
+
+		std::cout<<"K";std::cin.get();
+
 		while(pq.PQsize()!=0)
 		{
+			std::cout<<"K";std::cin.get();
 			numSearches++;
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
 			SearchState current_state = pq.pop();
@@ -909,7 +909,9 @@ public:
 			int current_tasks_completed = current_state.tasks_completed;
 			bool current_in_delivery = current_state.in_delivery;
 
-			if(current_vertex == goal && current_tasks_completed == mTasksList[agent_id].size())
+			std::cout<<"K";std::cin.get();
+
+			if(current_tasks_completed == mTasksList[agent_id].size())
 			{
 				// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
 				costOut = mDistance[current_state];
@@ -917,6 +919,7 @@ public:
 				break;
 			}
 
+			std::cout<<"K";std::cin.get();
 			if(collaboration_constraints.size()!=0)
 			{
 				if(collabMap.count(current_timestep) != 0)
@@ -957,6 +960,8 @@ public:
 				}
 			}
 
+			std::cout<<"K1";std::cin.get();
+
 			if(mSpecialPosition[agent_id].count(current_vertex)!= 0
 				&& mTasksList[agent_id][current_tasks_completed].second.first == current_vertex)
 			{
@@ -992,6 +997,7 @@ public:
 				}
 			}
 
+			std::cout<<"K";std::cin.get();
 
 			{
 				bool col = false;
@@ -1022,6 +1028,8 @@ public:
 					}
 				}	
 			}
+
+			std::cout<<"K";std::cin.get();
 
 			std::vector<Vertex> neighbors = getNeighbors(graph,current_vertex);
 			
@@ -1062,6 +1070,8 @@ public:
 					}
 				}
 			}
+
+			std::cout<<"K";std::cin.get();
 		}
 
 		if(costOut == INF)
@@ -1093,78 +1103,45 @@ public:
 		return finalPath;
 	}
 
-	void preprocess_graph(Graph &g, Vertex & _goal)
+	void preprocess_graph(Graph &g)
 	{
-		auto begin = std::chrono::high_resolution_clock::now();
+		int V = boost::num_vertices(g);
+		boost::unordered_map<std::pair<Vertex,Vertex>,double> distanceMap;
 
-		boost::unordered_map<Vertex,bool> sptSet; 
-		boost::unordered_map<Vertex,Vertex> parentMap;
-		boost::unordered_map<Vertex,double> distanceMap;
-
-		Vertex goal_vertex=_goal;
-
-		VertexIter vi, viend;
-		
-		int numVertices=0;
-		for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
+		VertexIter vi_1, viend_1;
+		VertexIter vi_2, viend_2;
+		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
 		{
-			numVertices++;
-			distanceMap[*vi]=std::numeric_limits<double>::infinity();
-		}
-
-		parentMap.clear();
-		sptSet.clear();
-		distanceMap[goal_vertex]=0;
-		int totalVertices=numVertices+1;
-		
-		while(numVertices>0)
-		{
-			double min_dist= std::numeric_limits<double>::infinity();
-			Vertex min_vertex;
-			for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
-			{
-				if(!sptSet.count(*vi) && distanceMap[*vi]<=min_dist)
-				{
-					min_dist = distanceMap[*vi];
-					min_vertex = *vi;
-				}
-			}
-
-			Vertex node = min_vertex;
-			sptSet[node]=1;
-
-			std::vector<Vertex> successors;
-			OutEdgeIter ei, ei_end;
-
-			for (boost::tie(ei, ei_end) = out_edges(node, g); ei != ei_end; ++ei) 
-			{
-				Vertex curSucc = target(*ei, g);
-				Edge e = *ei;
-				if(!g[e].isEvaluated)
-					evaluateIndividualEdge(g,e);
-				if(g[e].status == CollisionStatus::FREE)
-					successors.push_back(curSucc);
-			}
-
-			for(Vertex &successor : successors )
+			Vertex vertex_1 = *vi_1;
+			Vertex vertex_2 = *vi_2;
+			if(vertex_1==vertex_2)
+				distanceMap[std::make_pair(vertex_1,vertex_2)]=0;
+			else
 			{
 				Edge uv;
 				bool edgeExists;
-				boost::tie(uv, edgeExists) = edge(node, successor, g);
-
-				if( !sptSet.count(successor) && (distanceMap[successor] > distanceMap[node] + g[uv].length) )
-				{
-					distanceMap[successor] = distanceMap[node] + g[uv].length;
-					parentMap[successor]=node;
-				}
+				boost::tie(uv, edgeExists) = edge(vertex_1, vertex_2, g);
+				if(edgeExists)
+					distanceMap[std::make_pair(vertex_1,vertex_2)]=mUnitEdgeLength;
+				else
+					distanceMap[std::make_pair(vertex_1,vertex_2)]=INF;
 			}
-			numVertices--;
 		}
 
-		for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
+		VertexIter vi_3, viend_3;
+		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+		for (boost::tie(vi_3, viend_3) = vertices(g); vi_3 != viend_3; ++vi_3) 
 		{
-			g[*vi].heuristic = distanceMap[*vi];
-		}   
+			Vertex vertex_1 = *vi_1;
+			Vertex vertex_2 = *vi_2;
+			Vertex vertex_3 = *vi_3;
+			if (distanceMap[std::make_pair(vertex_2,vertex_3)] + 0.00001 > (distanceMap[std::make_pair(vertex_2,vertex_1)] + distanceMap[std::make_pair(vertex_1,vertex_3)])
+				&& (distanceMap[std::make_pair(vertex_2,vertex_1)] != INF
+				&& distanceMap[std::make_pair(vertex_1,vertex_3)] != INF))
+				distanceMap[std::make_pair(vertex_2,vertex_3)] = distanceMap[std::make_pair(vertex_2,vertex_1)] + distanceMap[std::make_pair(vertex_1,vertex_3)];
+		}
 	}
 
 };

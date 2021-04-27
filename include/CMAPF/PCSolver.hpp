@@ -105,9 +105,11 @@ public:
 		std::vector<std::string> graph_files;
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
 			graph_files.push_back(graph_file);
+
+		std::vector<std::vector<std::pair<int,std::pair<Vertex,Vertex>>>> _tasks_list;
 		
 		// Setup planner
-		CBS planner(image,numAgents,graph_files,start_config,goal_config,startTimesteps,goalTimesteps);
+		CBS planner(image,numAgents,graph_files,start_config,_tasks_list);
 
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
