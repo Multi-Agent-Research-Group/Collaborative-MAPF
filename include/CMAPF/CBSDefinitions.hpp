@@ -3,12 +3,93 @@
 #include <bits/stdc++.h>
 #include "BGLDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
+#include <boost/functional/hash.hpp>
 
 namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
 using namespace std;
+
+
+struct Constraint
+{
+	int constraint_type;  // 1 -> vertex constraint 2 -> edge constraint
+	Vertex v;
+	Edge e;	//edge
+	size_t t; //time . for edge, time is time of target vertex
+
+	Constraint() : constraint_type(1) {}
+	Constraint(Vertex _v, size_t _t) : v(_v), t(_t), constraint_type(1) {}
+	Constraint(Edge _e, size_t _t) : e(_e), t(_t), constraint_type(2) {}
+
+	bool operator==(const Constraint &other) const
+	{ 
+		if (constraint_type != other.constraint_type) return false;
+		if (t!=other.t) return false;
+		if (constraint_type == 1) return v == other.v;
+		else if (constraint_type == 2) return e == other.e;
+	}
+};
+
+struct PathQuery
+{
+  Vertex start;
+  Vertex goal;
+  
+  std::vector<Constraint> constraints;
+
+  int initial_timestep;
+  int final_timestep;
+
+  bool operator==(const PathQuery &other) const
+  { 
+  	// sort(constraints.begin(), constraints.end());
+  	// sort(other.constraints.begin(), other.constraints.end());
+  	return (start == other.start
+            && goal == other.goal
+            && constraints == other.constraints
+            && initial_timestep == other.initial_timestep
+            && final_timestep == other.final_timestep);
+  }
+
+  // PathQuery (Vertex _start, Vertex _goal, int _initial_timestep, int _final_timestep): start(_start), goal(_goal), initial_timestep(_initial_timestep), final_timestep(_final_timestep) {}
+  PathQuery (Vertex _start, Vertex _goal, int _initial_timestep, int _final_timestep, std::vector <Constraint> _constraints): 
+  start(_start), goal(_goal), initial_timestep(_initial_timestep), final_timestep(_final_timestep), constraints(_constraints) {}
+};
+
+struct PathQueryHasher
+{
+  std::size_t operator()(const PathQuery& k) const
+  {
+      using boost::hash_value;
+      using boost::hash_combine;
+
+      // Start with a hash value of 0    .
+      std::size_t seed = 0;
+
+      // Modify 'seed' by XORing and bit-shifting in
+      // one member of 'Key' after the other:
+      hash_combine(seed,hash_value(k.start));
+      hash_combine(seed,hash_value(k.goal));
+      for(int i=0; i<k.constraints.size(); i++){
+      	hash_combine(seed,hash_value(k.constraints[i].t));
+      	hash_combine(seed,hash_value(k.constraints[i].constraint_type));
+      	if(k.constraints[i].constraint_type == 1){
+      		hash_combine(seed,hash_value(k.constraints[i].v));
+      	}
+      	else if(k.constraints[i].constraint_type == 2){
+      		hash_combine(seed,hash_value(k.constraints[i].e.m_source));
+      		hash_combine(seed,hash_value(k.constraints[i].e.m_target));
+      	}
+      }
+      // 
+      hash_combine(seed,hash_value(k.initial_timestep));
+      hash_combine(seed,hash_value(k.final_timestep));
+      // Return the result.
+      return seed;
+  }
+};
 
 struct pair_hash {
     template <class T1, class T2>
@@ -22,17 +103,6 @@ struct pair_hash {
     }
 }; 
 
-struct Constraint
-{
-	int constraint_type;  // 1 -> vertex constraint 2 -> edge constraint
-	Vertex v;
-	Edge e;	//edge
-	size_t t; //time . for edge, time is time of target vertex
-
-	Constraint() : constraint_type(1) {}
-	Constraint(Vertex _v, size_t _t) : v(_v), t(_t), constraint_type(1) {}
-	Constraint(Edge _e, size_t _t) : e(_e), t(_t), constraint_type(2) {}
-};
 
 struct Element
 {
