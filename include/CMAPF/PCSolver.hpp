@@ -49,7 +49,7 @@ class PCSolver
 {
 
 public:
-	bool solve(Eigen::VectorXd start_config, std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list)
+	bool solve(Eigen::VectorXd start_config, std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list, std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list)
 	{
 		int numAgents = _tasks_list.size();
 
@@ -63,7 +63,7 @@ public:
 			graph_files.push_back(graph_file);
 		
 		// Setup planner
-		CBS planner(image,numAgents,graph_files,start_config,_tasks_list);
+		CBS planner(image,numAgents,graph_files,start_config,_tasks_list,_tasks_to_agents_list);
 
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
