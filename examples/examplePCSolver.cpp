@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	name[1] = meta_data (std::make_pair(eps*6, eps*5), std::make_pair(eps*6, eps*6), std::vector <int> (1, 0), 2);
 	name[2] = meta_data (std::make_pair(eps*6, eps*6), std::make_pair(eps*6, eps*7), std::vector <int> (1, 0), 3);
 
-	name[3] = meta_data (std::make_pair(eps*5, eps*5), std::make_pair(eps*6, eps*3), std::vector <int> (1, 1), 4);
+	name[3] = meta_data (std::make_pair(eps*5, eps*1), std::make_pair(eps*6, eps*3), std::vector <int> (1, 1), 4);
 	name[4] = meta_data (std::make_pair(eps*6, eps*3), std::make_pair(eps*6, eps*4), std::vector <int> (1, 1), 5);
 	name[5] = meta_data (std::make_pair(eps*6, eps*4), std::make_pair(eps*6, eps*8), std::vector <int> (1, 1), 6);
 
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	// PCSolver p;
 
 	Eigen::VectorXd init_config(4);
-	init_config << eps*5,  eps*2, eps*5, eps*5;
+	init_config << eps*5,  eps*2, eps*5, eps*1;
 	
 
 	int numAgents = 2;
@@ -93,12 +93,12 @@ int main(int argc, char *argv[])
 	}
 
 	PCSolver p;
-	
+
 	auto start = high_resolution_clock::now();
 	p.solve(init_config, _tasks_list);
 	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start);
-	std::cout << duration.count() << std::endl;
+	std::chrono::duration<double, std::micro> dur = (stop - start);
+	std::cout << dur.count()/1000000.0 << std::endl;
 
 	return 0;	
 }

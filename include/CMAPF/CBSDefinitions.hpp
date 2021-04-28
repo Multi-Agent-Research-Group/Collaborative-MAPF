@@ -68,11 +68,11 @@ struct Element
 	{
 		double cost = 0;
 		for(int i=0; i<costs.size(); i++)
-			cost += costs[i];
+			cost = std::max(cost,costs[i]);
 
 		double b_cost = 0;
 		for(int i=0; i<b.costs.size(); i++)
-			b_cost += b.costs[i];
+			b_cost = std::max(b_cost,b.costs[i]);
 
     	if(cost<b_cost)
 			return true;
@@ -128,7 +128,7 @@ public:
 	{
 		double cost = 0;
 		for(int i=0; i<PQ[1].costs.size(); i++)
-			cost += PQ[1].costs[i];
+			cost = std::max(cost,PQ[1].costs[i]);
 		return cost;
 	}
 	Element pop()

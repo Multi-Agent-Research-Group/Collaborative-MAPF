@@ -67,6 +67,8 @@ public:
 
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
+
+		planner.printStats();
 		
 		// if(path[0].size() == 0)
 		// 	return false;
