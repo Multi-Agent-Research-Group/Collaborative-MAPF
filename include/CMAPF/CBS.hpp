@@ -201,10 +201,11 @@ public:
 		int maximum_timestep = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
-		// // std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
+		// std::cout<<"MT: "<<maximum_timestep<<std::endl;
 		std::vector<int> current_path_id(mNumAgents, 0);
 		while(current_timestep < maximum_timestep)
 		{
+			// std::cout<<"\nCT:"<<current_timestep<<std::endl;
 			std::vector<int> source_task_ids(mNumAgents, -1);
 			std::vector<Vertex> source_vertices(mNumAgents); // all source vertices
 			std::vector<int> source_tasks_completed(mNumAgents, 0);
@@ -261,6 +262,12 @@ public:
 				}
 			}
 
+			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// {
+			// 	std::cout<<"SV: "<<source_vertices[agent_id]<<" "<<" TV: "<<target_vertices[agent_id]<<std::endl;
+			// 	// std::cout<<source_task_ids[agent_id]
+			// }
+
 			// for(int i=0; i<agent_ids.size(); i++)
 			//  std::cout<<agent_ids[i]<<" ";
 			// std::cout<<std::endl;
@@ -314,7 +321,7 @@ public:
 					constraint_1 = CollisionConstraint(edge_1, target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
 
 					Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[j]).first;
-					constraint_2 = CollisionConstraint(edge_2, target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
+					constraint_2 = CollisionConstraint(edge_2, target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
 
 					return true;
 				}
@@ -367,23 +374,32 @@ public:
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost = std::max(total_cost,p.costs[i]);
 
-			if(numSearches%1000 == 0)
-			{
-				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cout<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
-				std::cout<<"Collision constraints size: "<<p.collision_constraints[0].size()<<std::endl;
-				for(int i=0; i<p.collision_constraints[0].size(); i++)
-				{
-					if(p.collision_constraints[0][i].constraint_type==1)
-						std::cout<<"Vertex constraint: "<<p.collision_constraints[0][i].v<<" "<<p.collision_constraints[0][i].timestep
-							<<" "<<p.collision_constraints[0][i].tasks_completed<<" "<<p.collision_constraints[0][i].in_delivery<<std::endl;
-					else
-						std::cout<<"Edge constraint: "<<p.collision_constraints[0][i].e<<" "<<p.collision_constraints[0][i].timestep
-							<<" "<<p.collision_constraints[0][i].tasks_completed<<" "<<p.collision_constraints[0][i].in_delivery<<std::endl;
-				}
-				std::cin.get();
-				// break;
-			}
+			// if(numSearches%2 == 0)
+			// {
+			// 	// std::cout<<PQ.PQsize()<<std::endl;
+			// 	std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+			// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// 	{
+			// 		std::cout<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
+			// 		for(int i=0; i<p.collision_constraints[agent_id].size(); i++)
+			// 		{
+			// 			if(p.collision_constraints[agent_id][i].constraint_type==1)
+			// 				std::cout<<"Vertex constraint: "<<p.collision_constraints[agent_id][i].v<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 			else
+			// 				std::cout<<"Edge constraint: "<<p.collision_constraints[agent_id][i].e<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 		}
+
+			// 		std::cout<<"Path: "<<std::endl;
+			// 		for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
+			// 			std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
+			// 				<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
+			// 		std::cout<<std::endl;
+			// 	}
+			// 	std::cin.get();
+			// 	// break;
+			// }
 
 			// if(numSearches == 5000)
 			// 	break;
@@ -444,9 +460,13 @@ public:
 
 			// 
 
+			// std::cout<<"Calling CollaborationConstraint!"<<std::endl;
+
 			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
 				//agent_id_1
+
+				// std::cout<<"In CollaborationConstraint!"<<std::endl;
 
 				std::vector<std::vector<CollisionConstraint>> increase_constraints_agent_id_1 = p.collision_constraints;
 				std::vector< double> costs_agent_id_1 = p.costs;
@@ -518,6 +538,34 @@ public:
 				continue;
 			} 
 
+			// std::cout<<"Out CollaborationConstraint!"<<std::endl;
+
+			// {
+			// 	// std::cout<<PQ.PQsize()<<std::endl;
+			// 	std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+			// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// 	{
+			// 		std::cout<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
+			// 		for(int i=0; i<p.collision_constraints[agent_id].size(); i++)
+			// 		{
+			// 			if(p.collision_constraints[agent_id][i].constraint_type==1)
+			// 				std::cout<<"Vertex constraint: "<<p.collision_constraints[agent_id][i].v<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 			else
+			// 				std::cout<<"Edge constraint: "<<p.collision_constraints[agent_id][i].e<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 		}
+
+			// 		std::cout<<"Path: "<<std::endl;
+			// 		for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
+			// 			std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
+			// 				<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
+			// 		std::cout<<std::endl;
+			// 	}
+			// 	// std::cin.get();
+			// 	// break;
+			// }
+
 			std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
 			std::cout<<" Path Cost: "<<total_cost<<std::endl;
@@ -527,7 +575,7 @@ public:
 				std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
 				for(SearchState &nodes: p.shortestPaths[agent_id])
 				{
-					std::cout<<mGraphs[agent_id][nodes.vertex].vertex_index<<"_"<<mGraphs[agent_id][nodes.vertex].state<<" ";
+					std::cout<<mGraphs[agent_id][nodes.vertex].vertex_index<<" "<<mGraphs[agent_id][nodes.vertex].state<<" ";
 					collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes.vertex].state);
 				}
 				std::cout<<std::endl;
@@ -971,6 +1019,13 @@ public:
 
 		auto start1 = high_resolution_clock::now();
 
+		int min_goal_timestep = 0;
+
+		for( CollisionConstraint &c: collision_constraints)
+		{
+			min_goal_timestep = std::max(min_goal_timestep, c.timestep);
+		}
+
 		Vertex start = mStartVertex[agent_id];
 
 		std::unordered_map<int, SearchState> collabMap;
@@ -1020,12 +1075,17 @@ public:
 
 			
 
-			if(current_tasks_completed == mTasksList[agent_id].size())
+			if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
 			{
 				// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
 				costOut = mDistance[current_state];
 				goal_state = current_state;
 				break;
+			}
+
+			if(current_tasks_completed == mTasksList[agent_id].size())
+			{
+				continue;
 			}
 
 			
