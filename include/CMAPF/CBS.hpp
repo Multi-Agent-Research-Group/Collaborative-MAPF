@@ -76,58 +76,18 @@ public:
 
 	double mUnitEdgeLength = 0.0625;
 
-	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, Eigen::VectorXd _goal_config, std::vector<int> startTimesteps, std::vector<int> goalTimesteps)
+	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
+		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mStartTimestep(startTimesteps)
 		, mGoalTimestep(goalTimesteps)
-	{
-		for(int i=0; i<mNumAgents;i++)
-		{
-			Eigen::VectorXd start_config(2);
-			for (int ui = i*2; ui < i*2+2; ui++)
-				start_config[ui-i*2] = _start_config[ui];
-			mStartConfig.push_back(start_config);
-		}
-
-		for(int i=0; i<mNumAgents;i++)
-		{
-			Eigen::VectorXd goal_config(2);
-			for (int ui = i*2; ui < i*2+2; ui++)
-				goal_config[ui-i*2] = _goal_config[ui];
-			mGoalConfig.push_back(goal_config);
-		}
-
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
-			Graph graph;
-			Vertex start_vertex;
-			Vertex goal_vertex;
-
-			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[agent_id],2,get(&EProp::prior,graph));
-			create_edges(graph,get(&EProp::length,graph));
-
-			VertexIter ind_vi, ind_vi_end;
-			int i=0;
-			for (boost::tie(ind_vi, ind_vi_end) = vertices(graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-			{
-				put(&VProp::vertex_index,graph,*ind_vi,i);
-				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
-					start_vertex = *ind_vi;
-				if(mGoalConfig[agent_id].isApprox(graph[*ind_vi].state))
-					goal_vertex = *ind_vi;  
-			}
-
-			mGraphs.push_back(graph);
-			mStartVertex.push_back(start_vertex);
-			mGoalVertex.push_back(goal_vertex);
-		}
-
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			preprocess_graph(mGraphs[agent_id], mGoalVertex[agent_id]);
-	}
-
+		, mStartConfig(startConfig)
+		, mGoalConfig(goalConfig)
+		, mGraphs(graphs)
+		, mStartVertex(startVertex)
+		, mGoalVertex(goalVertex) {}
 
 	std::vector< std::vector<Vertex> > computeDecoupledPaths(std::vector<std::vector<Constraint>> constraints, std::vector<double> &costs)
 	{
@@ -910,81 +870,6 @@ public:
 		std::reverse(finalPath.begin(), finalPath.end());
 		return finalPath;
 	}
-
-	void preprocess_graph(Graph &g, Vertex & _goal)
-	{
-		auto begin = std::chrono::high_resolution_clock::now();
-
-		boost::unordered_map<Vertex,bool> sptSet; 
-		boost::unordered_map<Vertex,Vertex> parentMap;
-		boost::unordered_map<Vertex,double> distanceMap;
-
-		Vertex goal_vertex=_goal;
-
-		VertexIter vi, viend;
-		
-		int numVertices=0;
-		for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
-		{
-			numVertices++;
-			distanceMap[*vi]=std::numeric_limits<double>::infinity();
-		}
-
-		parentMap.clear();
-		sptSet.clear();
-		distanceMap[goal_vertex]=0;
-		int totalVertices=numVertices+1;
-		
-		while(numVertices>0)
-		{
-			double min_dist= std::numeric_limits<double>::infinity();
-			Vertex min_vertex;
-			for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
-			{
-				if(!sptSet.count(*vi) && distanceMap[*vi]<=min_dist)
-				{
-					min_dist = distanceMap[*vi];
-					min_vertex = *vi;
-				}
-			}
-
-			Vertex node = min_vertex;
-			sptSet[node]=1;
-
-			std::vector<Vertex> successors;
-			OutEdgeIter ei, ei_end;
-
-			for (boost::tie(ei, ei_end) = out_edges(node, g); ei != ei_end; ++ei) 
-			{
-				Vertex curSucc = target(*ei, g);
-				Edge e = *ei;
-				if(!g[e].isEvaluated)
-					evaluateIndividualEdge(g,e);
-				if(g[e].status == CollisionStatus::FREE)
-					successors.push_back(curSucc);
-			}
-
-			for(Vertex &successor : successors )
-			{
-				Edge uv;
-				bool edgeExists;
-				boost::tie(uv, edgeExists) = edge(node, successor, g);
-
-				if( !sptSet.count(successor) && (distanceMap[successor] > distanceMap[node] + g[uv].length) )
-				{
-					distanceMap[successor] = distanceMap[node] + g[uv].length;
-					parentMap[successor]=node;
-				}
-			}
-			numVertices--;
-		}
-
-		for (boost::tie(vi, viend) = vertices(g); vi != viend; ++vi) 
-		{
-			g[*vi].heuristic = distanceMap[*vi];
-		}   
-	}
-
 };
 
 
