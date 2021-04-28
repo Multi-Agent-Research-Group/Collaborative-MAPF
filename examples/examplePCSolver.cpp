@@ -39,18 +39,16 @@ int main(int argc, char *argv[])
 		
 	float eps = 0.0625;
 
-	name[0] = meta_data (std::make_pair(eps*5, eps*2), std::make_pair(eps*6, eps*5), std::vector <int> (1, 0), 0, 4, 0);
-	name[1] = meta_data (std::make_pair(eps*6, eps*5), std::make_pair(eps*6, eps*6), std::vector <int> (1, 0), 4, 5, 0);
-	name[2] = meta_data (std::make_pair(eps*6, eps*6), std::make_pair(eps*6, eps*7), std::vector <int> (1, 0), 5, 6, 2);
+	name[0] = meta_data (std::make_pair(eps*8, eps*2), std::make_pair(eps*6, eps*5), std::vector <int> (1, 0), 0, 5, 0);
+	name[1] = meta_data (std::make_pair(eps*6, eps*5), std::make_pair(eps*6, eps*6), std::vector <int> (1, 0), 5, 6, 0);
+	name[2] = meta_data (std::make_pair(eps*6, eps*6), std::make_pair(eps*6, eps*7), std::vector <int> (1, 0), 6, 7, 1);
 
-	name[3] = meta_data (std::make_pair(eps*5, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 1), 0, 3, 0);
-	name[4] = meta_data (std::make_pair(eps*6, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 2), 0, 1, 2);
+	name[3] = meta_data (std::make_pair(eps*5, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 1), 0, 2, 0);
+	name[4] = meta_data (std::make_pair(eps*6, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 2), 0, 1, 1);
 
-	std::vector <int> agent_list(2, 1);
-	agent_list[1]=2;
-	name[5] = meta_data (std::make_pair(eps*6, eps*2), std::make_pair(eps*6, eps*8), agent_list, 3, 8, 0);
+	name[5] = meta_data (std::make_pair(eps*6, eps*2), std::make_pair(eps*6, eps*8), std::vector <int> {1,2}, 2, 8, 0);
 
-  	for (int i = 0; i < 6; ++i)
+  	for (int i = 0; i < 4; ++i)
 		add_edge(edge_array[i].first, edge_array[i].second, G);
 
 	PCSolver p;
@@ -132,22 +130,22 @@ int main(int argc, char *argv[])
 // 	PCSolver p;
 
 
-	// auto start = high_resolution_clock::now();
-	// p.ICTS(G, 1, 12, 4);
-	// auto stop = high_resolution_clock::now();
+// 	auto start = high_resolution_clock::now();
+// 	p.ICTS(G, 1, 12, 4);
+// 	auto stop = high_resolution_clock::now();
 
 	
-	// // Subtract stop and start timepoints and
-	// // cast it to required unit. Predefined units
-	// // are nanoseconds, microseconds, milliseconds,
-	// // seconds, minutes, hours. Use duration_cast()
-	// // function.
-	// auto duration = duration_cast<milliseconds>(stop - start);
+// 	// Subtract stop and start timepoints and
+// 	// cast it to required unit. Predefined units
+// 	// are nanoseconds, microseconds, milliseconds,
+// 	// seconds, minutes, hours. Use duration_cast()
+// 	// function.
+// 	auto duration = duration_cast<milliseconds>(stop - start);
 	  
-	// // To get the value of duration use the count()
-	// // member function on the duration object
-	// cout << duration.count() << endl;
+// 	// To get the value of duration use the count()
+// 	// member function on the duration object
+// 	cout << duration.count() << endl;
 
-	// return 0;
-	// // std::cout << count << std::endl;
+// 	return 0;
+// 	// std::cout << count << std::endl;
 // }

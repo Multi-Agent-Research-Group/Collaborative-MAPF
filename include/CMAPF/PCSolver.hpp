@@ -51,7 +51,7 @@ class PCSolver
 public:
 
 	int mCount = 0;
-	
+
 	bool checkpathpossible(PrecedenceConstraintGraph &G, int &numAgents, int &numRobots)
 	{
 		mCount +=1;
@@ -122,13 +122,18 @@ public:
 		{
 			// std::cout << std::endl;
 			meta_data vertex = get(name, *ii);
-			if(agent_paths[vertex.agent_list[0]].size() == 0)
-				agent_paths[vertex.agent_list[0]] = path[task_count];
-			else
-			{
-				for(int i=1; i<path[task_count].size(); i++)
-					agent_paths[vertex.agent_list[0]].push_back(path[task_count][i]);
+			for(int agent = 0; agent < vertex.agent_list.size(); agent++){
+				if(agent_paths[vertex.agent_list[agent]].size() == 0)
+					agent_paths[vertex.agent_list[agent]] = path[task_count];
+				else
+				{
+					for(int i=1; i<path[task_count].size(); i++)
+					{
+						agent_paths[vertex.agent_list[agent]].push_back(path[task_count][i]);
+					}
+				}
 			}
+			
 			task_count++;
 		}
 
@@ -151,9 +156,9 @@ public:
 		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
 		std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
+		std::cin.get();
 		planner.mNumAgents = numRobots;
-		// planner.displayPath(path_configs);
+		planner.displayPath(path_configs);
 
 		return true;
 	}
