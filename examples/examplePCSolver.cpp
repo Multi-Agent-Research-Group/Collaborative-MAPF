@@ -198,34 +198,110 @@ using namespace CMAPF;
 // 	return 0;
 // }
 
+// int main(int argc, char *argv[])
+// {
+// 	Pair edge_array[4] = { Pair(0,1), Pair(1,2), Pair(3, 5), Pair(4, 5) };
+		
+// 	PrecedenceConstraintGraph G(6);
+
+// 	property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
+		
+// 	float eps = 0.0625;
+
+// 	name[0] = meta_data (std::make_pair(eps*5, eps*2), std::make_pair(eps*6, eps*5), std::vector <int> (1, 0), 0);
+// 	name[1] = meta_data (std::make_pair(eps*6, eps*5), std::make_pair(eps*6, eps*6), std::vector <int> (1, 0), 1);
+// 	name[2] = meta_data (std::make_pair(eps*6, eps*6), std::make_pair(eps*6, eps*7), std::vector <int> (1, 0), 2);
+
+// 	name[3] = meta_data (std::make_pair(eps*5, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 1), 3);
+// 	name[4] = meta_data (std::make_pair(eps*6, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 2), 4);
+
+// 	std::vector <int> agent_list(2, 1);
+// 	agent_list[1]=2;
+// 	name[5] = meta_data (std::make_pair(eps*6, eps*2), std::make_pair(eps*6, eps*8), agent_list, 5);
+//   	for (int i = 0; i < 4; ++i)
+// 		add_edge(edge_array[i].first, edge_array[i].second, G);
+
+// 	int numAgents = 3;
+// 	int numTasks = 6;
+
+// 	Eigen::VectorXd init_config(2*numAgents);
+// 	init_config << eps*5,  eps*2, eps*5, eps*1, eps*6, eps*1;
+
+// 	std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list(numAgents);
+// 	std::vector< PCVertex > c;
+// 	topological_sort(G, std::back_inserter(c));
+
+// 	for ( std::vector< PCVertex >::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+// 	{
+// 		// std::cout << std::endl;
+// 		meta_data vertex = get(name, *ii);
+
+// 		int task_id = vertex.task_id;
+// 		// std::cout << task_id << std::endl;
+
+// 		Eigen::VectorXd start_config(2);
+// 		start_config[0] = vertex.start.first;
+// 		start_config[1] = vertex.start.second;
+
+// 		Eigen::VectorXd goal_config(2);
+// 		goal_config[0] = vertex.goal.first;
+// 		goal_config[1] = vertex.goal.second;
+
+// 		std::vector <int> agent_list = vertex.agent_list;
+// 		for (auto agentNum: agent_list){
+// 			// std::cout << agentNum << std::endl;
+// 			_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
+// 		}
+// 		// std::cout << std::endl;
+// 	}
+
+// 	std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(6);
+
+// 	_tasks_to_agents_list[0] = std::vector<std::pair<int,int>>(1,std::make_pair(0,0));
+// 	_tasks_to_agents_list[1] = std::vector<std::pair<int,int>>(1,std::make_pair(0,1));
+// 	_tasks_to_agents_list[2] = std::vector<std::pair<int,int>>(1,std::make_pair(0,2));
+// 	_tasks_to_agents_list[3] = std::vector<std::pair<int,int>>(1,std::make_pair(1,0));
+// 	_tasks_to_agents_list[4] = std::vector<std::pair<int,int>>(1,std::make_pair(2,0));
+// 	_tasks_to_agents_list[5] = std::vector<std::pair<int,int>>{std::make_pair(1,1),std::make_pair(2,1)};
+
+// 	PCSolver p;
+
+// 	auto start = high_resolution_clock::now();
+// 	p.solve(init_config, _tasks_list,_tasks_to_agents_list);
+// 	auto stop = high_resolution_clock::now();
+// 	std::chrono::duration<double, std::micro> dur = (stop - start);
+// 	std::cout << dur.count()/1000000.0 << std::endl;
+// 	return 0;	
+// }
+
 int main(int argc, char *argv[])
 {
-	Pair edge_array[4] = { Pair(0,1), Pair(1,2), Pair(3, 5), Pair(4, 5) };
+	Pair edge_array[4] = { Pair(0,1), Pair(1,4), Pair(1, 3), Pair(2, 3) };
 		
-	PrecedenceConstraintGraph G(6);
+	PrecedenceConstraintGraph G(12);
 
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 		
 	float eps = 0.0625;
 
-	name[0] = meta_data (std::make_pair(eps*5, eps*2), std::make_pair(eps*6, eps*5), std::vector <int> (1, 0), 0);
-	name[1] = meta_data (std::make_pair(eps*6, eps*5), std::make_pair(eps*6, eps*6), std::vector <int> (1, 0), 1);
-	name[2] = meta_data (std::make_pair(eps*6, eps*6), std::make_pair(eps*6, eps*7), std::vector <int> (1, 0), 2);
+	name[0] = meta_data (std::make_pair(eps*1, eps*2), std::make_pair(eps*3, eps*2), std::vector <int> (1, 0), 0);
 
-	name[3] = meta_data (std::make_pair(eps*5, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 1), 3);
-	name[4] = meta_data (std::make_pair(eps*6, eps*1), std::make_pair(eps*6, eps*2), std::vector <int> (1, 2), 4);
+	name[1] = meta_data (std::make_pair(eps*4, eps*3), std::make_pair(eps*6, eps*2), std::vector <int> {0,1}, 1);
 
-	std::vector <int> agent_list(2, 1);
-	agent_list[1]=2;
-	name[5] = meta_data (std::make_pair(eps*6, eps*2), std::make_pair(eps*6, eps*8), agent_list, 5);
+	name[2] = meta_data (std::make_pair(eps*4, eps*4), std::make_pair(eps*5, eps*2), std::vector <int> (1, 2), 2);
+
+	name[3] = meta_data (std::make_pair(eps*6, eps*3), std::make_pair(eps*5, eps*1), std::vector <int> {1,2}, 3);
+
+	name[4] = meta_data (std::make_pair(eps*7, eps*4), std::make_pair(eps*6, eps*1), std::vector <int> (1, 0), 4);
+
   	for (int i = 0; i < 4; ++i)
 		add_edge(edge_array[i].first, edge_array[i].second, G);
 
 	int numAgents = 3;
-	int numTasks = 6;
+	int numTasks = 5;
 
 	Eigen::VectorXd init_config(2*numAgents);
-	init_config << eps*5,  eps*2, eps*5, eps*1, eps*6, eps*1;
+	init_config << eps*1, eps*1, eps*4, eps*1, eps*3, eps*1;
 
 	std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list(numAgents);
 	std::vector< PCVertex > c;
@@ -255,14 +331,13 @@ int main(int argc, char *argv[])
 		// std::cout << std::endl;
 	}
 
-	std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(6);
+	std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(5);
 
 	_tasks_to_agents_list[0] = std::vector<std::pair<int,int>>(1,std::make_pair(0,0));
-	_tasks_to_agents_list[1] = std::vector<std::pair<int,int>>(1,std::make_pair(0,1));
-	_tasks_to_agents_list[2] = std::vector<std::pair<int,int>>(1,std::make_pair(0,2));
-	_tasks_to_agents_list[3] = std::vector<std::pair<int,int>>(1,std::make_pair(1,0));
-	_tasks_to_agents_list[4] = std::vector<std::pair<int,int>>(1,std::make_pair(2,0));
-	_tasks_to_agents_list[5] = std::vector<std::pair<int,int>>{std::make_pair(1,1),std::make_pair(2,1)};
+	_tasks_to_agents_list[1] = std::vector<std::pair<int,int>>{std::make_pair(0,1),std::make_pair(1,0)};
+	_tasks_to_agents_list[2] = std::vector<std::pair<int,int>>(1,std::make_pair(2,0));
+	_tasks_to_agents_list[3] = std::vector<std::pair<int,int>>{std::make_pair(1,1),std::make_pair(2,1)};
+	_tasks_to_agents_list[4] = std::vector<std::pair<int,int>>(1,std::make_pair(0,2));
 
 	PCSolver p;
 
