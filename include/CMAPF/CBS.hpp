@@ -74,6 +74,8 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
+	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
+
 	double mUnitEdgeLength = 0.0625;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, 
@@ -365,15 +367,26 @@ public:
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost = std::max(total_cost,p.costs[i]);
 
-			if(numSearches%100 == 0)
+			if(numSearches%1000 == 0)
 			{
-				std::cout<<PQ.PQsize()<<std::endl;
+				// std::cout<<PQ.PQsize()<<std::endl;
 				std::cout<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+				std::cout<<"Collision constraints size: "<<p.collision_constraints[0].size()<<std::endl;
+				for(int i=0; i<p.collision_constraints[0].size(); i++)
+				{
+					if(p.collision_constraints[0][i].constraint_type==1)
+						std::cout<<"Vertex constraint: "<<p.collision_constraints[0][i].v<<" "<<p.collision_constraints[0][i].timestep
+							<<" "<<p.collision_constraints[0][i].tasks_completed<<" "<<p.collision_constraints[0][i].in_delivery<<std::endl;
+					else
+						std::cout<<"Edge constraint: "<<p.collision_constraints[0][i].e<<" "<<p.collision_constraints[0][i].timestep
+							<<" "<<p.collision_constraints[0][i].tasks_completed<<" "<<p.collision_constraints[0][i].in_delivery<<std::endl;
+				}
+				std::cin.get();
 				// break;
 			}
 
-			if(numSearches == 5000)
-				break;
+			// if(numSearches == 5000)
+			// 	break;
 
 			bool is_collaboration = true;
 			std::vector<int> collaborating_agent_ids;
@@ -914,9 +927,23 @@ public:
 		cv::waitKey(0);
 	}
 
-	double getHeuristic(SearchState &state)
+	double getHeuristic(int &agent_id, SearchState &state)
 	{
-		return 0;
+		// return 0;
+		double heuristic=0;
+		if(state.in_delivery == true)
+			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
+		else
+		{
+			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
+		}
+		for(int i=state.tasks_completed+1; i<mTasksList[agent_id].size(); i++)
+		{
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
+		}
+		return heuristic;
 	}
 
 	std::vector<SearchState> computeShortestPath(int &agent_id, std::vector<CollisionConstraint> &collision_constraints,
@@ -958,7 +985,7 @@ public:
 		boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
 
 		SearchState start_state = SearchState(start,0,0,0);
-		pq.insert(start_state,getHeuristic(start_state),0.0);
+		pq.insert(start_state,getHeuristic(agent_id, start_state),0.0);
 		mDistance[start_state]=0;
 
 		int numSearches = 0;
@@ -1028,7 +1055,7 @@ public:
 							if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
 							{
 								mDistance[new_state]= new_cost;
-								double priority = new_cost + getHeuristic(new_state);
+								double priority = new_cost + getHeuristic(agent_id, new_state);
 								pq.insert(new_state,priority,0.0);
 								mPrev[new_state]=current_state;
 							}
@@ -1061,12 +1088,26 @@ public:
 					}
 					if(allowed)
 					{
+						for( CollisionConstraint &c: collision_constraints)
+						{
+							if( c.constraint_type == 1 && current_vertex == c.v 
+								&& current_tasks_completed == c.tasks_completed && true == c.in_delivery
+							 	&& c.timestep == current_timestep)
+							{
+								// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+								allowed = false;
+								break;
+							}
+						}
+					}
+					if(allowed)
+					{
 						double new_cost = mDistance[current_state];
 						SearchState new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
 						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
 						{
 							mDistance[new_state]= new_cost;
-							double priority = new_cost + getHeuristic(new_state);
+							double priority = new_cost + getHeuristic(agent_id, new_state);
 							pq.insert(new_state,priority,0.0);
 							mPrev[new_state]=current_state;
 						}
@@ -1087,13 +1128,27 @@ public:
 					}
 					if(allowed)
 					{
+						for( CollisionConstraint &c: collision_constraints)
+						{
+							if( c.constraint_type == 1 && current_vertex == c.v 
+								&& current_tasks_completed+1 == c.tasks_completed && false == c.in_delivery
+							 	&& c.timestep == current_timestep)
+							{
+								// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+								allowed = false;
+								break;
+							}
+						}
+					}
+					if(allowed)
+					{
 						double new_cost = mDistance[current_state];
 						SearchState new_state= SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
 						
 						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
 						{
 							mDistance[new_state]= new_cost;
-							double priority = new_cost + getHeuristic(new_state);
+							double priority = new_cost + getHeuristic(agent_id, new_state);
 							pq.insert(new_state,priority,0.0);
 							mPrev[new_state]=current_state;
 						}
@@ -1129,7 +1184,7 @@ public:
 					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
 					{
 						mDistance[new_state]= new_cost;
-						double priority = new_cost + getHeuristic(new_state);
+						double priority = new_cost + getHeuristic(agent_id, new_state);
 						pq.insert(new_state,priority,0.0);
 						mPrev[new_state]=current_state;
 					}
@@ -1174,7 +1229,7 @@ public:
 					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
 					{
 						mDistance[new_state]= new_cost;
-						double priority = new_cost + getHeuristic(new_state);
+						double priority = new_cost + getHeuristic(agent_id, new_state);
 						pq.insert(new_state,priority,0.0);
 						mPrev[new_state]=current_state;
 					}
@@ -1224,7 +1279,6 @@ public:
 	void preprocess_graph(Graph &g)
 	{
 		int V = boost::num_vertices(g);
-		boost::unordered_map<std::pair<Vertex,Vertex>,double> distanceMap;
 
 		VertexIter vi_1, viend_1;
 		VertexIter vi_2, viend_2;
@@ -1234,16 +1288,16 @@ public:
 			Vertex vertex_1 = *vi_1;
 			Vertex vertex_2 = *vi_2;
 			if(vertex_1==vertex_2)
-				distanceMap[std::make_pair(vertex_1,vertex_2)]=0;
+				mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=0;
 			else
 			{
 				Edge uv;
 				bool edgeExists;
 				boost::tie(uv, edgeExists) = edge(vertex_1, vertex_2, g);
 				if(edgeExists)
-					distanceMap[std::make_pair(vertex_1,vertex_2)]=mUnitEdgeLength;
+					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=mUnitEdgeLength;
 				else
-					distanceMap[std::make_pair(vertex_1,vertex_2)]=INF;
+					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=INF;
 			}
 		}
 
@@ -1255,11 +1309,21 @@ public:
 			Vertex vertex_1 = *vi_1;
 			Vertex vertex_2 = *vi_2;
 			Vertex vertex_3 = *vi_3;
-			if (distanceMap[std::make_pair(vertex_2,vertex_3)] + 0.00001 > (distanceMap[std::make_pair(vertex_2,vertex_1)] + distanceMap[std::make_pair(vertex_1,vertex_3)])
-				&& (distanceMap[std::make_pair(vertex_2,vertex_1)] != INF
-				&& distanceMap[std::make_pair(vertex_1,vertex_3)] != INF))
-				distanceMap[std::make_pair(vertex_2,vertex_3)] = distanceMap[std::make_pair(vertex_2,vertex_1)] + distanceMap[std::make_pair(vertex_1,vertex_3)];
+			if (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] + 0.00001 > (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)])
+				&& (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] != INF
+				&& mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)] != INF))
+				mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] = mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)];
 		}
+
+		// std::cout<<"All pairs shortest paths: "<<std::endl;
+		// for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		// for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+		// {
+		// 	Vertex vertex_1 = *vi_1;
+		// 	Vertex vertex_2 = *vi_2;
+		// 	std::cout<<vertex_1<<" "<<vertex_2<<" "<<mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]<<std::endl;
+		// }
+		// std::cin.get();
 	}
 
 };
