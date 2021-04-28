@@ -41,13 +41,13 @@ struct CollisionConstraint
 struct CollaborationConstraint
 {
 	Vertex v;
-	int tasks_completed;
-	bool in_delivery;
-	int timestep; 
+	int task_id;
+	bool is_pickup; // false implies delivery
+	int timestep;
 
 	CollaborationConstraint() {}
-	CollaborationConstraint(Vertex _v, int _tasks_completed, bool _in_delivery, int _t) 
-		: v(_v), tasks_completed(_tasks_completed), in_delivery(_in_delivery), timestep(_t){}
+	CollaborationConstraint(Vertex _v, int _task_id, bool _is_pickup, int _t) 
+		: v(_v), task_id(_task_id), is_pickup(_is_pickup), timestep(_t){}
 };
 
 struct Element
