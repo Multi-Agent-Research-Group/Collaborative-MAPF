@@ -54,8 +54,8 @@ public:
 		int numAgents = _tasks_list.size();
 
 		// Space Information
-		cv::Mat image = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
-		// cv::Mat image = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
+		// cv::Mat image = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
+		cv::Mat image = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
 		std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
