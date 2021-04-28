@@ -1,4 +1,4 @@
- 
+
 /* Authors: Rajat Kumar Jenamani */
 
 #ifndef _CBS_HPP
@@ -540,46 +540,90 @@ public:
 
 			// std::cout<<"Out CollaborationConstraint!"<<std::endl;
 
-			{
-				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
-				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-				{
-					std::cout<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
-					for(int i=0; i<p.collision_constraints[agent_id].size(); i++)
-					{
-						if(p.collision_constraints[agent_id][i].constraint_type==1)
-							std::cout<<"Vertex constraint: "<<p.collision_constraints[agent_id][i].v<<" "<<p.collision_constraints[agent_id][i].timestep
-								<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
-						else
-							std::cout<<"Edge constraint: "<<p.collision_constraints[agent_id][i].e<<" "<<p.collision_constraints[agent_id][i].timestep
-								<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
-					}
+			// {
+			// 	// std::cout<<PQ.PQsize()<<std::endl;
+			// 	std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+			// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// 	{
+			// 		std::cout<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
+			// 		for(int i=0; i<p.collision_constraints[agent_id].size(); i++)
+			// 		{
+			// 			if(p.collision_constraints[agent_id][i].constraint_type==1)
+			// 				std::cout<<"Vertex constraint: "<<p.collision_constraints[agent_id][i].v<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 			else
+			// 				std::cout<<"Edge constraint: "<<p.collision_constraints[agent_id][i].e<<" "<<p.collision_constraints[agent_id][i].timestep
+			// 					<<" "<<p.collision_constraints[agent_id][i].tasks_completed<<" "<<p.collision_constraints[agent_id][i].in_delivery<<std::endl;
+			// 		}
 
-					std::cout<<"Path: "<<std::endl;
-					for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
-						std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
-							<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
-					std::cout<<std::endl;
-				}
-				// std::cin.get();
-				// break;
-			}
+			// 		std::cout<<"Path: "<<std::endl;
+			// 		for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
+			// 			std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
+			// 				<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
+			// 		std::cout<<std::endl;
+			// 	}
+			// 	// std::cin.get();
+			// 	// break;
+			// }
 
 			std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
-			std::cout<<" Path Cost: "<<total_cost<<std::endl;
+			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
+			int current_timestep = 0;
+			int maximum_timestep = 0;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
+			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			std::vector<int> current_path_id(mNumAgents, 0);
+			while(current_timestep <= maximum_timestep)
 			{
-				std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
-				std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
-				for(SearchState &nodes: p.shortestPaths[agent_id])
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
-					std::cout<<mGraphs[agent_id][nodes.vertex].vertex_index<<" "<<mGraphs[agent_id][nodes.vertex].state<<" ";
-					collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes.vertex].state);
+					if(current_path_id[agent_id] == paths[agent_id].size())
+					{
+						collision_free_path[agent_id].push_back(mGraphs[agent_id][paths[agent_id].at(paths[agent_id].size()-1).vertex].state);
+					}
+					else
+					{
+						collision_free_path[agent_id].push_back(mGraphs[agent_id][paths[agent_id].at(current_path_id[agent_id]).vertex].state);
+						while(current_path_id[agent_id] < paths[agent_id].size()
+							&& paths[agent_id].at(current_path_id[agent_id]).timestep == current_timestep)
+							current_path_id[agent_id]++;
+					}
+
 				}
-				std::cout<<std::endl;
+				current_timestep++;
 			}
+
+			// std::cout<<" Path Cost: "<<total_cost<<std::endl;
+			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// {
+			// 	std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
+			// 	std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
+			// 	for(SearchState &nodes: p.shortestPaths[agent_id])
+			// 	{
+			// 		std::cout<<mGraphs[agent_id][nodes.vertex].vertex_index<<" "<<mGraphs[agent_id][nodes.vertex].state<<" ";
+			// 		collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes.vertex].state);
+			// 	}
+			// 	std::cout<<std::endl;
+			// }
+
+			std::vector<Eigen::VectorXd> path_configs;
+
+			for(int i=0; i<collision_free_path[0].size(); i++)
+			{
+				Eigen::VectorXd config(collision_free_path.size()*2);
+				for(int j=0; j<collision_free_path.size(); j++)
+				{
+					config[2*j]=collision_free_path[j][i][0];
+					config[2*j+1]=collision_free_path[j][i][1];
+				}
+				path_configs.push_back(config);
+			}
+
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
 
 			return collision_free_path;
 		}
