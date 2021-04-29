@@ -86,7 +86,7 @@ public:
 
 	double mUnitEdgeLength = 0.0625;
 
-	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots)
+	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
 		: mPCGraph(G)
 		, mMaxIter(maxIter)
 		, mNumAgents(numAgents)
@@ -117,8 +117,9 @@ public:
 
 		// Space Information
 		// mImage = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
-		mImage = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
-		std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
+		// mImage = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
+		mImage = cv::imread(obstacle_file, 0);
+		// std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
@@ -172,7 +173,7 @@ public:
 
 		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
 
-		ICTS(mPCGraph, mMaxIter, mNumAgents, mNumRobots);
+		// ICTS(mPCGraph, mMaxIter, mNumAgents, mNumRobots);
 	}
 
 	bool evaluateIndividualConfig(Eigen::VectorXd config)
@@ -325,26 +326,26 @@ public:
 		}   
 	}
 
-	bool ICTS(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots){
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
+	bool solve(){
+		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), mPCGraph);
 		PrecedenceConstraintGraph G_T;
 
-		transpose_graph(G, G_T);
-		for(int i=0; i<maxIter; i++){
+		transpose_graph(mPCGraph, G_T);
+		for(int i=0; i<mMaxIter; i++){
 
-			if(generatePaths(G, G_T, mTopologicalOrder, mTopologicalOrder.begin(), numAgents, numRobots)){
+			if(generatePaths(mPCGraph, G_T, mTopologicalOrder, mTopologicalOrder.begin(), mNumAgents, mNumRobots)){
 				return true;
 			}
 
 			PCVertexIter v, vend;
-			for (boost::tie(v, vend) = vertices(G); v != vend; ++v) {
+			for (boost::tie(v, vend) = vertices(mPCGraph); v != vend; ++v) {
 
 				container successors;
 				PCOutEdgeIter ei, ei_end;
 
-				for (boost::tie(ei, ei_end) = out_edges(*v, G); ei != ei_end; ++ei) 
+				for (boost::tie(ei, ei_end) = out_edges(*v, mPCGraph); ei != ei_end; ++ei) 
 				{
-						PCVertex curSuc = target(*ei, G);
+						PCVertex curSuc = target(*ei, mPCGraph);
 						successors.push_back(curSuc);
 				}
 
@@ -425,10 +426,10 @@ public:
 		}
 		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: \n";
-		std::cin.get();
-		planner.mNumAgents = numRobots;
-		planner.displayPath(path_configs);
+		// std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		// planner.mNumAgents = numRobots;
+		// planner.displayPath(path_configs);
 
 		return true;
 	}
