@@ -35,6 +35,8 @@ using namespace std::chrono;
 #include "time_priority_queue.hpp"
 #include "CBSDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
+#include "CMAPF/PCDefinitions.hpp"
+
 
 #define INF std::numeric_limits<double>::infinity()
 
@@ -85,13 +87,45 @@ public:
 
 	double mUnitEdgeLength = 0.0625;
 
-	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, 
-		std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list, std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list)
+	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mTasksToAgentsList(_tasks_to_agents_list)
 	{
+
+		int numTasks = boost::num_vertices(_pcg);
+		std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list(numAgents);
+		std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(numTasks);
+		std::vector< PCVertex > c;
+		topological_sort(_pcg, std::back_inserter(c));
+
+		for ( std::vector< PCVertex >::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		{
+			// std::cout << std::endl;
+			meta_data vertex = get(get(meta_data_t(), _pcg), *ii);
+
+			int task_id = vertex.task_id;
+			std::cout << "Task id:"<<task_id << std::endl;
+
+			Eigen::VectorXd start_config(2);
+			start_config[0] = vertex.start.first;
+			start_config[1] = vertex.start.second;
+
+			Eigen::VectorXd goal_config(2);
+			goal_config[0] = vertex.goal.first;
+			goal_config[1] = vertex.goal.second;
+
+			std::vector <int> agent_list = vertex.agent_list;
+			for (auto agentNum: agent_list){
+				// std::cout << agentNum << std::endl;
+				_tasks_to_agents_list[task_id].push_back(std::make_pair(agentNum,_tasks_list[agentNum].size()));
+				_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
+			}
+			// std::cout << std::endl;
+		}
+
+		mTasksToAgentsList = _tasks_to_agents_list;
+
 		auto t1 = std::chrono::high_resolution_clock::now();
 	    auto t2 = std::chrono::high_resolution_clock::now();
 		mCSPTime = t2-t1;
@@ -534,6 +568,23 @@ public:
 					bool all_paths_exist = true;
 					for(int i=0; i<collaborating_agent_ids.size(); i++)
 					{
+						// make sure that collab and not collab do not share a constraint
+						bool allowed = true;
+						for( CollaborationConstraint &c: p.non_collaboration_constraints[collaborating_agent_ids[i]])
+						{
+							if( constraint_c.v == c.v && constraint_c.task_id == c.task_id
+								&& constraint_c.is_pickup == c.is_pickup==true && constraint_c.timestep == c.timestep)
+							{
+								// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+								allowed = false;
+								break;
+							}
+						}
+						if(!allowed)
+						{
+							all_paths_exist = false;
+							break;
+						}	
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
 						shortestPaths_c[collaborating_agent_ids[i]] = computeShortestPath(collaborating_agent_ids[i], p.collision_constraints[collaborating_agent_ids[i]], 
@@ -563,6 +614,23 @@ public:
 
 					for(int i=0; i<collaborating_agent_ids.size(); i++)
 					{
+						// make sure that collab and not collab do not share a constraint
+						bool allowed = true;
+						for( CollaborationConstraint &c: p.collaboration_constraints[collaborating_agent_ids[i]])
+						{
+							if( constraint_c.v == c.v && constraint_c.task_id == c.task_id
+								&& constraint_c.is_pickup == c.is_pickup==true && constraint_c.timestep == c.timestep)
+							{
+								// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+								allowed = false;
+								break;
+							}
+						}
+						if(!allowed)
+						{
+							all_paths_exist = false;
+							break;
+						}
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
 						shortestPaths_c[collaborating_agent_ids[i]] = computeShortestPath(collaborating_agent_ids[i], p.collision_constraints[collaborating_agent_ids[i]], 
@@ -782,9 +850,9 @@ public:
 			auto solve_stop = high_resolution_clock::now();
 			mPlanningTime += (solve_stop - solve_start);
 
-			// std::cout<<"Press [ENTER] to display path: ";
-			// std::cin.get();
-			// displayPath(path_configs);
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
 
 			return collision_free_path;
 		}
@@ -1322,6 +1390,19 @@ public:
 					int current_timestep = current_state.timestep;
 					int current_tasks_completed = current_state.tasks_completed;
 					bool current_in_delivery = current_state.in_delivery;
+
+					if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
+					{
+						// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
+						costOut = mDistance[current_state];
+						goal_state = current_state;
+						break;
+					}
+
+					if(current_tasks_completed == mTasksList[agent_id].size())
+					{
+						continue;
+					}
 				}
 				else
 					continue; 
