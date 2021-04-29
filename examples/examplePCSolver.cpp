@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 		add_edge(edge_array[i].first, edge_array[i].second, G);
 
 
-	std::cout << "hello\n"; std::cin.get();
+	// std::cout << "hello\n"; std::cin.get();
 	auto start = high_resolution_clock::now();
 	PCSolver p(G, 1, 12, 3);
 	auto stop = high_resolution_clock::now();
