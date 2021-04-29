@@ -74,7 +74,7 @@ public:
 	int mNotHashUsed = 0;
 	int total_time = 0;
 
-	double mUnitEdgeLength = 0.0625;
+	double mUnitEdgeLength = 0.04;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex)
