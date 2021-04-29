@@ -1,4 +1,4 @@
- 
+
 /* Authors: Rajat Kumar Jenamani */
 
 #ifndef _PCSolver_HPP
@@ -84,7 +84,7 @@ public:
 	PrecedenceConstraintGraph &mPCGraph;
 	int mMaxIter;
 
-	double mUnitEdgeLength = 0.0625;
+	double mUnitEdgeLength = 0.04;
 
 	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
 		: mPCGraph(G)

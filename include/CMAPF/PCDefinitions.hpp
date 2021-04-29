@@ -17,8 +17,8 @@ using namespace boost;
 
 	struct meta_data
 	{
-		std::pair <float, float> start;
-		std::pair <float, float> goal;
+		std::pair <double, double> start;
+		std::pair <double, double> goal;
 
 		std::vector <int> agent_list;
 
@@ -31,7 +31,7 @@ using namespace boost;
 		int goal_vertex;
 
 		meta_data() {}
-		meta_data(std::pair <float, float> _start, std::pair <float, float> _goal, std::vector <int> _agent_list, int _start_time, int _end_time, int _slack) : start(_start), goal(_goal), agent_list(_agent_list), start_time(_start_time), end_time(_end_time), slack(_slack) {}
+		meta_data(std::pair <double, double> _start, std::pair <double, double> _goal, std::vector <int> _agent_list, int _start_time, int _end_time, int _slack) : start(_start), goal(_goal), agent_list(_agent_list), start_time(_start_time), end_time(_end_time), slack(_slack) {}
 	};
 
 	typedef property<meta_data_t, meta_data> MetaData;
