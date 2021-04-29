@@ -69,6 +69,7 @@ public:
 	/// Number of robots 
 	int mNumRobots;
 
+	container mTopologicalOrder;
 	/// Path to the roadmap files.
 	std::vector<std::string> mRoadmapFileNames;
 
@@ -91,8 +92,7 @@ public:
 		, mNumAgents(numAgents)
 		, mNumRobots(numRobots)
 	{
-		container c;
-		topological_sort(G, std::back_inserter(c));
+		topological_sort(G, std::back_inserter(mTopologicalOrder));
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 
 		// int numAgents = 12;
@@ -103,7 +103,7 @@ public:
 		std::vector<int> goalTimesteps;
 
 		int j = 0;
-		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			meta_data vertex = get(name, *ii);
 			start_config[j] = vertex.start.first;
@@ -113,11 +113,11 @@ public:
 			j+=2;
 		}
 
-		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
+		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
 
 		// Space Information
 		// mImage = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
-		cv::Mat image = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
+		mImage = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
 		std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
@@ -169,6 +169,8 @@ public:
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			preprocess_graph(mGraphs[agent_id], mGoalVertex[agent_id]);
+
+		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
 
 		ICTS(mPCGraph, mMaxIter, mNumAgents, mNumRobots);
 	}
@@ -325,15 +327,12 @@ public:
 
 	bool ICTS(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots){
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-		container c;
-		topological_sort(G, std::back_inserter(c));
-
 		PrecedenceConstraintGraph G_T;
 
 		transpose_graph(G, G_T);
 		for(int i=0; i<maxIter; i++){
 
-			if(generatePaths(G, G_T, c, c.begin(), numAgents, numRobots)){
+			if(generatePaths(G, G_T, mTopologicalOrder, mTopologicalOrder.begin(), numAgents, numRobots)){
 				return true;
 			}
 
@@ -364,16 +363,14 @@ public:
 	bool checkpathpossible(PrecedenceConstraintGraph &G, int &numAgents, int &numRobots)
 	{
 		mCount +=1;
-		// std::cout << "PC Iteration: "<<mCount<<std::endl;
+		std::cout << "PC Iteration: "<<mCount<<std::endl;
 
 		std::vector<int> startTimesteps;
 		std::vector<int> goalTimesteps;
 
-		container c;
-		topological_sort(G, std::back_inserter(c));
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 
-		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			meta_data vertex = get(name, *ii);
 			startTimesteps.push_back(vertex.start_time);
@@ -391,7 +388,7 @@ public:
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(numRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
-		for ( container::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			// std::cout << std::endl;
 			meta_data vertex = get(name, *ii);
@@ -428,10 +425,10 @@ public:
 		}
 		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = numRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = numRobots;
+		planner.displayPath(path_configs);
 
 		return true;
 	}
