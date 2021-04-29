@@ -85,7 +85,7 @@ public:
 
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
 
-	double mUnitEdgeLength = 0.0625;
+	double mUnitEdgeLength = 0.04;
 
 	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config)
 		: mImage(img)
@@ -850,10 +850,10 @@ public:
 			auto solve_stop = high_resolution_clock::now();
 			mPlanningTime += (solve_stop - solve_start);
 
-			std::cout<<"Press [ENTER] to display path: ";
-			std::cin.get();
-			displayPath(path_configs);
-
+			// std::cout<<"Press [ENTER] to display path: ";
+			// std::cin.get();
+			// displayPath(path_configs);
+			printStats();
 			return collision_free_path;
 		}
 
