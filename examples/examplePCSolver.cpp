@@ -24,8 +24,7 @@ using namespace std::chrono;
 #include <opencv2/highgui/highgui.hpp>
 
 // Custom header files
-#include "CMAPF/PCSolver.hpp"
-#include "CMAPF/PCDefinitions.hpp"
+#include "CMAPF/CBS.hpp"
 
 using namespace boost;
 using namespace CMAPF;
@@ -278,7 +277,7 @@ int main(int argc, char *argv[])
 {
 	Pair edge_array[4] = { Pair(0,1), Pair(1,4), Pair(1, 3), Pair(2, 3) };
 		
-	PrecedenceConstraintGraph G(12);
+	PrecedenceConstraintGraph G(5);
 
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 		
@@ -298,53 +297,27 @@ int main(int argc, char *argv[])
 		add_edge(edge_array[i].first, edge_array[i].second, G);
 
 	int numAgents = 3;
-	int numTasks = 5;
 
 	Eigen::VectorXd init_config(2*numAgents);
 	init_config << eps*1, eps*1, eps*4, eps*1, eps*3, eps*1;
 
-	std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list(numAgents);
-	std::vector< PCVertex > c;
-	topological_sort(G, std::back_inserter(c));
+	// Space Information
+	// cv::Mat image = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
+	cv::Mat image = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
+	std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
 
-	for ( std::vector< PCVertex >::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
-	{
-		// std::cout << std::endl;
-		meta_data vertex = get(name, *ii);
-
-		int task_id = vertex.task_id;
-		// std::cout << task_id << std::endl;
-
-		Eigen::VectorXd start_config(2);
-		start_config[0] = vertex.start.first;
-		start_config[1] = vertex.start.second;
-
-		Eigen::VectorXd goal_config(2);
-		goal_config[0] = vertex.goal.first;
-		goal_config[1] = vertex.goal.second;
-
-		std::vector <int> agent_list = vertex.agent_list;
-		for (auto agentNum: agent_list){
-			// std::cout << agentNum << std::endl;
-			_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
-		}
-		// std::cout << std::endl;
-	}
-
-	std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(5);
-
-	_tasks_to_agents_list[0] = std::vector<std::pair<int,int>>(1,std::make_pair(0,0));
-	_tasks_to_agents_list[1] = std::vector<std::pair<int,int>>{std::make_pair(0,1),std::make_pair(1,0)};
-	_tasks_to_agents_list[2] = std::vector<std::pair<int,int>>(1,std::make_pair(2,0));
-	_tasks_to_agents_list[3] = std::vector<std::pair<int,int>>{std::make_pair(1,1),std::make_pair(2,1)};
-	_tasks_to_agents_list[4] = std::vector<std::pair<int,int>>(1,std::make_pair(0,2));
-
-	PCSolver p;
+	std::vector<std::string> graph_files;
+	for(int agent_id=0; agent_id<numAgents;agent_id++)
+		graph_files.push_back(graph_file);
+	
+	// Setup planner
+	CBS planner(G,image,numAgents,graph_files,init_config);
 
 	auto start = high_resolution_clock::now();
-	p.solve(init_config, _tasks_list,_tasks_to_agents_list);
+	std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 	auto stop = high_resolution_clock::now();
 	std::chrono::duration<double, std::micro> dur = (stop - start);
+	planner.printStats();
 	std::cout << dur.count()/1000000.0 << std::endl;
 	return 0;	
 }
