@@ -39,7 +39,8 @@ using namespace std::chrono;
 #define INF std::numeric_limits<double>::infinity()
 
 #define PRINT if (cerr_disabled) {} else std::cout
-bool cerr_disabled = false;
+#define DEBUG if (cerr_disabled) {} else 
+bool cerr_disabled = true;
 
 namespace CMAPF {
 
@@ -153,8 +154,8 @@ public:
 			mSpecialPosition.push_back(special_positions);
 		}
 
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			preprocess_graph(mGraphs[agent_id]);
+		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		preprocess_graph(mGraphs[0]);
 	}
 
 	void printStats()
@@ -247,14 +248,27 @@ public:
 
 	bool getCollisionConstraints(std::vector<std::vector<SearchState>> &paths, std::vector<int> &agent_id_1, CollisionConstraint &constraint_1, std::vector<int> &agent_id_2, CollisionConstraint &constraint_2)
 	{
+		// task paths - vector of task_id, start_timestep, goal_timestep, 
+
+		// std::vector<std::vector<std::pair<int,std::pair<<std::pair<int,int>,std::vector<Vertex>>>>> carry_paths(mTasksToAgentsList.size());
+		// std::vector<std::vector<std::pair<int,std::vector<Vertex>>>> go_paths;
+		
+		// for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
+		// {
+		// 	std::vector<Vertex> current_path;
+		// 	for(int i=0; i<paths[agent_id].size(); i++)
+		// 	{
+
+		// 	}
+		// }
+
+
 		int current_timestep = 0;
 		int maximum_timestep = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;
 		std::vector<int> current_path_id(mNumAgents, 0);
-		// std::vector<bool> waiting(mNumAgents, false);
-		std::vector<int> previous_task_ids(mNumAgents, -1);
 		while(current_timestep < maximum_timestep)
 		{
 			// std::cout<<"\nCT:"<<current_timestep<<std::endl;
@@ -282,7 +296,7 @@ public:
 					source_vertices[agent_id] = paths[agent_id].at(current_path_id[agent_id]).vertex;
 					while(current_path_id[agent_id] < paths[agent_id].size()
 						&& paths[agent_id].at(current_path_id[agent_id]).timestep == current_timestep)
-					{
+					{ // more than one timestep means that you are either picking up at source, or delivering
 						if(paths[agent_id].at(current_path_id[agent_id]).in_delivery == true)
 							source_task_ids[agent_id] = mTasksList[agent_id][paths[agent_id].at(current_path_id[agent_id]).tasks_completed].first;
 						source_tasks_completed[agent_id] = paths[agent_id].at(current_path_id[agent_id]).tasks_completed;
@@ -312,19 +326,6 @@ public:
 						target_path_id++;
 					}
 				}
-
-				if(previous_task_ids[agent_id]!=-1) // agent has waited the previous step
-				{
-					source_task_ids[agent_id]=previous_task_ids[agent_id];
-				}
-
-				if(source_vertices[agent_id] == target_vertices[agent_id])
-				{
-					previous_task_ids[agent_id] = source_task_ids[agent_id];
-					target_task_ids[agent_id] = source_task_ids[agent_id];
-				}
-				else
-					previous_task_ids[agent_id] = -1;
 			}
 
 			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -347,25 +348,50 @@ public:
 					PRINT<<"Checking between agents: "<<i<<" "<<j<<std::endl;
 					if(getVerticesCollisionStatus(mGraphs[i][target_vertices[i]].state, mGraphs[j][target_vertices[j]].state))
 					{
-						PRINT<<"vertex conflict!"<<std::endl;
-						if(target_task_ids[i]==-1)
-							agent_id_1.push_back(i);
+						bool safe_i = false;
+						bool safe_j = false;
+						if(target_in_delivery[i] == false)
+						{
+							if(target_tasks_completed[i] == 0)
+								safe_i = (mStartVertex[i] == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i]);
+							else
+								safe_i = (mTasksList[i][target_tasks_completed[i]-1].second.second == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i]);
+						}
 						else
-							for(int k=0; k<mNumAgents; k++)
-								if(target_task_ids[k] == target_task_ids[i])
-									agent_id_1.push_back(k);
-
-						if(target_task_ids[j]==-1)
-							agent_id_2.push_back(j);
+							safe_i = (mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.second == target_vertices[i]);
+						
+						if(target_in_delivery[j] == false)
+						{
+							if(target_tasks_completed[j] == 0)
+								safe_j = (mStartVertex[j] == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j]);
+							else
+								safe_j = (mTasksList[j][target_tasks_completed[j]-1].second.second == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j]);
+						}
 						else
-							for(int k=0; k<mNumAgents; k++)
-								if(target_task_ids[k] == target_task_ids[j])
-									agent_id_2.push_back(k);
+							safe_j = (mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.second == target_vertices[j]);
+						
+						if(safe_i == false || safe_j == false)
+						{
+							PRINT<<"vertex conflict!"<<std::endl;
+							if(target_task_ids[i]==-1)
+								agent_id_1.push_back(i);
+							else
+								for(int k=0; k<mNumAgents; k++)
+									if(target_task_ids[k] == target_task_ids[i])
+										agent_id_1.push_back(k);
 
-						constraint_1 = CollisionConstraint(target_vertices[i], target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
-						constraint_2 = CollisionConstraint(target_vertices[j], target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
+							if(target_task_ids[j]==-1)
+								agent_id_2.push_back(j);
+							else
+								for(int k=0; k<mNumAgents; k++)
+									if(target_task_ids[k] == target_task_ids[j])
+										agent_id_2.push_back(k);
 
-						return true;
+							constraint_1 = CollisionConstraint(target_vertices[i], target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
+							constraint_2 = CollisionConstraint(target_vertices[j], target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
+
+							return true;
+						}
 					}
 				}
 				
@@ -488,7 +514,7 @@ public:
 							<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
 					PRINT<<std::endl;
 				}
-				std::cin.get();
+				DEBUG std::cin.get();
 				// break;
 			}
 
@@ -756,9 +782,9 @@ public:
 			auto solve_stop = high_resolution_clock::now();
 			mPlanningTime += (solve_stop - solve_start);
 
-			std::cout<<"Press [ENTER] to display path: ";
-			std::cin.get();
-			displayPath(path_configs);
+			// std::cout<<"Press [ENTER] to display path: ";
+			// std::cin.get();
+			// displayPath(path_configs);
 
 			return collision_free_path;
 		}
