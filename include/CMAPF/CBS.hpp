@@ -166,16 +166,23 @@ public:
 			for(int i=0; i<agent_ids.size(); i++)
 			for(int j=i+1; j<agent_ids.size(); j++)
 			{
-				// if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state))
-				// {
-				//  agent_id_1 = agent_ids[i];
-				//  agent_id_2 = agent_ids[j];
+				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state))
+				{
+				 agent_id_1 = agent_ids[i];
+				 agent_id_2 = agent_ids[j];
 
-				//  constraint_1 = Constraint(source_vertices[i],timeStep);
-				//  constraint_2 = Constraint(source_vertices[j],timeStep);
+				 bool agent_1_at_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == source_vertices[i];
+				 bool agent_2_at_goal = paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == source_vertices[j];
 
-				//  return true;    
-				// }
+				 if(  (agent_1_at_goal && agent_2_at_goal )  && (target_vertices[i]!=source_vertices[i] || target_vertices[j]!=source_vertices[j])   ){
+						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
+						constraint_1 = Constraint(edge_1,timeStep+1);
+
+						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[agent_ids[j]]).first;
+						constraint_2 = Constraint(edge_2,timeStep+1);
+						return true;
+					} 
+				}
 
 				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, mGraphs[agent_ids[j]][target_vertices[j]].state))
 				{
@@ -185,7 +192,7 @@ public:
 					bool agent_1_at_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					bool agent_2_at_goal = paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == target_vertices[j];
 
-					if( !(  (  mGoalTimestep[agent_id_1] == mGoalTimestep[agent_id_2] && agent_1_at_goal && agent_2_at_goal ) )  ){
+					if( !(  (agent_1_at_goal && agent_2_at_goal ) )  ){
 						constraint_1 = Constraint(target_vertices[i],timeStep+1);
 						constraint_2 = Constraint(target_vertices[j],timeStep+1);
 						return true;
