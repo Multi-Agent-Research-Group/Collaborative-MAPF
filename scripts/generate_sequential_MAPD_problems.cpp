@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 					{
 						numTasks = task_distribution(generator);
 					} while (numTasks <= 0);
-					num_edges += 2*numTasks-2;
+					num_edges += 2*numTasks-1;
 					cbs_num_edges += numTasks-1;
 					int begin_vertex_index;
 					Vertex begin_vertex;
