@@ -240,7 +240,8 @@ int main(int argc, char *argv[])
 	std::normal_distribution<double> agent_distribution(5.0,2.0);
 	std::normal_distribution<double> task_distribution(3.0,2.0);
 
-	std::string other_planning_problems_file = planning_problems_file + "CCBS_test_set/";
+	std::string CBS_planning_problems_file = planning_problems_file + "CBS/";
+	std::string ICTS_planning_problems_file = planning_problems_file + "ICTS/";
 	int id=0;
 	// for(int obstacle_no=0; obstacle_no<10; obstacle_no++)
 	int obstacle_no=0;
@@ -257,8 +258,6 @@ int main(int argc, char *argv[])
 			int count = 0;
 			while (count < 10)
 			{
-				std::ofstream file_stream;
-				file_stream.open (planning_problems_file + std::to_string(count) + ".txt");
 				count++;
 				bool validProblem = true;
 				int numAgents;
@@ -270,9 +269,17 @@ int main(int argc, char *argv[])
 				std::vector<int> taken_vertices;
 				std::vector<std::pair<int,int>> agent_inits;
 				std::vector<std::pair<int,std::pair<std::pair<int,int>,std::pair<int,int>>>> tasks;
+				std::vector<std::pair<int,int>> task_times;
+				std::vector<int> task_slack;
+				std::vector<int> consider_slack;
 				std::vector<std::pair<int,int>> task_edges;
 				int global_task_id=0;
 				int num_edges=0;
+
+				std::vector<std::pair<int,std::pair<std::pair<int,int>,std::pair<int,int>>>> cbs_tasks;
+				std::vector<std::pair<int,int>> cbs_task_edges;
+				int cbs_global_task_id=0;
+				int cbs_num_edges=0;
 
 				for(int agent_id=0; agent_id<numAgents; agent_id++)
 				{
@@ -281,7 +288,8 @@ int main(int argc, char *argv[])
 					{
 						numTasks = task_distribution(generator);
 					} while (numTasks <= 0);
-					num_edges += numTasks-1;
+					num_edges += 2*numTasks-2;
+					cbs_num_edges += numTasks-1;
 					int begin_vertex_index;
 					Vertex begin_vertex;
 					while(true)
@@ -297,6 +305,7 @@ int main(int argc, char *argv[])
 					int init_x = (graph[begin_vertex].state[0]+0.0001)/0.04;
 					int init_y = (graph[begin_vertex].state[1]+0.0001)/0.04;
 					agent_inits.push_back(std::make_pair(init_x,init_y));
+					int start_time = 0;
 					for(int task_id=0; task_id<numTasks; task_id++)
 					{
 						bool noPath = true;
@@ -347,16 +356,44 @@ int main(int argc, char *argv[])
 
 							noPath = false;
 
+							int begin_x = (graph[begin_vertex].state[0]+0.0001)/0.04;
+							int begin_y = (graph[begin_vertex].state[1]+0.0001)/0.04;
+
 							int start_x = (graph[start_vertex].state[0]+0.0001)/0.04;
 							int start_y = (graph[start_vertex].state[1]+0.0001)/0.04;
 
 							int goal_x = (graph[goal_vertex].state[0]+0.0001)/0.04;
 							int goal_y = (graph[goal_vertex].state[1]+0.0001)/0.04;
 
+							tasks.push_back(std::make_pair(agent_id,std::make_pair(std::make_pair(begin_x,begin_y),std::make_pair(start_x,start_y))));
+							task_times.push_back(std::make_pair(start_time,start_time + go_path.size() - 1 ));
+							task_slack.push_back(0);
 							tasks.push_back(std::make_pair(agent_id,std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y))));
+							start_time += go_path.size() - 1;
+							task_times.push_back(std::make_pair(start_time,start_time + carry_path.size() - 1 ));
+							task_slack.push_back(0);
+							start_time += carry_path.size() - 1;
+
+							if(task_id == numTasks-1) // last task for agent
+							{
+								consider_slack.push_back(task_times.size()-1);
+							}
 							if(task_id!=0)
+							{
 								task_edges.push_back(std::make_pair(global_task_id-1,global_task_id));
-							global_task_id++;
+								task_edges.push_back(std::make_pair(global_task_id,global_task_id+1));
+							}
+							else
+								task_edges.push_back(std::make_pair(global_task_id,global_task_id+1));	
+							global_task_id += 2;
+
+							cbs_tasks.push_back(std::make_pair(agent_id,std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y))));
+							if(task_id!=0)
+								cbs_task_edges.push_back(std::make_pair(cbs_global_task_id-1,cbs_global_task_id));
+							cbs_global_task_id++;
+
+
+							begin_vertex = goal_vertex;
 							break;
 						}
 
@@ -373,28 +410,69 @@ int main(int argc, char *argv[])
 
 				if(validProblem)
 				{	
-					std::cout<<"valid problem!!";
-					file_stream << std::to_string(global_task_id) + " ";
-					file_stream << std::to_string(num_edges) + "\n\n";
-					file_stream << std::to_string(0.04) + "\n\n";
-					file_stream << std::to_string(1) + " ";
-					file_stream << std::to_string(numAgents) + "\n\n";
-					for(int i=0; i<agent_inits.size(); i++)
-						file_stream<<std::to_string(agent_inits[i].first) + " " + 
-							std::to_string(agent_inits[i].second) + "\n";
-					file_stream <<"\n";
-					for(int i=0; i<task_edges.size(); i++)
-						file_stream<<std::to_string(task_edges[i].first) + " " + 
-							std::to_string(task_edges[i].second) + "\n";
-					file_stream <<"\n";
-					for(int i=0; i<tasks.size(); i++)
 					{
-						file_stream << tasks[i].second.first.first <<" ";
-						file_stream << tasks[i].second.first.second <<" ";
-						file_stream << tasks[i].second.second.first <<" ";
-						file_stream << tasks[i].second.second.second <<"\n";
-						file_stream << 1 <<" "<< tasks[i].first<<"\n";
-						file_stream << i <<"\n\n";
+						std::ofstream file_stream;
+						file_stream.open (CBS_planning_problems_file + std::to_string(count) + ".txt");
+				
+						std::cout<<"valid problem!!";
+						file_stream << std::to_string(cbs_global_task_id) + " ";
+						file_stream << std::to_string(cbs_num_edges) + "\n\n";
+						file_stream << std::to_string(0.04) + "\n\n";
+						file_stream << std::to_string(1) + " ";
+						file_stream << std::to_string(numAgents) + "\n\n";
+						for(int i=0; i<agent_inits.size(); i++)
+							file_stream<<std::to_string(agent_inits[i].first) + " " + 
+								std::to_string(agent_inits[i].second) + "\n";
+						file_stream <<"\n";
+						for(int i=0; i<cbs_task_edges.size(); i++)
+							file_stream<<std::to_string(cbs_task_edges[i].first) + " " + 
+								std::to_string(cbs_task_edges[i].second) + "\n";
+						file_stream <<"\n";
+						for(int i=0; i<cbs_tasks.size(); i++)
+						{
+							file_stream << cbs_tasks[i].second.first.first <<" ";
+							file_stream << cbs_tasks[i].second.first.second <<" ";
+							file_stream << cbs_tasks[i].second.second.first <<" ";
+							file_stream << cbs_tasks[i].second.second.second <<"\n";
+							file_stream << 1 <<" "<< cbs_tasks[i].first<<"\n";
+							file_stream << i <<"\n\n";
+						}
+						file_stream.close();
+					}
+					{
+						std::ofstream file_stream;
+						file_stream.open (ICTS_planning_problems_file + std::to_string(count) + ".txt");
+				
+						int first_cost = 0;
+						for(int i=0; i<consider_slack.size(); i++)
+							first_cost = std::max(first_cost,task_times[consider_slack[i]].second);
+						for(int i=0; i<consider_slack.size(); i++)
+							task_slack[consider_slack[i]] = first_cost - task_times[consider_slack[i]].second;
+
+						std::cout<<"valid problem!!";
+						file_stream << std::to_string(global_task_id) + " ";
+						file_stream << std::to_string(num_edges) + "\n\n";
+						file_stream << std::to_string(0.04) + "\n\n";
+						file_stream << std::to_string(1) + " ";
+						file_stream << std::to_string(numAgents) + "\n\n";
+						// for(int i=0; i<agent_inits.size(); i++)
+						// 	file_stream<<std::to_string(agent_inits[i].first) + " " + 
+						// 		std::to_string(agent_inits[i].second) + "\n";
+						// file_stream <<"\n";
+						for(int i=0; i<task_edges.size(); i++)
+							file_stream<<std::to_string(task_edges[i].first) + " " + 
+								std::to_string(task_edges[i].second) + "\n";
+						file_stream <<"\n";
+						for(int i=0; i<tasks.size(); i++)
+						{
+							file_stream << tasks[i].second.first.first <<" ";
+							file_stream << tasks[i].second.first.second <<" ";
+							file_stream << tasks[i].second.second.first <<" ";
+							file_stream << tasks[i].second.second.second <<"\n";
+							file_stream << 1 <<" "<< tasks[i].first<<"\n";
+							file_stream << task_times[i].first<<" "<<task_times[i].second <<" "<<task_slack[i]<<"\n\n";
+						}
+						file_stream.close();
 					}
 
 					// {
@@ -410,8 +488,6 @@ int main(int argc, char *argv[])
 					//     gggg.close();
 					// }
 				}
-
-				file_stream.close();
 			}
 		}
 	}
