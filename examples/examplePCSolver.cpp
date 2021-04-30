@@ -67,11 +67,11 @@ int main(int argc, char *argv[])
 
 	int num_agents; cin >> num_agents;
 	int num_edges; cin >> num_edges;
-	std::cout << num_agents << std::endl;
-	std::cout << num_edges << std::endl;
+	// std::cout << num_agents << std::endl;
+	// std::cout << num_edges << std::endl;
 
 	double eps; cin >> eps;
-	std::cout << eps << std::endl;
+	// std::cout << eps << std::endl;
 
 	int max_iter, num_robots; cin >> max_iter >> num_robots;
 
@@ -119,16 +119,17 @@ int main(int argc, char *argv[])
 		graph_files.push_back(graph_file_name);
 	
 	// Setup planner
-	std::cerr<<"setup!";
+	// std::cerr<<"setup!";
 	CBS planner(G,image,num_robots,graph_files,init_config);
 
 	auto start = high_resolution_clock::now();
-	std::cerr<<"calling solve!";
+	// std::cerr<<"calling solve!";
 	std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 	auto stop = high_resolution_clock::now();
 	std::chrono::duration<double, std::micro> dur = (stop - start);
+	// std::cout<<path.size()-1<<" ";
 	planner.printStats();
-	std::cout << dur.count()/1000000.0 << std::endl;
+	// std::cout << dur.count()/1000000.0 << std::endl;
 	return 0;
 	// std::cout << count << std::endl;
 }
