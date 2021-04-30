@@ -237,8 +237,8 @@ int main(int argc, char *argv[])
 		planning_problems_file = "/home/rajat/melodic_ws/src/CMAPF/data/planning_problems/";
 
 	std::default_random_engine generator;
-	std::normal_distribution<double> agent_distribution(5.0,2.0);
-	std::normal_distribution<double> task_distribution(3.0,2.0);
+	// std::normal_distribution<double> agent_distribution(5.0,2.0);
+	// std::normal_distribution<double> task_distribution(3.0,2.0);
 
 	std::string CBS_planning_problems_file = planning_problems_file + "CBS/";
 	std::string ICTS_planning_problems_file = planning_problems_file + "ICTS/";
@@ -256,15 +256,15 @@ int main(int argc, char *argv[])
 			create_edges(graph,get(&EProp::length,graph));
 
 			int count = 0;
-			while (count < 10)
+			while (count < 100)
 			{
 				count++;
 				bool validProblem = true;
-				int numAgents;
-				do
-				{
-					numAgents = agent_distribution(generator);
-				} while (numAgents <= 0);
+				int numAgents = 6;
+				// do
+				// {
+				// 	numAgents = agent_distribution(generator);
+				// } while (numAgents <= 0);
 
 				std::vector<int> taken_vertices;
 				std::vector<std::pair<int,int>> agent_inits;
@@ -283,11 +283,11 @@ int main(int argc, char *argv[])
 
 				for(int agent_id=0; agent_id<numAgents; agent_id++)
 				{
-					int numTasks;
-					do
-					{
-						numTasks = task_distribution(generator);
-					} while (numTasks <= 0);
+					int numTasks = 5;
+					// do
+					// {
+					// 	numTasks = task_distribution(generator);
+					// } while (numTasks <= 0);
 					num_edges += 2*numTasks-1;
 					cbs_num_edges += numTasks-1;
 					int begin_vertex_index;
@@ -302,8 +302,8 @@ int main(int argc, char *argv[])
 								continue;
 						break;
 					}
-					int init_x = (graph[begin_vertex].state[0]+0.0001)/0.04;
-					int init_y = (graph[begin_vertex].state[1]+0.0001)/0.04;
+					int init_x = (graph[begin_vertex].state[0]+0.0001)/0.1;
+					int init_y = (graph[begin_vertex].state[1]+0.0001)/0.1;
 					agent_inits.push_back(std::make_pair(init_x,init_y));
 					int start_time = 0;
 					for(int task_id=0; task_id<numTasks; task_id++)
@@ -356,14 +356,14 @@ int main(int argc, char *argv[])
 
 							noPath = false;
 
-							int begin_x = (graph[begin_vertex].state[0]+0.0001)/0.04;
-							int begin_y = (graph[begin_vertex].state[1]+0.0001)/0.04;
+							int begin_x = (graph[begin_vertex].state[0]+0.0001)/0.1;
+							int begin_y = (graph[begin_vertex].state[1]+0.0001)/0.1;
 
-							int start_x = (graph[start_vertex].state[0]+0.0001)/0.04;
-							int start_y = (graph[start_vertex].state[1]+0.0001)/0.04;
+							int start_x = (graph[start_vertex].state[0]+0.0001)/0.1;
+							int start_y = (graph[start_vertex].state[1]+0.0001)/0.1;
 
-							int goal_x = (graph[goal_vertex].state[0]+0.0001)/0.04;
-							int goal_y = (graph[goal_vertex].state[1]+0.0001)/0.04;
+							int goal_x = (graph[goal_vertex].state[0]+0.0001)/0.1;
+							int goal_y = (graph[goal_vertex].state[1]+0.0001)/0.1;
 
 							tasks.push_back(std::make_pair(agent_id,std::make_pair(std::make_pair(begin_x,begin_y),std::make_pair(start_x,start_y))));
 							task_times.push_back(std::make_pair(start_time,start_time + go_path.size() - 1 ));
@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
 						std::cout<<"valid problem!!";
 						file_stream << std::to_string(cbs_global_task_id) + " ";
 						file_stream << std::to_string(cbs_num_edges) + "\n\n";
-						file_stream << std::to_string(0.04) + "\n\n";
+						file_stream << std::to_string(0.1) + "\n\n";
 						file_stream << std::to_string(1) + " ";
 						file_stream << std::to_string(numAgents) + "\n\n";
 						for(int i=0; i<agent_inits.size(); i++)
@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
 						std::cout<<"valid problem!!";
 						file_stream << std::to_string(global_task_id) + " ";
 						file_stream << std::to_string(num_edges) + "\n\n";
-						file_stream << std::to_string(0.04) + "\n\n";
+						file_stream << std::to_string(0.1) + "\n\n";
 						file_stream << std::to_string(1) + " ";
 						file_stream << std::to_string(numAgents) + "\n\n";
 						// for(int i=0; i<agent_inits.size(); i++)

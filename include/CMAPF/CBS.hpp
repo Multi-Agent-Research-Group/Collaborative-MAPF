@@ -60,6 +60,10 @@ public:
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
 
+	high_resolution_clock::time_point mSolveStartTime;
+
+	int mCBSIterations;
+
 	/// Environment
 	cv::Mat mImage;
 
@@ -85,7 +89,7 @@ public:
 
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config)
 		: mImage(img)
@@ -105,7 +109,7 @@ public:
 			meta_data vertex = get(get(meta_data_t(), _pcg), *ii);
 
 			int task_id = vertex.task_id;
-			std::cout << "Task id:"<<task_id << std::endl;
+			// std::cout << "Task id:"<<task_id << std::endl;
 
 			Eigen::VectorXd start_config(2);
 			start_config[0] = vertex.start.first;
@@ -194,12 +198,12 @@ public:
 
 	void printStats()
 	{
-		std::cout<<"Planning time: "<<mPlanningTime.count()/1000000.0<<std::endl;
-		std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
-		std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
-		std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
-		std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
-		std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
+		std::cout<<mPlanningTime.count()/1000000.0<<" "<<mCBSIterations<<std::endl;
+		// std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
 	}
 
 
@@ -470,6 +474,8 @@ public:
 
 	std::vector<std::vector<Eigen::VectorXd>> solve()
 	{
+		mCBSIterations = 0;
+		mSolveStartTime = high_resolution_clock::now();
 		auto solve_start = high_resolution_clock::now();
 		CBSPriorityQueue PQ(mNumAgents);
 
@@ -483,8 +489,11 @@ public:
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
+				auto solve_stop = high_resolution_clock::now();
+				mPlanningTime = (solve_stop - solve_start);
 				// std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
 				// std::cin.get();
+				std::cout<<0<<" ";
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
 		}
@@ -498,11 +507,22 @@ public:
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
+			mCBSIterations++;
 
 			auto start = high_resolution_clock::now();
 			Element p = PQ.pop();
 			auto stop = high_resolution_clock::now();
 			mQOTime += (stop - start);
+
+			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+
+			if (timespent.count() > 100000000)
+			{
+				auto solve_stop = high_resolution_clock::now();
+				mPlanningTime = (solve_stop - mSolveStartTime);
+				std::cout<<0<<" ";
+				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+			}
 			
 
 			// 
@@ -831,7 +851,7 @@ public:
 			// 	std::cout<<std::endl;
 			// }
 
-			PRINT<<"POPULATING PATH CONFIGS!"<<std::endl;
+			// PRINT<<"POPULATING PATH CONFIGS!"<<std::endl;
 
 			std::vector<Eigen::VectorXd> path_configs;
 
@@ -847,18 +867,18 @@ public:
 				path_configs.push_back(config);
 			}
 
-			std::cout<<"Path configs size: "<<path_configs.size()<<std::endl;
+			std::cout<<path_configs.size()<<" ";
 
 			auto solve_stop = high_resolution_clock::now();
-			mPlanningTime += (solve_stop - solve_start);
+			mPlanningTime = (solve_stop - solve_start);
 
-			std::cout<<"\nCBS numSearches: "<<numSearches<<std::endl;
+			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
 			// std::cout<<"Press [ENTER] to display path: ";
 			// std::cin.get();
 			// displayPath(path_configs);
-			printStats();
+			// printStats();
 			return collision_free_path;
 		}
 
@@ -1585,13 +1605,26 @@ public:
 			// if(current_timestep>100)
 			// 	continue;
 
-			if(numSearches%10000 == 0)
+			auto stop = high_resolution_clock::now();
+			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+
+			if (timespent.count() > 100000000)
 			{
-				std::cout<<"numSearches: "<<numSearches<<std::endl;
-				std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
-			<<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
-				std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
+				auto solve_stop = high_resolution_clock::now();
+				mPlanningTime = (solve_stop - mSolveStartTime);
+				costOut == INF;
+				auto stop1 = high_resolution_clock::now();
+				mCSPTime += (stop1 - start1);
+				return std::vector<SearchState>();
 			}
+
+			// if(numSearches%10000 == 0)
+			// {
+			// 	std::cout<<"numSearches: "<<numSearches<<std::endl;
+			// 	std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
+			// <<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
+			// 	std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
+			// }
 
 			
 
@@ -1796,7 +1829,7 @@ public:
 
 		if(costOut == INF)
 		{
-			PRINT<<"no path!"<<std::endl;
+			// PRINT<<"no path!"<<std::endl;
 			auto stop1 = high_resolution_clock::now();
 			mCSPTime += (stop1 - start1);
 			return std::vector<SearchState>();
