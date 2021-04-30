@@ -514,7 +514,7 @@ public:
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
@@ -544,7 +544,7 @@ public:
 
 					PRINT<<"Path: "<<std::endl;
 					for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
-						PRINT<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
+						PRINT<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<p.shortestPaths[agent_id][i].timestep
 							<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
 					PRINT<<std::endl;
 				}
@@ -763,7 +763,7 @@ public:
 
 			// {
 			// 	// std::cout<<PQ.PQsize()<<std::endl;
-			// 	std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/0.0625)<<std::endl;
+			// 	std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
 			// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			// 	{
 			// 		std::cout<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
@@ -779,7 +779,7 @@ public:
 
 			// 		std::cout<<"Path: "<<std::endl;
 			// 		for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
-			// 			std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/0.0625)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/0.0625)<<") "<<p.shortestPaths[agent_id][i].timestep
+			// 			std::cout<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<p.shortestPaths[agent_id][i].timestep
 			// 				<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
 			// 		std::cout<<std::endl;
 			// 	}
@@ -1040,56 +1040,35 @@ public:
 			}
 		} 
 
-		std::vector< std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> > tasks;
+		std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
+		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
+		{
+			int start_x = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[0]+0.0001)/mUnitEdgeLength);
+			int start_y = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[1]+0.0001)/mUnitEdgeLength);
 
-		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_4;
-		agent_tasks_4.push_back(std::make_pair(std::make_pair(5,2),std::make_pair(6,9)));
-		agent_tasks_4.push_back(std::make_pair(std::make_pair(6,10),std::make_pair(6,11)));
-		tasks.push_back(agent_tasks_4);
+			int goal_x = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[0]+0.0001)/mUnitEdgeLength);
+			int goal_y = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[1]+0.0001)/mUnitEdgeLength);
 
-		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_3;
-		agent_tasks_3.push_back(std::make_pair(std::make_pair(8,1),std::make_pair(6,7)));
-		agent_tasks_3.push_back(std::make_pair(std::make_pair(6,8),std::make_pair(6,12)));
-		tasks.push_back(agent_tasks_3);
-
-		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_2;
-		agent_tasks_2.push_back(std::make_pair(std::make_pair(5,1),std::make_pair(6,5)));
-		agent_tasks_2.push_back(std::make_pair(std::make_pair(6,6),std::make_pair(6,13)));
-		tasks.push_back(agent_tasks_2);
-
-		std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> agent_tasks_1;
-		agent_tasks_1.push_back(std::make_pair(std::make_pair(8,4),std::make_pair(6,3)));
-		agent_tasks_1.push_back(std::make_pair(std::make_pair(6,4),std::make_pair(6,14)));
-		tasks.push_back(agent_tasks_1);
+			tasks.push_back(std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y)));
+		}
 
 		for(int i=0; i<tasks.size(); i++)
 		{
-			cv::Scalar col;
-			if(i==0) 
-				col = cv::Scalar(255,0,0);
-			else if(i==1) 
-				col = cv::Scalar(0,255,255);
-			else if(i==2) 
-				col = cv::Scalar(255,255,255);
-			else
-				col = cv::Scalar(0,0,255);
-			for(int j=0; j<tasks[i].size(); j++)
+			cv::Scalar col= cv::Scalar(0,150,255);
 			{
-				{
-					cv::Point uPoint((int)(tasks[i][j].first.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].first.second*0.0625)*numberOfRows)); 
-					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
-					cv::circle(image, uPoint, 7,  col, -1);
-					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-				}
+				cv::Point uPoint((int)(tasks[i].first.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].first.second*mUnitEdgeLength)*numberOfRows)); 
+				std::string text = "S" + std::to_string(i);
+				cv::circle(image, uPoint, 7,  col, -1);
+				cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+				cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+			}
 
-				{
-					cv::Point uPoint((int)(tasks[i][j].second.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].second.second*0.0625)*numberOfRows)); 
-					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
-					cv::circle(image, uPoint, 7, col, -1);
-					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-					cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-				}
+			{
+				cv::Point uPoint((int)(tasks[i].second.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].second.second*mUnitEdgeLength)*numberOfRows)); 
+				std::string text = "G" + std::to_string(i);
+				cv::circle(image, uPoint, 7, col, -1);
+				cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+				cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
 			}
 		}
 
@@ -1152,6 +1131,7 @@ public:
 			for (unsigned int i = 0; i < max_nStates-1; i++)
 			{
 				new_image = image.clone();
+				boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
 				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
 				{
 					Eigen::VectorXd intermediate_config(2);
@@ -1162,16 +1142,27 @@ public:
 
 					double x_point = intermediate_config[0]*numberOfColumns;
 					double y_point = (1 - intermediate_config[1])*numberOfRows;
-					cv::Point _Point((int)x_point, (int)y_point);
-					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-					int x = x_point - number_images[agent_id].cols/2;
-					int y = y_point - number_images[agent_id].rows/2;
-					double alpha = 1.0; // alpha in [0,1]
+					point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
+				}
 
-					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+				for(auto &element: point_to_agents)
+				{
+					cv::Point _Point(element.first.first, element.first.second);
+					int x_point = element.first.first;
+					int y_point = element.first.second;
 
-					for (int r = 0; r < roi.rows; ++r)
+					if(element.second.size() == 1)
+					{
+						int agent_id = element.second[0];
+						// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+						// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+						int x = x_point - number_images[agent_id].cols/2;
+						int y = y_point - number_images[agent_id].rows/2;
+						double alpha = 1.0; // alpha in [0,1]
+
+						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+						for (int r = 0; r < roi.rows; ++r)
 						for (int c = 0; c < roi.cols; ++c)
 						{
 							
@@ -1190,6 +1181,163 @@ public:
 								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
 							}
 						}
+					}
+					else if(element.second.size() == 2)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+					}
+					else if(element.second.size() == 3)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[2];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}						
+					}
 				}
 
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
@@ -1203,21 +1351,32 @@ public:
 			}
 			{
 				new_image = image.clone();
-				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-				{   
+				boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
+				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
+				{
 					double x_point = v[agent_id*2]*numberOfColumns;
 					double y_point = (1 - v[agent_id*2+1])*numberOfRows;
-					cv::Point _Point((int)x_point, (int)y_point);
-					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,255,0), 1);
-					int x = x_point - number_images[agent_id].cols/2;
-					int y = y_point - number_images[agent_id].rows/2;
-					double alpha = 1.0; // alpha in [0,1]
+					point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
+				}
 
-					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+				for(auto &element: point_to_agents)
+				{
+					cv::Point _Point(element.first.first, element.first.second);
+					int x_point = element.first.first;
+					int y_point = element.first.second;
 
-					for (int r = 0; r < roi.rows; ++r)
+					if(element.second.size() == 1)
+					{
+						int agent_id = element.second[0];
+						// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+						// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+						int x = x_point - number_images[agent_id].cols/2;
+						int y = y_point - number_images[agent_id].rows/2;
+						double alpha = 1.0; // alpha in [0,1]
+
+						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+						for (int r = 0; r < roi.rows; ++r)
 						for (int c = 0; c < roi.cols; ++c)
 						{
 							
@@ -1236,6 +1395,70 @@ public:
 								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
 							}
 						}
+					}
+					else if(element.second.size() == 2)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
+
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
+								
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
+								
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
+									
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+					}
 				}
 				
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
@@ -1272,20 +1495,20 @@ public:
 	{
 		// std::cout<<"Tasks assigned: "<<std::endl;
 		// for(int i=0; i<mTasksList[agent_id].size(); i++)
-		// 	std::cout<<mTasksList[agent_id][i].first<<" - ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[0]+0.001)/0.0625)<<", "
-		// 		<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[1]+0.001)/0.0625)<<")"
-		// 		<<" "<<" ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[0]+0.001)/0.0625)<<", "
-		// 			<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[1]+0.001)/0.0625)<<") "<<std::endl;
+		// 	std::cout<<mTasksList[agent_id][i].first<<" - ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[0]+0.001)/mUnitEdgeLength)<<", "
+		// 		<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[1]+0.001)/mUnitEdgeLength)<<")"
+		// 		<<" "<<" ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[0]+0.001)/mUnitEdgeLength)<<", "
+		// 			<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[1]+0.001)/mUnitEdgeLength)<<") "<<std::endl;
 		// std::cout<<std::endl;
 
-		// std::cout<<"Start position: ("<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[0]+0.001)/0.0625)<<", "
-		// 	<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[1]+0.001)/0.0625)<<")"<<std::endl;
+		// std::cout<<"Start position: ("<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[0]+0.001)/mUnitEdgeLength)<<", "
+		// 	<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
 
 		// std::cout<<"Special Positions: ";
 		// for(auto &node: mSpecialPosition[agent_id])
 		// {
-		// 	std::cout<<" ("<<int( (mGraphs[agent_id][node.first].state[0]+0.001)/0.0625)<<", "
-		// 	<<int( (mGraphs[agent_id][node.first].state[1]+0.001)/0.0625)<<") ";
+		// 	std::cout<<" ("<<int( (mGraphs[agent_id][node.first].state[0]+0.001)/mUnitEdgeLength)<<", "
+		// 	<<int( (mGraphs[agent_id][node.first].state[1]+0.001)/mUnitEdgeLength)<<") ";
 		// }
 		// std::cin.get();
 		// Graph graph = mGraphs[agent_id];
@@ -1342,8 +1565,8 @@ public:
 			if(numSearches%1000 == 0)
 			{
 				std::cout<<"numSearches: "<<numSearches<<std::endl;
-				std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/0.0625)<<", "
-			<<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/0.0625)<<")"<<std::endl;
+				std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
+			<<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
 				std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
 			}
 
@@ -1577,7 +1800,7 @@ public:
 
 		// std::cout<<"Path: ";
 		// for(int i=0; i<finalPath.size(); i++)
-		// 	std::cout<<" ("<<int( (graph[finalPath[i].vertex].state[0]+0.001)/0.0625)<<","<<int( (graph[finalPath[i].vertex].state[1]+0.001)/0.0625)<<") "<<finalPath[i].timestep<<" "<<finalPath[i].tasks_completed<<" "<<finalPath[i].in_delivery<<std::endl;
+		// 	std::cout<<" ("<<int( (graph[finalPath[i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (graph[finalPath[i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<finalPath[i].timestep<<" "<<finalPath[i].tasks_completed<<" "<<finalPath[i].in_delivery<<std::endl;
 		// std::cout<<std::endl;
 
 		auto stop1 = high_resolution_clock::now();
