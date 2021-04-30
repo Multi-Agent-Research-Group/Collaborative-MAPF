@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	po::options_description desc("Collaborative CBS Planner Options");
 	desc.add_options()
 			("help,h", "produce help message")
-			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_5.txt"), "Path to PC Graph Metadata File")
+			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_6.txt"), "Path to PC Graph Metadata File")
 			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
 			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
 	;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
 	std::string file_name(vm["file"].as<std::string>());
 	if (file_name == "")
-		file_name = "./src/CMAPF/data/sample_problems/test_5.txt";
+		file_name = "./src/CMAPF/data/sample_problems/test_6.txt";
 
 	std::string graph_file_name(vm["graph"].as<std::string>());
 	if (graph_file_name == "")
@@ -74,6 +74,16 @@ int main(int argc, char *argv[])
 	std::cout << eps << std::endl;
 
 	int max_iter, num_robots; cin >> max_iter >> num_robots;
+
+	Eigen::VectorXd init_config(2*num_robots);
+
+	for(int i=0; i<num_robots; i++)
+	{
+		int x,y;
+		cin>>x>>y;
+		init_config[i*2] = x*eps;
+		init_config[i*2+1] = y*eps;
+	}
 
 	Pair edge_array[num_edges];
 	for(int i=0; i<num_edges; i++){
@@ -102,9 +112,6 @@ int main(int argc, char *argv[])
   	for (int i = 0; i < num_edges; ++i)
 		add_edge(edge_array[i].first, edge_array[i].second, G);
 
-	Eigen::VectorXd init_config(2*num_robots);
-	init_config << eps*5, eps*2, eps*5, eps*1, eps*8, eps*1, eps*8, eps*4, eps*8, eps*5;
-
 	cv::Mat image = cv::imread(obstacle_file_name, 0);
 
 	std::vector<std::string> graph_files;
@@ -112,9 +119,11 @@ int main(int argc, char *argv[])
 		graph_files.push_back(graph_file_name);
 	
 	// Setup planner
+	std::cerr<<"setup!";
 	CBS planner(G,image,num_robots,graph_files,init_config);
 
 	auto start = high_resolution_clock::now();
+	std::cerr<<"calling solve!";
 	std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 	auto stop = high_resolution_clock::now();
 	std::chrono::duration<double, std::micro> dur = (stop - start);
