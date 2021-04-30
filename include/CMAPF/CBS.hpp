@@ -831,6 +831,8 @@ public:
 			// 	std::cout<<std::endl;
 			// }
 
+			PRINT<<"POPULATING PATH CONFIGS!"<<std::endl;
+
 			std::vector<Eigen::VectorXd> path_configs;
 
 			for(int i=0; i<collision_free_path[0].size(); i++)
@@ -841,7 +843,7 @@ public:
 					config[2*j]=collision_free_path[j][i][0];
 					config[2*j+1]=collision_free_path[j][i][1];
 				}
-				std::cout<<config[0]<<"-"<<config[1]<<" "<<config[2]<<"-"<<config[3]<<" "<<config[4]<<"-"<<config[5]<<std::endl;
+				// std::cout<<config[0]<<"-"<<config[1]<<" "<<config[2]<<"-"<<config[3]<<" "<<config[4]<<"-"<<config[5]<<std::endl;
 				path_configs.push_back(config);
 			}
 
@@ -849,6 +851,9 @@ public:
 
 			auto solve_stop = high_resolution_clock::now();
 			mPlanningTime += (solve_stop - solve_start);
+
+			std::cout<<"\nCBS numSearches: "<<numSearches<<std::endl;
+				
 
 			// std::cout<<"Press [ENTER] to display path: ";
 			// std::cin.get();
@@ -969,26 +974,23 @@ public:
 		int numberOfRows = image.rows;
 		int numberOfColumns = image.cols;
 
-		std::vector<cv::Mat4b> number_images(4);
+		
+
+		std::vector<cv::Mat4b> number_images(mNumAgents);
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
 			ss << "./src/CMAPF/data/viz/";
-			if(i==1)
-				ss << 3;
-			else if (i==2)
-				ss << 2;
-			else if(i==3)
-				ss<< 1;
-			else 
-				ss << 4;
+			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
 			double scale = 0.037;
-			if(i<3)
+			if(i!=0)
 				scale = 0.025;
 			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
 		}
+
+		
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
@@ -1012,6 +1014,8 @@ public:
 			}
 		}   
 
+		
+
 		// Get state count
 		int pathSize = path.size();
 
@@ -1028,6 +1032,8 @@ public:
 			}   
 		}
 
+		
+
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			VertexIter vi, vi_end;
@@ -1040,6 +1046,8 @@ public:
 			}
 		} 
 
+		
+
 		std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
 		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
 		{
@@ -1051,6 +1059,8 @@ public:
 
 			tasks.push_back(std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y)));
 		}
+
+		
 
 		for(int i=0; i<tasks.size(); i++)
 		{
@@ -1071,6 +1081,8 @@ public:
 				cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
 			}
 		}
+
+		
 
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
@@ -1099,11 +1111,14 @@ public:
 			}   
 		}
 
+		
+
 		bool firstTime = true;
 
 		cv::Mat new_image;
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
+			
 			Eigen::VectorXd u = path[i];
 			Eigen::VectorXd v = path[i+1];
 
@@ -1127,9 +1142,12 @@ public:
 					nStates[agent_id] = 2u;
 				max_nStates = std::max(max_nStates,nStates[agent_id]);
 			}
+
+			
 		
 			for (unsigned int i = 0; i < max_nStates-1; i++)
 			{
+				
 				new_image = image.clone();
 				boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
 				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
@@ -1143,6 +1161,7 @@ public:
 					double x_point = intermediate_config[0]*numberOfColumns;
 					double y_point = (1 - intermediate_config[1])*numberOfRows;
 					point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
+					// std::cerr<<x_point<<" "<<y_point<<std::endl;
 				}
 
 				for(auto &element: point_to_agents)
@@ -1160,8 +1179,12 @@ public:
 						int y = y_point - number_images[agent_id].rows/2;
 						double alpha = 1.0; // alpha in [0,1]
 
-						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+						// std::cout<<number_images[agent_id].rows<<std::endl;
 
+						// std::cerr<<"MK1 - "<<i<<"\n";
+						// std::cout<<x_point<<" "<<y_point<<"\n"<<x<<" "<<y<<"\n";
+						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+						// std::cerr<<"OUT - "<<i<<"\n";
 						for (int r = 0; r < roi.rows; ++r)
 						for (int c = 0; c < roi.cols; ++c)
 						{
@@ -1562,7 +1585,7 @@ public:
 			// if(current_timestep>100)
 			// 	continue;
 
-			if(numSearches%1000 == 0)
+			if(numSearches%10000 == 0)
 			{
 				std::cout<<"numSearches: "<<numSearches<<std::endl;
 				std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
