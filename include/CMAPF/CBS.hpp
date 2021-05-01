@@ -192,7 +192,11 @@ public:
 					bool agent_1_at_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					bool agent_2_at_goal = paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == target_vertices[j];
 
-					if( !(  (agent_1_at_goal && agent_2_at_goal ) )  ){
+					bool agent_1_at_start = paths[agent_id_1].at(0) == target_vertices[i];
+					bool agent_2_at_start = paths[agent_id_2].at(0) == target_vertices[j];
+
+					if( !(  (agent_1_at_goal && agent_2_at_goal ) ||
+						(agent_1_at_start && agent_2_at_start && source_vertices[i] == target_vertices[i])  ) ){
 						constraint_1 = Constraint(target_vertices[i],timeStep+1);
 						constraint_2 = Constraint(target_vertices[j],timeStep+1);
 						return true;
@@ -214,7 +218,7 @@ public:
 					bool agent_1_at_start = paths[agent_id_1].at(0) == target_vertices[i];
 					bool agent_2_at_start = paths[agent_id_2].at(0) == target_vertices[j];
 
-					if( !(  (agent_1_at_goal && agent_2_at_goal && target_vertices[i]==target_vertices[j] && source_vertices[i]==target_vertices[i]) ||
+					if( !(  (agent_1_at_goal && agent_2_at_goal && target_vertices[i]==target_vertices[j]) ||
 							(agent_1_at_start && agent_2_at_start && target_vertices[i]==target_vertices[j] && source_vertices[i]==target_vertices[i]) )  ){
 					Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
 					constraint_1 = Constraint(edge_1,timeStep+1);
