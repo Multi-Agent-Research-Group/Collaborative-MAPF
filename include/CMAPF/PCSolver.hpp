@@ -427,7 +427,7 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();
@@ -446,10 +446,10 @@ public:
 		}
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = numRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = numRobots;
+		planner.displayPath(path_configs);
 
 		return true;
 	}
