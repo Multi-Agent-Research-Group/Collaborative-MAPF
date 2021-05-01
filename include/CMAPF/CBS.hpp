@@ -208,16 +208,17 @@ public:
 					agent_id_1 = agent_ids[i];
 					agent_id_2 = agent_ids[j];
 
-					bool agent_1_at_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
-					bool agent_2_at_goal = paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == target_vertices[j];
+					// bool agent_1_target_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
+					// bool agent_1_source_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
+					
 
-					if( !(  (  mGoalTimestep[agent_id_1] == mGoalTimestep[agent_id_2] && agent_1_at_goal && agent_2_at_goal ) )  ){
+					// if( !(  (  mGoalTimestep[agent_id_1] == mGoalTimestep[agent_id_2] && agent_1_at_goal && agent_2_at_goal ) )  ){
 						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
 						constraint_1 = Constraint(edge_1,timeStep+1);
 
 						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[agent_ids[j]]).first;
 						constraint_2 = Constraint(edge_2,timeStep+1);
-					}
+					// }
 					return true;
 				}
 			}
@@ -467,23 +468,16 @@ public:
 		int numberOfRows = image.rows;
 		int numberOfColumns = image.cols;
 
-		std::vector<cv::Mat4b> number_images(4);
+		std::vector<cv::Mat4b> number_images(mNumAgents);
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
 			ss << "./src/CMAPF/data/viz/";
-			if(i==1)
-				ss << 3;
-			else if (i==2)
-				ss << 2;
-			else if(i==3)
-				ss<< 1;
-			else 
-				ss << 4;
+			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
 			double scale = 0.037;
-			if(i<3)
+			if(i!=0)
 				scale = 0.025;
 			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
 		}
