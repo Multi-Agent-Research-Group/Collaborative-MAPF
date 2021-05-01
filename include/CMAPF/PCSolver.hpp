@@ -58,6 +58,8 @@ public:
 	std::chrono::duration<double, std::micro> mPreprocessTime ;
 	std::chrono::duration<double, std::micro> mPlanningTime;
 
+	high_resolution_clock::time_point mSolveStartTime;
+
 	cv::Mat mImage;
 
 	/// The fixed graphs denoting individual environment of corresponding agents
@@ -330,11 +332,24 @@ public:
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), mPCGraph);
 		PrecedenceConstraintGraph G_T;
 
+		mSolveStartTime = high_resolution_clock::now();
+		// std::cout<<"in solve!!"<<std::endl;
+
 		transpose_graph(mPCGraph, G_T);
 		for(int i=0; i<mMaxIter; i++){
 
 			if(generatePaths(mPCGraph, G_T, mTopologicalOrder, mTopologicalOrder.begin(), mNumAgents, mNumRobots)){
+				std::cout <<mCount<<" ";
 				return true;
+			}
+
+			// std::cout<<i<<std::endl;
+			auto stop = high_resolution_clock::now();
+			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+			if (timespent.count() > 100000000)
+			{
+				std::cout<<"0 ";
+				break;
 			}
 
 			PCVertexIter v, vend;
@@ -358,13 +373,14 @@ public:
 
 		}
 		
+		std::cout <<mCount<<" ";
 		return false;
 	}
 
 	bool checkpathpossible(PrecedenceConstraintGraph &G, int &numAgents, int &numRobots)
 	{
 		mCount +=1;
-		std::cout << "PC Iteration: "<<mCount<<std::endl;
+		// std::cout << "PC Iteration: "<<mCount<<std::endl;
 
 		std::vector<int> startTimesteps;
 		std::vector<int> goalTimesteps;
@@ -408,10 +424,14 @@ public:
 			task_count++;
 		}
 
+		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
-			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+		{
+			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			path_cost = std::max(path_cost,(int)agent_paths[i].size());
+		}
 		// std::cin.get();
-
+		std::cout<<path_cost<<" ";
 		std::vector<Eigen::VectorXd> path_configs;
 
 		for(int i=0; i<agent_paths[0].size(); i++)
@@ -424,20 +444,30 @@ public:
 			}
 			path_configs.push_back(config);
 		}
-		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
+		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: \n";
-		std::cin.get();
-		planner.mNumAgents = numRobots;
-		planner.displayPath(path_configs);
+		// std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		// planner.mNumAgents = numRobots;
+		// planner.displayPath(path_configs);
 
 		return true;
 	}
 
-	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii, int &numAgents, int &numRobots){
+	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii, int &numAgents, int &numRobots)
+	{
+
+		auto stop = high_resolution_clock::now();
+		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+		if (timespent.count() > 100000000)
+		{
+			return false;
+		}
+
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name_t = get(meta_data_t(), G_T);
 			
+
 		if(c.rbegin().base()-1 == ii){
 			return checkpathpossible(G, numAgents, numRobots);
 		}

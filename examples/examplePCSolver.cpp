@@ -65,11 +65,11 @@ int main(int argc, char *argv[])
 
 	int num_agents; cin >> num_agents;
 	int num_edges; cin >> num_edges;
-	std::cout << num_agents << std::endl;
-	std::cout << num_edges << std::endl;
+	// std::cout << num_agents << std::endl;
+	// std::cout << num_edges << std::endl;
 
 	double eps; cin >> eps;
-	std::cout << eps << std::endl;
+	// std::cout << eps << std::endl;
 
 	int max_iter, num_robots; cin >> max_iter >> num_robots;
 
@@ -102,12 +102,12 @@ int main(int argc, char *argv[])
 
 
 	// std::cout << "hello\n"; std::cin.get();
-	auto start = high_resolution_clock::now();
 	PCSolver p(G, max_iter, num_agents, num_robots, graph_file_name, obstacle_file_name);
+	auto start = high_resolution_clock::now();
 	p.solve();
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<milliseconds>(stop - start);
-	std::cout << "Time Taken by the algorithm = " << duration.count() << " milli seconds" << std::endl;
+	std::cout << duration.count()/1000.0<< std::endl;
 
 	return 0;
 	// std::cout << count << std::endl;
