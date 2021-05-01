@@ -198,7 +198,7 @@ public:
 						return true;
 					}
 					else{
-						// std::cout << "same goal!\n";
+						std::cout << "same goal!\n";
 						continue;
 					}
 				}
@@ -255,7 +255,7 @@ public:
 			numSearches++;
 			if(numSearches == 100)
 			{
-				// std::cout<<"numSearches: "<<numSearches<<std::endl;
+				std::cout<<"numSearches: "<<numSearches<<std::endl;
 				break;
 			}
 			Element p = PQ.pop();
@@ -278,36 +278,36 @@ public:
 			{
 				std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
-				// std::cout<<" Path Cost: "<<total_cost<<std::endl;
+				std::cout<<" Path Cost: "<<total_cost<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
-					// std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
-					// std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
+					std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
+					std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
 					for(Vertex &nodes: p.shortestPaths[agent_id])
 					{
-						// std::cout<<mGraphs[agent_id][nodes].vertex_index<<"_"<<mGraphs[agent_id][nodes].state<<" ";
+						std::cout<<mGraphs[agent_id][nodes].vertex_index<<"_"<<mGraphs[agent_id][nodes].state<<" ";
 						collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes].state);
 					}
-					// std::cout<<std::endl;
+					std::cout<<std::endl;
 				}
 
 				return collision_free_path;
 
 			} 
 
-			// if(numSearches%100 == 0)
-			// {
-			// 	std::cout<<"numSearches"<<numSearches<<std::endl;
-			// 	if(constraint_1.constraint_type == 1)
-			// 		std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
-			// 			<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-			// 	else
-			// 	{
-			// 		std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-			// 			<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-			// 			<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-			// 	}
-			// }
+			if(numSearches%100 == 0)
+			{
+				std::cout<<"numSearches"<<numSearches<<std::endl;
+				if(constraint_1.constraint_type == 1)
+					std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
+				else
+				{
+					std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+						<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
+				}
+			}
 
 			// std::cout<<"K";std::cin.get();
 
