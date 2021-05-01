@@ -171,10 +171,12 @@ public:
 				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
 					start_vertex = *ind_vi;
 				for(int i=0; i<_tasks_list[agent_id].size(); i++)
+				{
 					if(_tasks_list[agent_id][i].second.first.isApprox(graph[*ind_vi].state))
 						mTasksList[agent_id][i].second.first = *ind_vi;
-					else if(_tasks_list[agent_id][i].second.second.isApprox(graph[*ind_vi].state))
+					if(_tasks_list[agent_id][i].second.second.isApprox(graph[*ind_vi].state))
 						mTasksList[agent_id][i].second.second = *ind_vi;
+				}
 			}
 
 			mGraphs.push_back(graph);
@@ -516,7 +518,7 @@ public:
 
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 100000000)
+			if (timespent.count() > 10000000)
 			{
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
@@ -1608,7 +1610,7 @@ public:
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 100000000)
+			if (timespent.count() > 10000000)
 			{
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
