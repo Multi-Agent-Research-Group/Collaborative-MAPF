@@ -79,15 +79,17 @@ int main(int argc, char *argv[])
 
 
 
-	std::normal_distribution<double> agent_distribution(2.0,0.0); // number of agents task will be distributed to
+	std::normal_distribution<double> agent_distribution(2.5,1.0); // number of agents task will be distributed to
+	int min_assign = 1;
+	int max_assign = 3;
 	int count = 0;
 	srand(unsigned(time(0)));
 	unsigned seed = 0;
 	while (count < 100)
 	{
 		count++;
-		int numAgents = 5;
-		int numTasks = 20;
+		int numAgents = 6;
+		int numTasks = 12;
 
 		std::vector<Vertex> vertex_list;
 
@@ -174,7 +176,7 @@ int main(int argc, char *argv[])
 			do
 			{
 				assign_num = agent_distribution(generator);
-			} while (assign_num <= 0 || assign_num > numAgents);
+			} while (assign_num < min_assign || assign_num > max_assign);
 
 			std::vector<int> agent_id_list;
 			for(int agent_id=0; agent_id<numAgents; agent_id++)
