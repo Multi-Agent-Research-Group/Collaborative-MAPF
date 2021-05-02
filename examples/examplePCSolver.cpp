@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
 		//Read Collaborating Agents
 		int num_colab; cin >> num_colab; vector < int > agent_list(num_colab);
 		for(int j=0; j<num_colab; j++) cin >> agent_list[j];
+
+		int start_time, goal_time;
+		cin>>start_time >>goal_time;
 		//Read Task Id
 		int task_id; cin >> task_id;
 
