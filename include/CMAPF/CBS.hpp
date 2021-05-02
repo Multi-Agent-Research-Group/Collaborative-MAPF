@@ -227,6 +227,7 @@ public:
 						&& ((source_vertices[j] == paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]))
 							|| source_vertices[j] == paths[agent_id_2].at(0)));
 
+
 					// bool agent_1_target_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					// bool agent_1_source_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					
