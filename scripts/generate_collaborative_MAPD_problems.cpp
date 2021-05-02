@@ -86,8 +86,8 @@ int main(int argc, char *argv[])
 	while (count < 100)
 	{
 		count++;
-		int numAgents = 3;
-		int numTasks = 6;
+		int numAgents = 10;
+		int numTasks = 30;
 
 		std::vector<Vertex> vertex_list;
 

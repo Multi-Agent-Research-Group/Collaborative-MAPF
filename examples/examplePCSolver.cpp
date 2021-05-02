@@ -94,6 +94,8 @@ int main(int argc, char *argv[])
 	PrecedenceConstraintGraph G(num_agents);
 
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type data = get(meta_data_t(), G);
+
+	std::vector<int> start_times;
 		
 	for(int i=0; i<num_agents; i++){
 		//Read Start Point
@@ -106,6 +108,7 @@ int main(int argc, char *argv[])
 
 		int start_time, goal_time;
 		cin>>start_time >>goal_time;
+		start_times.push_back(start_time);
 		//Read Task Id
 		int task_id; cin >> task_id;
 
@@ -123,7 +126,7 @@ int main(int argc, char *argv[])
 	
 	// Setup planner
 	// std::cerr<<"setup!";
-	CBS planner(G,image,num_robots,graph_files,init_config);
+	CBS planner(G,image,num_robots,graph_files,init_config,start_times);
 
 	auto start = high_resolution_clock::now();
 	// std::cerr<<"calling solve!";
