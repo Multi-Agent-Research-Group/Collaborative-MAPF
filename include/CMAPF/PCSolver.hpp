@@ -86,7 +86,7 @@ public:
 	PrecedenceConstraintGraph &mPCGraph;
 	int mMaxIter;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
 		: mPCGraph(G)
@@ -173,7 +173,8 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			preprocess_graph(mGraphs[agent_id], mGoalVertex[agent_id]);
 
-		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
+		// std::cout << "PC Iteration: "<<mCount<<std::endl; 
+		// std::cin.get();
 
 		// ICTS(mPCGraph, mMaxIter, mNumAgents, mNumRobots);
 	}
@@ -433,7 +434,7 @@ public:
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, mGraphs, mStartVertex, mGoalVertex, stationary_agents);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
-		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
+		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
 		// std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
