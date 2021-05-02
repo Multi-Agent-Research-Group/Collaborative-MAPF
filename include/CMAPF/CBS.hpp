@@ -70,6 +70,8 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
+	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
+
 	int mHashUsed = 0;
 	int mNotHashUsed = 0;
 	int total_time = 0;
@@ -77,7 +79,8 @@ public:
 	double mUnitEdgeLength = 0.04;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex)
+		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
@@ -87,7 +90,8 @@ public:
 		, mGoalConfig(goalConfig)
 		, mGraphs(graphs)
 		, mStartVertex(startVertex)
-		, mGoalVertex(goalVertex) {}
+		, mGoalVertex(goalVertex) 
+		, mStationaryAgents(stationaryAgents){}
 
 	std::vector< std::vector<Vertex> > computeDecoupledPaths(std::vector<std::vector<Constraint>> constraints, std::vector<double> &costs)
 	{
@@ -189,18 +193,21 @@ public:
 					agent_id_1 = agent_ids[i];
 					agent_id_2 = agent_ids[j];
 
-					bool agent_1_at_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
-					bool agent_2_at_goal = paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == target_vertices[j];
+					bool agent_1_safe = ((paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i])
+						|| (paths[agent_id_1].at(0) == target_vertices[i]));
+					bool agent_2_safe = ((paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]) == target_vertices[j])
+						|| (paths[agent_id_2].at(0) == target_vertices[j]));
 
-					if( !(  (agent_1_at_goal && agent_2_at_goal ) )  ){
+					if( !agent_1_safe || !agent_2_safe )
+					{
 						constraint_1 = Constraint(target_vertices[i],timeStep+1);
 						constraint_2 = Constraint(target_vertices[j],timeStep+1);
 						return true;
 					}
-					else{
-						std::cout << "same goal!\n";
-						continue;
-					}
+					// else{
+					// 	std::cout << "same goal!\n";
+					// 	continue;
+					// }
 				}
 				
 				if(getEdgesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[i]][target_vertices[i]].state, mGraphs[agent_ids[j]][source_vertices[j]].state, mGraphs[agent_ids[j]][target_vertices[j]].state))
@@ -208,18 +215,116 @@ public:
 					agent_id_1 = agent_ids[i];
 					agent_id_2 = agent_ids[j];
 
+					bool agent_1_safe = ((source_vertices[i] == target_vertices[i])
+						&& ((source_vertices[i] == paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]))
+							|| source_vertices[i] == paths[agent_id_1].at(0)));
+
+					bool agent_2_safe = ((source_vertices[j] == target_vertices[j])
+						&& ((source_vertices[j] == paths[agent_id_2].at(mGoalTimestep[agent_id_2]-mStartTimestep[agent_id_2]))
+							|| source_vertices[j] == paths[agent_id_2].at(0)));
+
 					// bool agent_1_target_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					// bool agent_1_source_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
 					
 
-					// if( !(  (  mGoalTimestep[agent_id_1] == mGoalTimestep[agent_id_2] && agent_1_at_goal && agent_2_at_goal ) )  ){
+					if(!agent_1_safe || !agent_2_safe)
+					{
 						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
 						constraint_1 = Constraint(edge_1,timeStep+1);
 
 						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[agent_ids[j]]).first;
 						constraint_2 = Constraint(edge_2,timeStep+1);
-					// }
-					return true;
+						return true;
+					}
+				}
+			}
+			
+			timeStep++;
+		}
+		return false;
+	}
+
+	bool checkStationaryCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1)
+	{
+		int timeStep = 0;
+		int maximum_timestep = 0;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
+		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
+		while(timeStep < maximum_timestep)
+		{
+			std::vector<Vertex> source_vertices;
+			std::vector<Vertex> target_vertices;
+			std::vector<int> agent_ids;
+
+			std::vector<int> s_ids;
+
+			// std::cout<<mStartTimestep.size()<<" "<<mGoalTimestep.size()<<std::endl;
+			// std::cin.get();
+			
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				if( timeStep - mStartTimestep[agent_id] >= 0 &&  mGoalTimestep[agent_id] - timeStep >= 1)
+				{
+					agent_ids.push_back(agent_id);
+					if(timeStep - mStartTimestep[agent_id]+1 > paths[agent_id].size())
+					{
+						std::cout<<"Outside memory!"; std::cin.get();
+					}
+					source_vertices.push_back(paths[agent_id].at(timeStep - mStartTimestep[agent_id]));
+					target_vertices.push_back(paths[agent_id].at(timeStep - mStartTimestep[agent_id]+1));
+				}
+			}
+			for(int s_id=0; s_id<mStationaryAgents.size(); s_id++)
+			{
+				if( timeStep - mStationaryAgents[s_id].second.first >= 0 &&  mStationaryAgents[s_id].second.second - timeStep >= 1)
+				{
+					s_ids.push_back(s_id);
+				}
+			}
+
+			// for(int i=0; i<agent_ids.size(); i++)
+			//  std::cout<<agent_ids[i]<<" ";
+			// std::cout<<std::endl;
+			// std::cin.get();
+
+			for(int i=0; i<agent_ids.size(); i++)
+			for(int j=0; j<s_ids.size(); j++)
+			{
+				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, mStationaryAgents[s_ids[j]].first))
+				{
+					agent_id_1 = agent_ids[i];
+					int agent_id_2 = s_ids[j];
+
+					bool agent_1_safe = ((paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i])
+						|| (paths[agent_id_1].at(0) == target_vertices[i]));
+
+					if( !agent_1_safe)
+					{
+						constraint_1 = Constraint(target_vertices[i],timeStep+1);
+						return true;
+					}
+				}
+				
+				if(getEdgesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[i]][target_vertices[i]].state, mStationaryAgents[s_ids[j]].first, mStationaryAgents[s_ids[j]].first))
+				{
+					agent_id_1 = agent_ids[i];
+					int agent_id_2 = s_ids[j];
+
+					bool agent_1_safe = ((source_vertices[i] == target_vertices[i])
+						&& ((source_vertices[i] == paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]))
+							|| source_vertices[i] == paths[agent_id_1].at(0)));
+
+					// bool agent_1_target_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
+					// bool agent_1_source_goal = paths[agent_id_1].at(mGoalTimestep[agent_id_1]-mStartTimestep[agent_id_1]) == target_vertices[i];
+					
+
+					if(!agent_1_safe)
+					{
+						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
+						constraint_1 = Constraint(edge_1,timeStep+1);
+						return true;
+					}
 				}
 			}
 			
@@ -247,18 +352,18 @@ public:
 		}
 
 		// std::cout<<"K";std::cin.get();
-		
+
 		PQ.insert(start_costs, constraints, start_shortestPaths);
 
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
-			if(numSearches == 100)
-			{
-				std::cout<<"numSearches: "<<numSearches<<std::endl;
-				break;
-			}
+			// if(numSearches == 100)
+			// {
+			// 	// std::cout<<"numSearches: "<<numSearches<<std::endl;
+			// 	break;
+			// }
 			Element p = PQ.pop();
 
 			// std::cout<<"K";std::cin.get();
@@ -266,6 +371,18 @@ public:
 			double total_cost = 0;
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost += p.costs[i];
+
+			bool cost_increased = false;
+
+			for(int i=0; i<p.costs.size(); i++)
+				if(std::abs(start_costs[i] - p.costs[i]) > 0.0001)
+				{
+					cost_increased = true;
+					break;
+				}
+
+			if(cost_increased)
+				break;
 
 			int agent_id_1 = -1;
 			Constraint constraint_1;
@@ -277,37 +394,61 @@ public:
 
 			if(!checkCoupling(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
-				std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
-
-				std::cout<<" Path Cost: "<<total_cost<<std::endl;
-				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(!checkStationaryCoupling(p.shortestPaths, agent_id_1, constraint_1))
 				{
-					std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
-					std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
-					for(Vertex &nodes: p.shortestPaths[agent_id])
+					std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
+
+					// std::cout<<" Path Cost: "<<total_cost<<std::endl;
+					for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 					{
-						std::cout<<mGraphs[agent_id][nodes].vertex_index<<"_"<<mGraphs[agent_id][nodes].state<<" ";
-						collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes].state);
+						// std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
+						// std::cout<<"Shortest Path for index - "<<agent_id<<" : ";
+						for(Vertex &nodes: p.shortestPaths[agent_id])
+						{
+							// std::cout<<mGraphs[agent_id][nodes].vertex_index<<"_"<<mGraphs[agent_id][nodes].state<<" ";
+							collision_free_path[agent_id].push_back(mGraphs[agent_id][nodes].state);
+						}
+						// std::cout<<std::endl;
 					}
-					std::cout<<std::endl;
+					// std::cerr<<"returning!"<<std::endl;
+
+					return collision_free_path;
 				}
 
-				return collision_free_path;
+				std::vector<std::vector<Constraint>> increase_constraints_agent_id_1 = p.constraints;
+
+				// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
+				increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
+
+				double cost_agent_id_1;
+
+				std::vector< double> costs_agent_id_1 = p.costs;
+				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
+				
+				shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mStartTimestep[agent_id_1], mGoalTimestep[agent_id_1], cost_agent_id_1);
+				costs_agent_id_1[agent_id_1] = cost_agent_id_1;
+
+				if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
+				{
+					// std::cout<<"inserting left!"<<std::endl;
+					PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
+				}
+				continue;
 
 			} 
 
 			if(numSearches%100 == 0)
 			{
-				std::cout<<"numSearches"<<numSearches<<std::endl;
-				if(constraint_1.constraint_type == 1)
-					std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
-						<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-				else
-				{
-					std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-						<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-						<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-				}
+				// std::cout<<"numSearches"<<numSearches<<std::endl;
+				// if(constraint_1.constraint_type == 1)
+				// 	std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
+				// 		<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
+				// else
+				// {
+				// 	std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+				// 		<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
+				// 		<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
+				// }
 			}
 
 			// std::cout<<"K";std::cin.get();
@@ -331,7 +472,7 @@ public:
 
 			// std::cout<<"Agent id 1: "<<agent_id_1<<std::endl;
 
-			if(costs_agent_id_1[agent_id_1] != INF)
+			if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
 			{
 				// std::cout<<"inserting left!"<<std::endl;
 				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
@@ -353,7 +494,7 @@ public:
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
 			// std::cout<<"Agent id 2: "<<agent_id_2<<std::endl;
-			if(costs_agent_id_2[agent_id_2] != INF)
+			if(costs_agent_id_2[agent_id_2] == p.costs[agent_id_2])
 			{
 				// std::cout<<"inserting right!"<<std::endl;
 				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
