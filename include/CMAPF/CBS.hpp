@@ -940,9 +940,9 @@ public:
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
-			// std::cout<<"Press [ENTER] to display path: ";
-			// std::cin.get();
-			// displayPath(path_configs);
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
 			// printStats();
 			return collision_free_path;
 		}
@@ -1065,13 +1065,13 @@ public:
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
-			ss << "./src/CMAPF/data/viz/";
+			ss << "./src/CMAPF/data/viz/new_images/";
 			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
-			double scale = 0.037;
-			if(i!=0)
-				scale = 0.025;
+			double scale = 0.12;
+			// if(i!=0)
+				// scale = 0.025;
 			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
 		}
 
@@ -1086,7 +1086,7 @@ public:
 					(int)((1-mGraphs[agent_id][source(*ei,mGraphs[agent_id])].state[1])*numberOfColumns));
 				cv::Point target_Point((int)(mGraphs[agent_id][target(*ei,mGraphs[agent_id])].state[0]*numberOfColumns), 
 					(int)((1-mGraphs[agent_id][target(*ei,mGraphs[agent_id])].state[1])*numberOfColumns));
-				cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 2);
+				cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 10);
 			}
 
 			VertexIter vi, vi_end;
@@ -1095,7 +1095,8 @@ public:
 				double x_point = mGraphs[agent_id][*vi].state[0]*numberOfColumns;
 				double y_point = (1 - mGraphs[agent_id][*vi].state[1])*numberOfRows;
 				cv::Point centre_Point((int)x_point, (int)y_point);
-				cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
+				cv::circle(image, centre_Point, 20,  cv::Scalar(0, 150, 255), -1);
+				// cv::circle(image, centre_Point, 20,  cv::Scalar(0,0,0), 4);
 			}
 		}   
 
@@ -1113,23 +1114,23 @@ public:
 			{
 				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
 				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
-				cv::line(image, uPoint, vPoint, cv::Scalar(0, 140, 255), 2);
+				// cv::line(image, uPoint, vPoint, cv::Scalar(0, 140, 255), 2);
 			}   
 		}
 
 		
 
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
-			VertexIter vi, vi_end;
-			for (boost::tie(vi, vi_end) = vertices(mGraphs[agent_id]); vi != vi_end; ++vi)
-			{
-				double x_point = mGraphs[agent_id][*vi].state[0]*numberOfColumns;
-				double y_point = (1 - mGraphs[agent_id][*vi].state[1])*numberOfRows;
-				cv::Point centre_Point((int)x_point, (int)y_point);
-				cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
-			}
-		} 
+		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		// {
+		// 	VertexIter vi, vi_end;
+		// 	for (boost::tie(vi, vi_end) = vertices(mGraphs[agent_id]); vi != vi_end; ++vi)
+		// 	{
+		// 		double x_point = mGraphs[agent_id][*vi].state[0]*numberOfColumns;
+		// 		double y_point = (1 - mGraphs[agent_id][*vi].state[1])*numberOfRows;
+		// 		cv::Point centre_Point((int)x_point, (int)y_point);
+		// 		cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
+		// 	}
+		// } 
 
 		
 
@@ -1149,21 +1150,29 @@ public:
 
 		for(int i=0; i<tasks.size(); i++)
 		{
-			cv::Scalar col= cv::Scalar(0,150,255);
+			
 			{
+				cv::Scalar col= cv::Scalar(200,0,100);
 				cv::Point uPoint((int)(tasks[i].first.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].first.second*mUnitEdgeLength)*numberOfRows)); 
 				std::string text = "S" + std::to_string(i);
-				cv::circle(image, uPoint, 7,  col, -1);
-				cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-				cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				cv::circle(image, uPoint, 25,  col, -1);
+				cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
+				if(i<10)
+					cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+				else	
+					cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
 			}
 
 			{
+				cv::Scalar col= cv::Scalar(0,200,100);
 				cv::Point uPoint((int)(tasks[i].second.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].second.second*mUnitEdgeLength)*numberOfRows)); 
 				std::string text = "G" + std::to_string(i);
-				cv::circle(image, uPoint, 7, col, -1);
-				cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-				cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				cv::circle(image, uPoint, 25, col, -1);
+				cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
+				if(i<10)
+					cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+				else
+					cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
 			}
 		}
 
