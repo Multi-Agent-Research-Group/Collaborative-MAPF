@@ -339,6 +339,8 @@ public:
 					{ // more than one timestep means that you are either picking up at source, or delivering
 						if(paths[agent_id].at(current_path_id[agent_id]).in_delivery == true)
 							source_task_ids[agent_id] = mTasksList[agent_id][paths[agent_id].at(current_path_id[agent_id]).tasks_completed].first;
+						else
+							source_task_ids[agent_id] = -1;
 						source_tasks_completed[agent_id] = paths[agent_id].at(current_path_id[agent_id]).tasks_completed;
 						source_in_delivery[agent_id] = paths[agent_id].at(current_path_id[agent_id]).in_delivery;
 						current_path_id[agent_id]++;
@@ -357,12 +359,14 @@ public:
 					target_vertices[agent_id] = paths[agent_id].at(target_path_id).vertex;
 					target_tasks_completed[agent_id] = paths[agent_id].at(target_path_id).tasks_completed;
 					target_in_delivery[agent_id] = paths[agent_id].at(target_path_id).in_delivery;
+					if(paths[agent_id].at(target_path_id).in_delivery == true)
+						target_task_ids[agent_id] = mTasksList[agent_id][paths[agent_id].at(target_path_id).tasks_completed].first;
+					else
+						target_task_ids[agent_id] = -1;
 
 					while(target_path_id < paths[agent_id].size()
 						&& paths[agent_id].at(target_path_id).timestep == current_timestep+1)
 					{
-						if(paths[agent_id].at(target_path_id).in_delivery == true)
-							target_task_ids[agent_id] = mTasksList[agent_id][paths[agent_id].at(target_path_id).tasks_completed].first;
 						target_path_id++;
 					}
 				}
@@ -440,31 +444,69 @@ public:
 					PRINT<<"Checking between agents: "<<i<<" "<<j<<std::endl;
 					if(getEdgesCollisionStatus(mGraphs[i][source_vertices[i]].state, mGraphs[i][target_vertices[i]].state, mGraphs[j][source_vertices[j]].state, mGraphs[j][target_vertices[j]].state))
 					{
-						PRINT<<"edge conflict! - ("<<source_vertices[i]<<","<<target_vertices[i]
-						<<") ("<<source_vertices[j]<<","<<target_vertices[j]<<")"<<std::endl;
-						PRINT<<"agents: "<<i<<" "<<j<<std::endl;
-						PRINT<<"source_task_ids: "<<source_task_ids[i]<<" "<<source_task_ids[j]<<std::endl;
-						if(source_task_ids[i]==-1)
-							agent_id_1.push_back(i);
+						bool safe_i = false;
+						bool safe_j = false;
+						if(target_in_delivery[i] == false)
+						{
+							if(target_tasks_completed[i] == 0)
+								safe_i = ( (target_vertices[i] == source_vertices[i])
+									&& ((mStartVertex[i] == source_vertices[i]) 
+										|| (mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i])));
+							else
+								safe_i = ( (target_vertices[i] == source_vertices[i])
+									&& ((mTasksList[i][target_tasks_completed[i]-1].second.second == source_vertices[i]) 
+										|| (mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i])));
+						}
 						else
-							for(int k=0; k<mNumAgents; k++)
-								if(source_task_ids[k] == source_task_ids[i])
-									agent_id_1.push_back(k);
-
-						if(source_task_ids[j]==-1)
-							agent_id_2.push_back(j);
+							safe_i = ( (target_vertices[i] == source_vertices[i])
+									&& ((mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i]) 
+										|| (mTasksList[i][target_tasks_completed[i]].second.second == source_vertices[i])));
+						
+						if(target_in_delivery[j] == false)
+						{
+							if(target_tasks_completed[j] == 0)
+								safe_j = ( (target_vertices[j] == source_vertices[j])
+									&& ((mStartVertex[j] == source_vertices[j]) 
+										|| (mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j])));
+							else
+								safe_j = ( (target_vertices[j] == source_vertices[j])
+									&& ((mTasksList[j][target_tasks_completed[j]-1].second.second == source_vertices[j]) 
+										|| (mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j])));
+						}
 						else
-							for(int k=0; k<mNumAgents; k++)
-								if(source_task_ids[k] == source_task_ids[j])
-									agent_id_2.push_back(k);
+							safe_j = ( (target_vertices[j] == source_vertices[j])
+									&& ((mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j]) 
+										|| (mTasksList[j][target_tasks_completed[j]].second.second == source_vertices[j])));
+						
+						
+						if(safe_i == false || safe_j == false)
+						{
+							PRINT<<"edge conflict! - ("<<source_vertices[i]<<","<<target_vertices[i]
+							<<") ("<<source_vertices[j]<<","<<target_vertices[j]<<")"<<std::endl;
+							PRINT<<"agents: "<<i<<" "<<j<<std::endl;
+							PRINT<<"source_task_ids: "<<source_task_ids[i]<<" "<<source_task_ids[j]<<std::endl;
+							if(source_task_ids[i]==-1)
+								agent_id_1.push_back(i);
+							else
+								for(int k=0; k<mNumAgents; k++)
+									if(source_task_ids[k] == source_task_ids[i])
+										agent_id_1.push_back(k);
 
-						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[i]).first;
-						constraint_1 = CollisionConstraint(edge_1, target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
+							if(source_task_ids[j]==-1)
+								agent_id_2.push_back(j);
+							else
+								for(int k=0; k<mNumAgents; k++)
+									if(source_task_ids[k] == source_task_ids[j])
+										agent_id_2.push_back(k);
 
-						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[j]).first;
-						constraint_2 = CollisionConstraint(edge_2, target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
+							Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[i]).first;
+							constraint_1 = CollisionConstraint(edge_1, target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
 
-						return true;
+							Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[j]).first;
+							constraint_2 = CollisionConstraint(edge_2, target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
+
+							return true;
+						}
 					}
 				}
 			}
