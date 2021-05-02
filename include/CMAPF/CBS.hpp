@@ -33,6 +33,10 @@
 #include "CBSDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
 
+#define PRINT if (cerr_disabled) {} else std::cout
+#define DEBUG if (cerr_disabled) {} else 
+bool cerr_disabled = true;
+
 #include <chrono>
 using namespace std::chrono;
 
@@ -76,7 +80,7 @@ public:
 	int mNotHashUsed = 0;
 	int total_time = 0;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
@@ -333,8 +337,9 @@ public:
 		return false;
 	}
 
-	std::vector<std::vector<Eigen::VectorXd>> solve()
+	std::vector<std::vector<Eigen::VectorXd>> solve(high_resolution_clock::time_point &solve_start_time)
 	{
+		PRINT<<"Solve called!!"<<std::endl;
 		CBSPriorityQueue PQ(mNumAgents);
 
 		std::vector<std::vector<Constraint>> constraints(mNumAgents, std::vector<Constraint>());
@@ -359,18 +364,26 @@ public:
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
-			// if(numSearches == 100)
-			// {
-			// 	// std::cout<<"numSearches: "<<numSearches<<std::endl;
-			// 	break;
-			// }
 			Element p = PQ.pop();
+
+			auto stop = high_resolution_clock::now();
+			std::chrono::duration<double, std::micro> timespent = stop - solve_start_time;
+			if (timespent.count() > 10000000)
+			{
+				break;
+			}
+
+			// if(numSearches % 1000 == 0)
+			// {
+			// 	std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
+			// 	// break;
+			// }
 
 			// std::cout<<"K";std::cin.get();
 
 			double total_cost = 0;
 			for(int i=0; i<p.costs.size(); i++)
-				total_cost += p.costs[i];
+				total_cost = std::max(total_cost, p.costs[i]);
 
 			bool cost_increased = false;
 
@@ -383,6 +396,35 @@ public:
 
 			if(cost_increased)
 				break;
+
+			if(numSearches%10000 == 0)
+			{
+				// std::cout<<PQ.PQsize()<<std::endl;
+				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				{
+					PRINT<<"Agent ID: "<<agent_id<<std::endl;
+					PRINT<<"Start: "<<mStartConfig[agent_id][0]<<", "<<mStartConfig[agent_id][1]<<std::endl;
+					PRINT<<"Goal: "<<mGoalConfig[agent_id][0]<<", "<<mGoalConfig[agent_id][1]<<std::endl;
+					PRINT<<"Start Timestep: "<<mStartTimestep[agent_id]<<" Goal Timestep: "<<mGoalTimestep[agent_id]<<std::endl;
+					PRINT<<"Collision constraints size: "<<p.constraints[agent_id].size()<<std::endl;
+					for(int i=0; i<p.constraints[agent_id].size(); i++)
+					{
+						if(p.constraints[agent_id][i].constraint_type==1)
+							PRINT<<"Vertex constraint: "<<p.constraints[agent_id][i].v<<" "<<p.constraints[agent_id][i].t<<std::endl;
+						else
+							PRINT<<"Edge constraint: "<<p.constraints[agent_id][i].e<<" "<<p.constraints[agent_id][i].t<<std::endl;
+					}
+
+					PRINT<<"Path: "<<std::endl;
+					for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
+						PRINT<<p.shortestPaths[agent_id][i]<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i]].state[0]+0.001)/mUnitEdgeLength)<<","
+							<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i]].state[1]+0.001)/mUnitEdgeLength)<<") "<<std::endl;
+					PRINT<<std::endl;
+				}
+				DEBUG std::cin.get();
+				// break;
+			}
 
 			int agent_id_1 = -1;
 			Constraint constraint_1;
@@ -437,19 +479,20 @@ public:
 
 			} 
 
-			if(numSearches%100 == 0)
-			{
-				// std::cout<<"numSearches"<<numSearches<<std::endl;
-				// if(constraint_1.constraint_type == 1)
-				// 	std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/0.0625)<<","
-				// 		<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-				// else
-				// {
-				// 	std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-				// 		<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/0.0625)<<","
-				// 		<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/0.0625)<<") at "<<constraint_1.t<<std::endl;
-				// }
-			}
+			// if(numSearches%1000 == 0)
+			// {
+			// 	std::cout<<"CBS numSearches"<<numSearches<<std::endl;
+			// 	if(constraint_1.constraint_type == 1)
+			// 		std::cout<<"Vertex Constraint: ("<<int( (mGraphs[agent_id_1][constraint_1.v].state[0]+0.001)/mUnitEdgeLength)<<","
+			// 			<<int( (mGraphs[agent_id_1][constraint_1.v].state[1]+0.001)/mUnitEdgeLength)<<") at "<<constraint_1.t<<std::endl;
+			// 	else
+			// 	{
+			// 		std::cout<<"Edge Constraint: ("<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/mUnitEdgeLength)<<","
+			// 			<<int( (mGraphs[agent_id_1][source(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/mUnitEdgeLength)<<") , ("<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[0]+0.001)/mUnitEdgeLength)<<","
+			// 			<<int( (mGraphs[agent_id_1][target(constraint_1.e, mGraphs[agent_id_1])].state[1]+0.001)/mUnitEdgeLength)<<") at "<<constraint_1.t<<std::endl;
+			// 	}
+			// 	std::cin.get();
+			// }
 
 			// std::cout<<"K";std::cin.get();
 
@@ -709,7 +752,7 @@ public:
 			for(int j=0; j<tasks[i].size(); j++)
 			{
 				{
-					cv::Point uPoint((int)(tasks[i][j].first.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].first.second*0.0625)*numberOfRows)); 
+					cv::Point uPoint((int)(tasks[i][j].first.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i][j].first.second*mUnitEdgeLength)*numberOfRows)); 
 					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
 					cv::circle(image, uPoint, 7,  col, -1);
 					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
@@ -717,7 +760,7 @@ public:
 				}
 
 				{
-					cv::Point uPoint((int)(tasks[i][j].second.first*0.0625*numberOfColumns), (int)((1 - tasks[i][j].second.second*0.0625)*numberOfRows)); 
+					cv::Point uPoint((int)(tasks[i][j].second.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i][j].second.second*mUnitEdgeLength)*numberOfRows)); 
 					std::string text = std::to_string(4-i) + ((j==0)?"A":"B");
 					cv::circle(image, uPoint, 7, col, -1);
 					cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
@@ -902,6 +945,10 @@ public:
 		{
 			numSearches++;
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
+			if(numSearches%1000 == 0)
+			{
+				std::cout<<"CSP numSearches: "<<numSearches<<std::endl;
+			}
 			std::pair<int,int> top_element = pq.pop();
 			int index = top_element.first;
 			int timeStep = top_element.second;
@@ -1010,6 +1057,8 @@ public:
 		// std::cout<<std::endl;
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
+
+		// std::cout<<"CSP: "<<initial_timestep<<" "<<final_timestep<<" C: "<<costOut<<std::endl;
 		return finalPath;
 	}
 };
