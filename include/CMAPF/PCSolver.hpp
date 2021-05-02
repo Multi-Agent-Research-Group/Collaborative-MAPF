@@ -393,11 +393,18 @@ public:
 		std::vector<Eigen::VectorXd> sp_goal(numRobots);
 		std::vector<int> sp_goal_timestep(numRobots);
 
+		int makespan = 0;
+		
+		int id=0;
 		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			meta_data vertex = get(name, *ii);
 			startTimesteps.push_back(vertex.start_time);
 			goalTimesteps.push_back(vertex.end_time + vertex.slack);
+			makespan = std::max(makespan,vertex.end_time + vertex.slack);
+
+			std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]<<std::endl;
+			id++;
 
 			Eigen::VectorXd goal_config(2);
 			goal_config[0] = vertex.goal.first;
@@ -411,11 +418,11 @@ public:
 			}
 		}
 
-		int makespan = 0;
-		for(int robot_id=0; robot_id<numRobots; robot_id++)
-			makespan = std::max(makespan,sp_goal_timestep[robot_id]);
+		// int makespan = 0;
+		// for(int robot_id=0; robot_id<numRobots; robot_id++)
+		// 	makespan = std::max(makespan,sp_goal_timestep[robot_id]);
 
-		// std::cerr<<"Makespan :"<<makespan<<std::endl;
+		std::cerr<<"Makespan :"<<makespan<<std::endl;
 
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 		std::vector<int> s_ids;
@@ -447,9 +454,14 @@ public:
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(numRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
+		id = 0;
 		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			// std::cout << std::endl;
+			std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]
+				<<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
+
+			id++;
 			meta_data vertex = get(name, *ii);
 			for(int agent = 0; agent < vertex.agent_list.size(); agent++){
 				if(agent_paths[vertex.agent_list[agent]].size() == 0)
@@ -461,10 +473,17 @@ public:
 						agent_paths[vertex.agent_list[agent]].push_back(path[task_count][i]);
 					}
 				}
+				if(vertex.agent_list[agent] == 1)
+					std::cout<<"tis me! - "<<agent_paths[vertex.agent_list[agent]].size()<<std::endl;
 			}
 			
 			task_count++;
 		}
+
+		int ret_makespan = 0;
+		for(int i=0; i<agent_paths.size(); i++)
+			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
+		std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
 
 		for(int i=0; i<s_ids.size(); i++)
 		{
@@ -477,7 +496,7 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();

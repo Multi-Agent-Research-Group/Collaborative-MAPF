@@ -397,10 +397,10 @@ public:
 			if(cost_increased)
 				break;
 
-			if(numSearches%10000 == 0)
+			// if(numSearches%10000 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
@@ -438,6 +438,18 @@ public:
 			{
 				if(!checkStationaryCoupling(p.shortestPaths, agent_id_1, constraint_1))
 				{
+					// std::cout<<"numSearches: "<<numSearches<<std::endl;
+
+					std::cout<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
+					for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+					{
+						std::cout<<"Agent ID: "<<agent_id<<std::endl;
+						std::cout<<"Start: "<<mStartConfig[agent_id][0]<<", "<<mStartConfig[agent_id][1]<<std::endl;
+						std::cout<<"Goal: "<<mGoalConfig[agent_id][0]<<", "<<mGoalConfig[agent_id][1]<<std::endl;
+						std::cout<<"Start Timestep: "<<mStartTimestep[agent_id]<<" Goal Timestep: "<<mGoalTimestep[agent_id]<<std::endl;
+						std::cout<<"Path size: "<<p.shortestPaths[agent_id].size()<<std::endl;
+					}
+
 					std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
 					// std::cout<<" Path Cost: "<<total_cost<<std::endl;
@@ -456,6 +468,8 @@ public:
 
 					return collision_free_path;
 				}
+				std::cout<<"numSearches: "<<numSearches<<std::endl;
+				std::cout<<"Stationary conflict!!";
 
 				std::vector<std::vector<Constraint>> increase_constraints_agent_id_1 = p.constraints;
 
@@ -472,7 +486,7 @@ public:
 
 				if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
 				{
-					// std::cout<<"inserting left!"<<std::endl;
+					std::cout<<"inserting left!"<<std::endl;
 					PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 				}
 				continue;
@@ -945,10 +959,10 @@ public:
 		{
 			numSearches++;
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
-			if(numSearches%1000 == 0)
-			{
-				std::cout<<"CSP numSearches: "<<numSearches<<std::endl;
-			}
+			// if(numSearches%1000 == 0)
+			// {
+			// 	std::cout<<"CSP numSearches: "<<numSearches<<std::endl;
+			// }
 			std::pair<int,int> top_element = pq.pop();
 			int index = top_element.first;
 			int timeStep = top_element.second;
