@@ -79,16 +79,15 @@ int main(int argc, char *argv[])
 
 
 
-	std::normal_distribution<double> agent_distribution(2.0,1.0); // number of agents task will be distributed to
+	std::normal_distribution<double> agent_distribution(2.0,0.0); // number of agents task will be distributed to
 	int count = 0;
+	srand(unsigned(time(0)));
+	unsigned seed = 0;
 	while (count < 100)
 	{
-		srand(unsigned(time(0)));
-		unsigned seed = 0;
-
 		count++;
-		int numAgents = 6;
-		int numTasks = 5;
+		int numAgents = 3;
+		int numTasks = 6;
 
 		std::vector<Vertex> vertex_list;
 
@@ -108,6 +107,8 @@ int main(int argc, char *argv[])
 		std::vector<std::pair<std::pair<int,int>,int>> ICTS_task_times;
 		std::vector<std::pair<int,int>> ICTS_task_edges;
 		int ICTS_task_id=0;
+
+		std::vector<bool> ICTS_terminal(numAgents,true);
 
 		int vertex_list_index=0;
 
@@ -162,6 +163,7 @@ int main(int argc, char *argv[])
 				int goal_time = start_time + std::abs(goal_x-start_x)+std::abs(goal_y-start_y);
 				CBS_task_times.push_back(std::make_pair(start_time,goal_time));
 				CBS_current_task[agent_id]=std::make_pair(CBS_task_id,goal_time);
+				std::cout<<CBS_task_id<<" GT: "<<goal_time<<std::endl;
 				CBS_task_id++;
 			}
 		}
@@ -183,6 +185,14 @@ int main(int argc, char *argv[])
 			for(int i=0; i<assign_num; i++)
 				agents_assigned_list.push_back(agent_id_list[i]);
 
+			for(int i=0; i<agents_assigned_list.size(); i++)
+			for(int j=0; j<numAgents; j++)
+				if(ICTS_current_task[agents_assigned_list[i]].first == ICTS_current_task[j].first) // same task as the one on which go is being assigned
+					ICTS_terminal[j]=false;
+
+			for(int i=0; i<agents_assigned_list.size(); i++)
+				ICTS_terminal[agents_assigned_list[i]]=true;
+
 			Vertex start_vertex = vertex_list[vertex_list_index];
 			vertex_list_index++;
 			int start_x = (graph[start_vertex].state[0]+0.0001)/0.1;
@@ -196,8 +206,13 @@ int main(int argc, char *argv[])
 			{
 				int max_goal_time = 0;
 				for(int i=0; i<agents_assigned_list.size(); i++)
-					max_goal_time = std::max(max_goal_time,ICTS_current_task[agents_assigned_list[i]].second +
-						std::abs(goal_x-start_x)+std::abs(goal_y-start_y));
+				{
+					int carry_task_pre = ICTS_current_task[agents_assigned_list[i]].first;
+					int init_x = ICTS_start_goal[carry_task_pre].second.first;
+					int init_y = ICTS_start_goal[carry_task_pre].second.second;
+					max_goal_time = std::max(max_goal_time,ICTS_current_task[agents_assigned_list[i]].second + 
+						std::abs(start_x-init_x)+std::abs(start_y-init_y));
+				}
 				for(int i=0; i<agents_assigned_list.size(); i++)
 				{
 					int carry_task_pre = ICTS_current_task[agents_assigned_list[i]].first;
@@ -227,10 +242,9 @@ int main(int argc, char *argv[])
 				int slack_time = 0;
 				ICTS_task_times.push_back(std::make_pair(std::make_pair(start_time,goal_time),slack_time));
 				for(int i=0; i<agents_assigned_list.size(); i++)
-				{
 					ICTS_task_edges.push_back(std::make_pair(ICTS_current_task[agents_assigned_list[i]].first,ICTS_task_id));
+				for(int i=0; i<agents_assigned_list.size(); i++)
 					ICTS_current_task[agents_assigned_list[i]] = std::make_pair(ICTS_task_id,goal_time);
-				}
 				ICTS_task_id++;
 
 			}
@@ -250,17 +264,34 @@ int main(int argc, char *argv[])
 						std::abs(start_x-init_x)+std::abs(start_y-init_y);
 					start_time = std::max(start_time, go_end_time);
 				}
-				CBS_task_id++;
 
 				int goal_time = start_time + std::abs(goal_x-start_x)+std::abs(goal_y-start_y);
 
 				CBS_task_times.push_back(std::make_pair(start_time,goal_time));
 				for(int i=0; i<agents_assigned_list.size(); i++)
-				{
-					CBS_task_edges.push_back(std::make_pair(CBS_current_task[agents_assigned_list[i]].first,task_id));
+					CBS_task_edges.push_back(std::make_pair(CBS_current_task[agents_assigned_list[i]].first,CBS_task_id));
+				for(int i=0; i<agents_assigned_list.size(); i++)
 					CBS_current_task[agents_assigned_list[i]] = std::make_pair(CBS_task_id,goal_time);
+				CBS_task_id++;
+			}
+		}
+
+		{
+			int max_total_time = 0;
+			for(int agent_id=0; agent_id<numAgents; agent_id++)
+				if(ICTS_terminal[agent_id])
+					max_total_time = std::max(max_total_time,ICTS_current_task[agent_id].second);
+			std::cout<<"terminal agent ids: ";
+			for(int agent_id=0; agent_id<numAgents; agent_id++)
+			{
+				if(ICTS_terminal[agent_id])
+				{
+					std::cout<<agent_id<<" ";
+					int task_id = ICTS_current_task[agent_id].first;
+					ICTS_task_times[task_id].second = max_total_time - ICTS_current_task[agent_id].second;
 				}
 			}
+			std::cout<<std::endl;
 		}
 
 		{

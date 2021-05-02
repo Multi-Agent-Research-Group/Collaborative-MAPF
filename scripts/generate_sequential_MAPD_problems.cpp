@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 			create_edges(graph,get(&EProp::length,graph));
 
 			int count = 0;
-			while (count < 100)
+			while (count < 10)
 			{
 				count++;
 				bool validProblem = true;
