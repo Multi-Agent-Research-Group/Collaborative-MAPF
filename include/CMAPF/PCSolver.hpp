@@ -346,9 +346,10 @@ public:
 			// std::cout<<i<<std::endl;
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-			if (timespent.count() > 100000000)
+			if (timespent.count() > 10000000)
 			{
 				std::cout<<"0 ";
+				// std::cout<<"Broke!";
 				break;
 			}
 
@@ -387,21 +388,61 @@ public:
 
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 
+		// std::vector<int> sp_tasks_list(numRobots);
+		std::vector<Eigen::VectorXd> sp_goal(numRobots);
+		std::vector<int> sp_goal_timestep(numRobots);
+
 		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			meta_data vertex = get(name, *ii);
 			startTimesteps.push_back(vertex.start_time);
 			goalTimesteps.push_back(vertex.end_time + vertex.slack);
+
+			Eigen::VectorXd goal_config(2);
+			goal_config[0] = vertex.goal.first;
+			goal_config[1] = vertex.goal.second;
+
+			std::vector <int> agent_list = vertex.agent_list;
+			for (auto robotNum: agent_list)
+			{
+				sp_goal[robotNum] = goal_config;
+				sp_goal_timestep[robotNum] = vertex.end_time + vertex.slack;
+			}
 		}
+
+		int makespan = 0;
+		for(int robot_id=0; robot_id<numRobots; robot_id++)
+			makespan = std::max(makespan,sp_goal_timestep[robot_id]);
+
+		// std::cerr<<"Makespan :"<<makespan<<std::endl;
+
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
+		std::vector<int> s_ids;
+
+		for(int robot_id=0; robot_id<numRobots; robot_id++)
+			if(makespan != sp_goal_timestep[robot_id])
+			{
+				stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
+					std::make_pair(sp_goal_timestep[robot_id],makespan)));
+				s_ids.push_back(robot_id);
+				// std::cerr<<"Agent: "<<robot_id<<" Goal: "<<sp_goal[robot_id][0]<<" "
+					// <<sp_goal[robot_id][1]<<" "<<"Times: "<<sp_goal_timestep[robot_id]<<" "<<makespan<<std::endl;
+			}
+
 		// Setup planner
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
-		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, mGraphs, mStartVertex, mGoalVertex);
+		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, mGraphs, mStartVertex, mGoalVertex, stationary_agents);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve();
 		
+		// std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
+		{
+			// std::cout<<"N";
 			return false;
+		}
 
+		// std::cout<<"Y";
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(numRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
@@ -424,14 +465,22 @@ public:
 			task_count++;
 		}
 
+		for(int i=0; i<s_ids.size(); i++)
+		{
+			for(int j = stationary_agents[i].second.first; j < stationary_agents[i].second.second; j++)
+				agent_paths[s_ids[i]].push_back(stationary_agents[i].first);
+		}
+
+		// std::cerr<<"agent path found!"<<std::endl;
+
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();
-		std::cout<<path_cost<<" ";
+		std::cerr<<path_cost<<" ";
 		std::vector<Eigen::VectorXd> path_configs;
 
 		for(int i=0; i<agent_paths[0].size(); i++)
@@ -444,12 +493,16 @@ public:
 			}
 			path_configs.push_back(config);
 		}
+
+		// std::cerr<<"returning!"<<std::endl;
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: \n";
-		std::cin.get();
-		planner.mNumAgents = numRobots;
-		planner.displayPath(path_configs);
+		// std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		// planner.mNumAgents = numRobots;
+		// planner.displayPath(path_configs);
+
+		// std::cout<<"true!";
 
 		return true;
 	}
@@ -459,7 +512,7 @@ public:
 
 		auto stop = high_resolution_clock::now();
 		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-		if (timespent.count() > 100000000)
+		if (timespent.count() > 10000000)
 		{
 			return false;
 		}

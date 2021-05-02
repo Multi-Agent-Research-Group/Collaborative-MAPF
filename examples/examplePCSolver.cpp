@@ -73,6 +73,8 @@ int main(int argc, char *argv[])
 
 	int max_iter, num_robots; cin >> max_iter >> num_robots;
 
+	max_iter = 10000;
+
 	Pair edge_array[num_edges];
 	for(int i=0; i<num_edges; i++){
 		int v1, v2; cin >> v1 >> v2;
@@ -105,6 +107,7 @@ int main(int argc, char *argv[])
 	PCSolver p(G, max_iter, num_agents, num_robots, graph_file_name, obstacle_file_name);
 	auto start = high_resolution_clock::now();
 	p.solve();
+	// std::cerr<<"solved!";
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<milliseconds>(stop - start);
 	std::cout << duration.count()/1000.0<< std::endl;
