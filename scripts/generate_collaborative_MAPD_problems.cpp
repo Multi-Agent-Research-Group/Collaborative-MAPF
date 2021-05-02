@@ -86,8 +86,8 @@ int main(int argc, char *argv[])
 	while (count < 100)
 	{
 		count++;
-		int numAgents = 10;
-		int numTasks = 30;
+		int numAgents = 5;
+		int numTasks = 20;
 
 		std::vector<Vertex> vertex_list;
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 				int goal_time = start_time + std::abs(goal_x-start_x)+std::abs(goal_y-start_y);
 				CBS_task_times.push_back(std::make_pair(start_time,goal_time));
 				CBS_current_task[agent_id]=std::make_pair(CBS_task_id,goal_time);
-				std::cout<<CBS_task_id<<" GT: "<<goal_time<<std::endl;
+				// std::cout<<CBS_task_id<<" GT: "<<goal_time<<std::endl;
 				CBS_task_id++;
 			}
 		}
@@ -281,17 +281,17 @@ int main(int argc, char *argv[])
 			for(int agent_id=0; agent_id<numAgents; agent_id++)
 				if(ICTS_terminal[agent_id])
 					max_total_time = std::max(max_total_time,ICTS_current_task[agent_id].second);
-			std::cout<<"terminal agent ids: ";
+			// std::cout<<"terminal agent ids: ";
 			for(int agent_id=0; agent_id<numAgents; agent_id++)
 			{
 				if(ICTS_terminal[agent_id])
 				{
-					std::cout<<agent_id<<" ";
+					// std::cout<<agent_id<<" ";
 					int task_id = ICTS_current_task[agent_id].first;
 					ICTS_task_times[task_id].second = max_total_time - ICTS_current_task[agent_id].second;
 				}
 			}
-			std::cout<<std::endl;
+			// std::cout<<std::endl;
 		}
 
 		{
@@ -358,6 +358,8 @@ int main(int argc, char *argv[])
 			}
 			file_stream.close();
 		}
+
+		std::cout<<"Vertex List Index: "<<vertex_list_index<<std::endl;
 
 	}
 	return 0;

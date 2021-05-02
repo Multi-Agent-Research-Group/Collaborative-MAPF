@@ -74,12 +74,18 @@ private:
 		element(double _key1, double _key2, SearchState _s): key1(_key1), key2(_key2), s(_s) {} 
 		inline bool operator < (const element &b) const 
 		{
-        	if(key1<b.key1)
-				return true;
-			else if(key1 == b.key1 && key2<b.key2)
-				return true;
-			else
-				return false;
+			if(std::abs(key1-b.key1)<0.001)
+			{
+				// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
+				return s.vertex < b.s.vertex;
+			}
+			return key1 < b.key1;
+   //      	if(key1<b.key1)
+			// 	return true;
+			// else if(key1 == b.key1 && key2<b.key2)
+			// 	return true;
+			// else
+			// 	return false;
 		}
 	};
 	vector <element> PQ;

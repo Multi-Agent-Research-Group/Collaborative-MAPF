@@ -80,10 +80,11 @@ Mat triangle(Mat a , int j , int k , int r )
 int main()
 {
     srand(time(0));
-    for(int i=0; i<10;i++)
+    int i=100;
+    // for(int i=0; i<10;i++)
     {    
-        Mat img(300,300,CV_8UC1,Scalar(255));
-        int k=10;
+        Mat img(1000,1000,CV_8UC1,Scalar(255));
+        int k=0;
         while(k--)
         {
             int x = rand() %300;
@@ -93,7 +94,7 @@ int main()
 
             img = rectangle(img,x,y,length,breadth);
         }
-        imwrite("../data/obstacles/2D_Images/"+to_string(i)+".png",img); 
+        imwrite("../data/obstacles/"+to_string(i)+".png",img); 
     }
     return 0;
 }
