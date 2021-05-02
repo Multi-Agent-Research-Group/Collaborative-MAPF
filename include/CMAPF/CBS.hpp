@@ -60,6 +60,8 @@ public:
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
 
+	std::vector<int> mTaskStartTimestep;
+
 	high_resolution_clock::time_point mSolveStartTime;
 
 	int mCBSIterations;
@@ -91,10 +93,11 @@ public:
 
 	double mUnitEdgeLength = 0.1;
 
-	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config)
+	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
+		, mTaskStartTimestep(taskStartTimestep)
 	{
 
 		int numTasks = boost::num_vertices(_pcg);
@@ -526,6 +529,24 @@ public:
 		std::vector<std::vector<CollisionConstraint>> collision_constraints(mNumAgents, std::vector<CollisionConstraint>());
 		std::vector<std::vector<CollaborationConstraint>> collaboration_constraints(mNumAgents, std::vector<CollaborationConstraint>());
 		std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints(mNumAgents, std::vector<CollaborationConstraint>());
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			for(int i=0; i<mTasksList.size(); i++)
+			{
+				for(int j=0; j<mTasksList[i].size(); j++)
+				{
+					int task_id = mTasksList[i][j].first;
+					int task_start_time = mTaskStartTimestep[task_id];
+					Vertex pickup_vertex = mTasksList[i][j].second.first;
+					for(int timestep=0; timestep<task_start_time; timestep++)
+					{
+						CollaborationConstraint c = 
+							CollaborationConstraint(pickup_vertex, task_id, true,timestep);
+						non_collaboration_constraints[agent_id].push_back(c);
+					}
+				}
+			}
+		}
 		std::vector<double> start_costs;
 		std::vector< std::vector<SearchState> > start_shortestPaths = computeDecoupledPaths(collision_constraints, collaboration_constraints, non_collaboration_constraints, start_costs);
 
