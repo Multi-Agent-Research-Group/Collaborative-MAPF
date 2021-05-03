@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
 			("graph,g", po::value<std::string>()->default_value(""), "Path to graph files")
 			("obstacleFile,o", po::value<std::string>()->default_value(""), "Path to obstacles files")
 			("planningProblemsFile,p",po::value<std::string>()->default_value(""), "Path to planning problems file")
+			("num_agents,n", po::value<int>()->default_value(2), "Number of Agents")
+			("num_tasks,m", po::value<int>()->default_value(5), "Number of Tasks")
 	;
 
 	// Read arguments
@@ -64,6 +66,12 @@ int main(int argc, char *argv[])
 	if (planning_problems_file == "")
 		planning_problems_file = "/home/rajat/melodic_ws/src/CMAPF/data/planning_problems/";
 
+
+	int numAgents = vm["num_agents"].as<int>();
+	int numTasks = vm["num_tasks"].as<int>();
+
+	std::cout<<"numAgents: "<<numAgents<<" numTasks: "<<numTasks<<std::endl;
+
 	std::default_random_engine generator;
 	// std::normal_distribution<double> agent_distribution(5.0,2.0);
 	// std::normal_distribution<double> task_distribution(3.0,2.0);
@@ -79,17 +87,15 @@ int main(int argc, char *argv[])
 
 
 
-	std::normal_distribution<double> agent_distribution(2.5,1.0); // number of agents task will be distributed to
-	int min_assign = 1;
-	int max_assign = 3;
+	std::normal_distribution<double> agent_distribution(3.5,1.0); // number of agents task will be distributed to
+	int min_assign = 2;
+	int max_assign = 4;
 	int count = 0;
 	srand(unsigned(time(0)));
 	unsigned seed = 0;
 	while (count < 100)
 	{
 		count++;
-		int numAgents = 6;
-		int numTasks = 12;
 
 		std::vector<Vertex> vertex_list;
 
