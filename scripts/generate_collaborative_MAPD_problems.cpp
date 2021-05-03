@@ -218,7 +218,8 @@ int main(int argc, char *argv[])
 						int slack_time = max_goal_time - goal_time;
 
 						ICTS_task_times.push_back(std::make_pair(std::make_pair(start_time,goal_time),slack_time));
-						ICTS_task_edges.push_back(std::make_pair(carry_task_pre,ICTS_task_id));
+						if(carry_task_pre!=-1)
+							ICTS_task_edges.push_back(std::make_pair(carry_task_pre,ICTS_task_id));
 						ICTS_current_task[agents_assigned_list[i]] = std::make_pair(ICTS_task_id,max_goal_time);
 						ICTS_task_id++;
 					}
