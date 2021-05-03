@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 						if(carry_task_pre == -1)
 						{
 							int init_x = agent_inits[agents_assigned_list[i]].first;
-							int init_y = agent_inits[agents_assigned_list[i]].first;
+							int init_y = agent_inits[agents_assigned_list[i]].second;
 							max_goal_time = std::max(max_goal_time,	std::abs(start_x-init_x)+std::abs(start_y-init_y));
 						
 						}
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 						if(carry_task_pre == -1)
 						{
 							init_x = agent_inits[agents_assigned_list[i]].first;
-							init_y = agent_inits[agents_assigned_list[i]].first;
+							init_y = agent_inits[agents_assigned_list[i]].second;
 							start_time = 0;
 						}
 						else
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 						if(carry_task_pre == -1)
 						{
 							init_x = agent_inits[agents_assigned_list[i]].first;
-							init_y = agent_inits[agents_assigned_list[i]].first;
+							init_y = agent_inits[agents_assigned_list[i]].second;
 							go_end_time = std::abs(start_x-init_x)+std::abs(start_y-init_y);
 						}
 						else
