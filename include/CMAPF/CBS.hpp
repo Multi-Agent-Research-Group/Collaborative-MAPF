@@ -369,7 +369,7 @@ public:
 
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - solve_start_time;
-			if (timespent.count() > 10000000)
+			if (timespent.count() > 30000000)
 			{
 				break;
 			}

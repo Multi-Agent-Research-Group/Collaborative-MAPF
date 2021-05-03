@@ -347,7 +347,7 @@ public:
 			// std::cout<<i<<std::endl;
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-			if (timespent.count() > 10000000)
+			if (timespent.count() > 30000000)
 			{
 				std::cout<<"0 ";
 				// std::cout<<"Broke!";
@@ -517,10 +517,10 @@ public:
 		// std::cerr<<"returning!"<<std::endl;
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = numRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = numRobots;
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
@@ -532,7 +532,7 @@ public:
 
 		auto stop = high_resolution_clock::now();
 		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-		if (timespent.count() > 10000000)
+		if (timespent.count() > 30000000)
 		{
 			return false;
 		}
