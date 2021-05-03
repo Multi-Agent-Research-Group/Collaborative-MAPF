@@ -40,7 +40,7 @@ using namespace std::chrono;
 
 #define INF std::numeric_limits<double>::infinity()
 
-#define PRINT if (cerr_disabled) {} else std::cout
+#define PRINT if (cerr_disabled) {} else std::cerr
 #define DEBUG if (cerr_disabled) {} else 
 bool cerr_disabled = true;
 
@@ -109,6 +109,7 @@ public:
 		for ( std::vector< PCVertex >::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
 		{
 			// std::cout << std::endl;
+			// std::cerr<<"iter\n";std::cin.get();
 			meta_data vertex = get(get(meta_data_t(), _pcg), *ii);
 
 			int task_id = vertex.task_id;
@@ -124,12 +125,18 @@ public:
 
 			std::vector <int> agent_list = vertex.agent_list;
 			for (auto agentNum: agent_list){
-				// std::cout << agentNum << std::endl;
+				PRINT << agentNum << std::endl;
 				_tasks_to_agents_list[task_id].push_back(std::make_pair(agentNum,_tasks_list[agentNum].size()));
 				_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
 			}
-			// std::cout << std::endl;
+			// PRINT << std::endl;
+			// PRINT<<"loop end\n";
+			// std::cin.get();
 		}
+
+		// std::cin.get();
+
+		PRINT<<"OUT";
 
 		mTasksToAgentsList = _tasks_to_agents_list;
 
@@ -142,6 +149,8 @@ public:
 		mPlanningTime = t2-t1;
 		mPreprocessTime = t2-t1;
 
+		PRINT<<"K";
+
 		for(int i=0; i<mNumAgents;i++)
 		{
 			Eigen::VectorXd start_config(2);
@@ -149,6 +158,8 @@ public:
 				start_config[ui-i*2] = _start_config[ui];
 			mStartConfig.push_back(start_config);
 		}
+
+		PRINT<<"K";
 
 		for(int i=0; i<_tasks_list.size(); i++)
 		{
@@ -158,13 +169,18 @@ public:
 			mTasksList.push_back(agent_tasks_list);
 		}
 
+		PRINT<<"K";
+
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			Graph graph;
 			Vertex start_vertex;
+			PRINT<<"L: "<<agent_id<<"\n";
 
 			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[agent_id],2,get(&EProp::prior,graph));
 			create_edges(graph,get(&EProp::length,graph));
+
+			PRINT<<"M: "<<agent_id<<"\n";
 
 			VertexIter ind_vi, ind_vi_end;
 			int i=0;
@@ -181,10 +197,14 @@ public:
 						mTasksList[agent_id][i].second.second = *ind_vi;
 				}
 			}
+			PRINT<<"N: "<<agent_id<<"\n";
 
 			mGraphs.push_back(graph);
 			mStartVertex.push_back(start_vertex);
+			PRINT<<"out\n";
 		}
+
+		PRINT<<"K";
 
 		for(int i=0; i<mTasksList.size(); i++)
 		{
@@ -196,6 +216,8 @@ public:
 			}
 			mSpecialPosition.push_back(special_positions);
 		}
+
+		PRINT<<"K";
 
 		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		preprocess_graph(mGraphs[0]);

@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	cv::Mat image = cv::imread(obstacle_file_name, 0);
 
 	std::vector<std::string> graph_files;
-	for(int agent_id=0; agent_id<num_agents;agent_id++)
+	for(int agent_id=0; agent_id<num_robots;agent_id++)
 		graph_files.push_back(graph_file_name);
 	
 	// Setup planner
