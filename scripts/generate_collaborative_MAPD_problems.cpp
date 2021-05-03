@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	{
 		count++;
 
-		while(True)
+		while(true)
 		{
 
 			std::vector<Vertex> vertex_list;
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 					{
 						int carry_task_pre = CBS_current_task[agents_assigned_list[i]].first;
 						int init_x,init_y;
-						int go_end_time
+						int go_end_time;
 						if(carry_task_pre == -1)
 						{
 							init_x = agent_inits[agents_assigned_list[i]].first;
@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 				break;
 			}
 			else
-				std::cout<<"invalid :( "
+				std::cout<<"invalid :( ";
 		}
 
 	}
