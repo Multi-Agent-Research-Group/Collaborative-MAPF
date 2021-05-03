@@ -403,7 +403,7 @@ public:
 			goalTimesteps.push_back(vertex.end_time + vertex.slack);
 			makespan = std::max(makespan,vertex.end_time + vertex.slack);
 
-			std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]<<std::endl;
+			// std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]<<std::endl;
 			id++;
 
 			Eigen::VectorXd goal_config(2);
@@ -422,7 +422,7 @@ public:
 		// for(int robot_id=0; robot_id<numRobots; robot_id++)
 		// 	makespan = std::max(makespan,sp_goal_timestep[robot_id]);
 
-		std::cerr<<"Makespan :"<<makespan<<std::endl;
+		// std::cerr<<"Makespan :"<<makespan<<std::endl;
 
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 		std::vector<int> s_ids;
@@ -458,8 +458,8 @@ public:
 		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			// std::cout << std::endl;
-			std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]
-				<<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
+			// std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]
+				// <<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
 
 			id++;
 			meta_data vertex = get(name, *ii);
@@ -473,17 +473,17 @@ public:
 						agent_paths[vertex.agent_list[agent]].push_back(path[task_count][i]);
 					}
 				}
-				if(vertex.agent_list[agent] == 1)
-					std::cout<<"tis me! - "<<agent_paths[vertex.agent_list[agent]].size()<<std::endl;
+				// if(vertex.agent_list[agent] == 1)
+				// 	std::cout<<"tis me! - "<<agent_paths[vertex.agent_list[agent]].size()<<std::endl;
 			}
 			
 			task_count++;
 		}
 
-		int ret_makespan = 0;
-		for(int i=0; i<agent_paths.size(); i++)
-			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
-		std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
+		// int ret_makespan = 0;
+		// for(int i=0; i<agent_paths.size(); i++)
+		// 	ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
+		// std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
 
 		for(int i=0; i<s_ids.size(); i++)
 		{
@@ -496,7 +496,7 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();
