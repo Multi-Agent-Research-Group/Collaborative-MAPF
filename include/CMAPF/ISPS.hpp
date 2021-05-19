@@ -46,7 +46,7 @@ namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
-class ISPSs
+class ISPS
 {
 
 public:
@@ -83,6 +83,7 @@ public:
 	vector <vector <size_t>> mPredecessors;
 	vector <vector <size_t>> mSuccessors;
 
+	std::vector <double> mCosts;
 	container mTopologicalOrder;
 
 	double mUnitEdgeLength = 0.1;
@@ -96,8 +97,8 @@ public:
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mStartTimestep(startTimesteps)
-		, mPCGraph(goalTimesteps)
+		, mPCGraph(PCGraph)
+		, mPCGraph_T(PCGraph_T)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
 		, mGraphs(graphs)
@@ -110,12 +111,10 @@ public:
 			mProp = get(meta_data_t(), mPCGraph);
 			mProp_T = get(meta_data_t(), mPCGraph_T);
 
-			std::vector <double> costs;
-
 			for(int i=0; i<mNumAgents; i++){
 				std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
 											mGoalVertex[i], mConstraints[i], 0);
-				costs[i] = path.size();
+				mCosts[i] = path.size();
 			}
 
 			topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
@@ -142,17 +141,7 @@ public:
 				mSuccessors[i] = successors;
 			}
 
-			for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
-			{
-				size_t agent_id = *ii;
-				meta_data *vertex = &get(mProp, agent_id);
-				vector <size_t> predecessors;
-				if(predecessors.size() == 0){
-
-				}
-			}
-
-			initPCGraph();
+			updateSchedule();
 		}
 
 	std::vector< std::vector<Vertex> > solve(){
@@ -178,7 +167,45 @@ public:
 	}
 
 	void updateSchedule(){
+		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		{
+			size_t agent_id = *ii;
+			meta_data *vertex = &get(mProp, agent_id);
+			vector <size_t> predecessors;
+			if(predecessors.size() == 0){
+				vertex->start_time = 0;
+				vertex->end_time = costs[i]-1;
+			}
+			else{
+				size_t makespan = -1;
+				for(auto pred: predecessors){
+					meta_data *suc_vertex = &get(mProp, agent_id);
+					if(suc_vertex->end_time>makespan){makespan = suc_vertex->end_time;}
+				}
+				vertex->start_time = makespan;
+				vertex->end_time = makespan+costs[i]-1;
+			}
+		}
 
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		{
+			size_t agent_id = *ii;
+			meta_data *vertex = &get(mProp, agent_id);
+			vector <size_t> predecessors;
+			if(predecessors.size() == 0){
+				vertex->start_time = 0;
+				vertex->end_time = costs[i]-1;
+			}
+			else{
+				size_t makespan = -1;
+				for(auto pred: predecessors){
+					meta_data *suc_vertex = &get(mProp, agent_id);
+					if(suc_vertex->end_time>makespan){makespan = suc_vertex->end_time;}
+				}
+				vertex->start_time = makespan;
+				vertex->end_time = makespan+costs[i]-1;
+			}
+		}
 	}
 
 
