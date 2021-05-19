@@ -516,26 +516,11 @@ public:
 			std::vector< double> costs_agent_id_1 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
-			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
-
-			shortestPaths_agent_id_1[agent_id_1] = planner.solve();
-
+			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+				mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
+			shortestPaths_agent_id_1[agent_id_1] = planner1.solve(cost_agent_id_1);
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
-
-			// std::cout<<"K";std::cin.get();
-
-			// std::cout<<"Agent id 1: "<<agent_id_1<<std::endl;
-
-			if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
-			{
-				// std::cout<<"inserting left!"<<std::endl;
-				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
-			}
-
-			// std::cout<<"K";std::cin.get();
-			
-			//agent_id_2
+			PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_2 = p.constraints;
 			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
@@ -546,101 +531,14 @@ public:
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
 			
 
-			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
-
-			shortestPaths_agent_id_2[agent_id_2] = planner.solve();
-
-			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2],  mStartTimestep[agent_id_2], mGoalTimestep[agent_id_2], cost_agent_id_2);
+			ISPS planner2(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+				mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_2);
+			shortestPaths_agent_id_2[agent_id_2] = planner2.solve(cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
-
-			// std::cout<<"Agent id 2: "<<agent_id_2<<std::endl;
-			if(costs_agent_id_2[agent_id_2] == p.costs[agent_id_2])
-			{
-				// std::cout<<"inserting right!"<<std::endl;
-				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
-			}
+			PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 		}
 
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
-	}
-
-	bool evaluateIndividualConfig(Eigen::VectorXd config)
-	{
-		int numberOfRows = mImage.rows;
-		int numberOfColumns = mImage.cols;
-
-		// agent
-		double x_point = config[0]*numberOfColumns + 0.000001;
-		double y_point = (1 - config[1])*numberOfRows + 0.000001;
-		cv::Point point((int)x_point, (int)y_point);
-
-		// Collision Check for agent with environment
-		int intensity = (int)mImage.at<uchar>(point.y, point.x);
-		if (intensity == 0) // Pixel is black
-			return false;
-
-		return true;
-	}
-
-	bool evaluateIndividualEdge(Graph &graph, Edge& e) // returns false if in collision
-	{
-		graph[e].isEvaluated = true;
-
-		Vertex source_vertex = source(e, graph);
-		Vertex target_vertex = target(e, graph);
-
-		Eigen::VectorXd sourceState(2);
-		sourceState << graph[source_vertex].state;
-
-		Eigen::VectorXd targetState(2);
-		targetState << graph[target_vertex].state;
-
-		double resolution = 0.0025;
-		unsigned int nStates = std::ceil(graph[e].length / resolution-0.000000001)+1;
-
-		// Just start and goal
-		if(nStates < 2u)
-		{
-			nStates = 2u;
-		}
-		// std::cout<<"nStates:"<<nStates<<std::endl;
-
-		bool checkResult = true;
-		
-		if (checkResult && !evaluateIndividualConfig(sourceState))
-		{
-			graph[source_vertex].status = CollisionStatus::BLOCKED;
-			graph[e].status = CollisionStatus::BLOCKED;
-			graph[e].length = INF;
-			checkResult = false;
-		}
-
-		if (checkResult && !evaluateIndividualConfig(targetState))
-		{
-			graph[target_vertex].status = CollisionStatus::BLOCKED;
-			graph[e].status = CollisionStatus::BLOCKED;
-			graph[e].length = INF;
-			checkResult = false;
-		}
-
-		if (checkResult)
-		{
-			// Evaluate the States in between
-			for (unsigned int i = 1; i < nStates-1; i++)
-			{
-
-				if(!evaluateIndividualConfig(sourceState + (resolution*i/graph[e].length)*(targetState-sourceState) ))
-				{
-					graph[e].status = CollisionStatus::BLOCKED;
-					graph[e].length = INF;
-					checkResult = false;
-					break;
-				}
-			}
-		}
-
-		return checkResult;
 	}
 
 	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
@@ -941,147 +839,6 @@ public:
 		cv::imshow("Graph Visualization", image);
 		cv::waitKey(0);
 	}
-
-	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, double& costOut)
-	{
-		timePriorityQueue pq;
-		boost::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
-		boost::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
-		boost::unordered_map<int , Vertex> nodeMap;
-
-		pq.insert(graph[start].vertex_index,initial_timestep,graph[start].heuristic,0.0);
-		nodeMap[graph[start].vertex_index]=start;
-
-		VertexIter vi, viend;
-		mDistance[std::make_pair(start,initial_timestep)]=0;
-
-		int numSearches = 0;
-		int maximum_timestep = 10000;
-
-		int goal_timestep = -1;
-		while(pq.PQsize()!=0)
-		{
-			numSearches++;
-			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
-			// if(numSearches%1000 == 0)
-			// {
-			// 	std::cout<<"CSP numSearches: "<<numSearches<<std::endl;
-			// }
-			std::pair<int,int> top_element = pq.pop();
-			int index = top_element.first;
-			int timeStep = top_element.second;
-			if(timeStep > final_timestep)
-				continue;
-			if(index == graph[goal].vertex_index && timeStep == final_timestep)
-			{
-				// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
-				goal_timestep = timeStep;
-				costOut = mDistance[std::make_pair(goal,goal_timestep)];
-				break;
-			}
-			Vertex curr_node = nodeMap[index];
-			std::vector<Vertex> neighbors = getNeighbors(graph,curr_node);
-			neighbors.push_back(curr_node);
-			// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
-
-			for (auto successor : neighbors) 
-			{
-				if(successor == curr_node)
-				{
-					bool col = false;
-					for( Constraint c: constraints)
-					{
-						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
-						{
-							// std::cout<<"Constraint Encountered! "<<std::endl;
-							col =true;
-							break;
-						}
-					}
-
-					if(!col)
-					{
-						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
-						
-						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || 
-							new_cost < mDistance[std::make_pair(successor,timeStep+1)])
-						{
-							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
-							double priority;
-							// std::cout<<"FOUND FREE EDGE!!"<<std::endl;
-							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timeStep+1,priority,0.0);
-							if(nodeMap.count(graph[successor].vertex_index)==0)
-								nodeMap[graph[successor].vertex_index]=successor;
-							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
-						}
-					}
-				}
-				else
-				{
-					Edge uv_edge = boost::edge(curr_node, successor, graph).first;
-
-					bool col = false;
-					for( Constraint c: constraints)
-					{
-						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && uv_edge == c.e && c.t == timeStep + 1) )
-						{
-							// std::cout<<"Constraint Encountered! "<<std::endl;
-							col =true;
-							break;
-						}
-					}
-
-					if(!col)
-					{                   
-						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
-						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || new_cost < mDistance[std::make_pair(successor,timeStep+1)])
-						{
-							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
-							double priority;
-							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timeStep+1,priority,0.0);
-							if(nodeMap.count(graph[successor].vertex_index)==0)
-								nodeMap[graph[successor].vertex_index]=successor;
-							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
-						}
-					}
-				}
-			}
-		}
-
-		if(goal_timestep == -1)
-		{
-			costOut = INF;
-			return std::vector<Vertex>();
-		}
-
-		// std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
-		std::vector<Vertex> finalPath;
-		Vertex node = goal;
-
-		// std::cout<<"timesteps: ";
-		while(!(node == start && goal_timestep == initial_timestep))
-		{
-			// std::cin.get();
-			// std::cout<<"INF LOOP LOL!";
-			// std::cout<<goal_timestep<<" ";
-			finalPath.push_back(node);
-			Vertex temp_node = node;
-			int temp_timestep = goal_timestep;
-			node=mPrev[std::make_pair(temp_node,temp_timestep)].first;
-			goal_timestep=mPrev[std::make_pair(temp_node,temp_timestep)].second;
-		}
-		// std::cout<<std::endl;
-		finalPath.push_back(start);
-		std::reverse(finalPath.begin(), finalPath.end());
-
-		// std::cout<<"CSP: "<<initial_timestep<<" "<<final_timestep<<" C: "<<costOut<<std::endl;
-		return finalPath;
-	}
-};
-
-
 } // namespace CMAPF
 
 #endif 
