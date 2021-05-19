@@ -74,17 +74,21 @@ public:
 	PrecedenceConstraintGraph mPCGraph;
 	PrecedenceConstraintGraph mPCGraph_T;
 
-	std::vector<std::vector<Constraint>> mConstraints
+	std::vector<std::vector<Constraint>> mConstraints;
 
 	std::set<size_t> mClosedSet;
 
 	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
 
-	int mHashUsed = 0;
-	int mNotHashUsed = 0;
-	int total_time = 0;
+	vector <vector <size_t>> mPredecessors;
+	vector <vector <size_t>> mSuccessors;
+
+	container mTopologicalOrder;
 
 	double mUnitEdgeLength = 0.1;
+
+	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp; 
+	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T; = get(meta_data_t(), G_T);
 
 	ISPS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		PrecedenceConstraintGraph PCGraph, PrecedenceConstraintGraph PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
@@ -103,18 +107,40 @@ public:
 		, mConstraints(constraints)
 
 		{
+			mProp = get(meta_data_t(), mPCGraph);
+			mProp_T = get(meta_data_t(), mPCGraph_T);
+
 			std::vector <double> costs;
+
+			for(int i=0; i<mNumAgents; i++){
+				std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
+											mGoalVertex[i], mConstraints[i], 0);
+				costs[i] = path.size();
+			}
+
+			topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
 			std::vector< std::vector<Vertex> > start_shortestPaths = computeDecoupledPaths(costs);
 
+			for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+			{
+				meta_data vertex = get(name, *ii);
+				vector <size_t> predecessors;
+				PCOutEdgeIter ei, ei_end;
+				for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph_T); ei != ei_end; ++ei) 
+				{
+					PCVertex curPred = target(*ei, mPCGraph_T);
+					predecessors.push_back(curPred);
+				}
+
+			}
+
 			initPCGraph();
-
-			
 		}
-
 
 	std::vector< std::vector<Vertex> > solve(){
 		while mPQ.size(){
-			meta_data vertex = mPQ.pop();
+			s = mPQ.pop();
+			meta_data *vertex = &get(Prop, pred);
 			std::vector<Vertex> path = computeShortestPath();
 			vertex.end_time = vertex.start_time + path.size(); //update vertex final time
 			computedPaths = addPath(computedPaths, path) // update route plan
@@ -138,20 +164,7 @@ public:
 	}
 
 
-	std::vector< std::vector<Vertex> > computeDecoupledPaths(std::vector<double> &costs)
-	{
-		std::vector<std::vector<Vertex> > shortestPaths;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
-			double ind_cost;
-			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], mConstraints[agent_id], mStartTimestep[agent_id], mGoalTimestep[agent_id], ind_cost);
-			shortestPaths.push_back(path);
-			costs.push_back(ind_cost);
-		}
-		return shortestPaths;
-	}
-
-	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, double& costOut)
+	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, std::vector<Constraint> &constraints, int initial_timestep, double& costOut)
 	{
 		timePriorityQueue pq;
 		boost::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
