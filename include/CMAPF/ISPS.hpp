@@ -121,17 +121,35 @@ public:
 			topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
 			std::vector< std::vector<Vertex> > start_shortestPaths = computeDecoupledPaths(costs);
 
-			for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
-			{
-				meta_data vertex = get(name, *ii);
-				vector <size_t> predecessors;
+			for(int i=0; i<mNumAgents; i++){
 				PCOutEdgeIter ei, ei_end;
-				for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph_T); ei != ei_end; ++ei) 
+
+				vector <size_t> predecessors;
+				for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph_T); ei != ei_end; ++ei) 
 				{
 					PCVertex curPred = target(*ei, mPCGraph_T);
 					predecessors.push_back(curPred);
 				}
 
+				vector <size_t> successors;
+				for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph); ei != ei_end; ++ei) 
+				{
+					PCVertex curSuc = target(*ei, mPCGraph_T);
+					successors.push_back(curSuc);
+				}
+
+				mPredecessors[i] = predecessors;
+				mSuccessors[i] = successors;
+			}
+
+			for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+			{
+				size_t agent_id = *ii;
+				meta_data *vertex = &get(mProp, agent_id);
+				vector <size_t> predecessors;
+				if(predecessors.size() == 0){
+
+				}
 			}
 
 			initPCGraph();
