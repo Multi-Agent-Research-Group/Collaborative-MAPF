@@ -74,9 +74,6 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
-	PrecedenceConstraintGraph &mPCGraph;
-	PrecedenceConstraintGraph &mPCGraph_T;
-
 	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
 
 	int mHashUsed = 0;
@@ -99,6 +96,20 @@ public:
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
 		, mStationaryAgents(stationaryAgents){}
+
+	std::vector< std::vector<Vertex> > computeDecoupledPaths(std::vector<std::vector<Constraint>> constraints, std::vector<double> &costs)
+	{
+		std::vector<std::vector<Vertex> > shortestPaths;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			double ind_cost;
+			std::vector <Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id], constraints[agent_id], mStartTimestep[agent_id], mGoalTimestep[agent_id], ind_cost);
+			shortestPaths.push_back(path);
+			costs.push_back(ind_cost);
+		}
+
+		return shortestPaths;
+	}
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -334,11 +345,7 @@ public:
 
 		std::vector<std::vector<Constraint>> constraints(mNumAgents, std::vector<Constraint>());
 		std::vector<double> start_costs;
-
-		ISPS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-		mGraphs, mStartVertex, mGoalVertex, stationary_agents, constraints);
-
-		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve();
+		std::vector< std::vector<Vertex> > start_shortestPaths = computeDecoupledPaths(constraints, start_costs);
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
@@ -516,11 +523,7 @@ public:
 			std::vector< double> costs_agent_id_1 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
-			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
-
-			shortestPaths_agent_id_1[agent_id_1] = planner.solve();
-
+			shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mStartTimestep[agent_id_1], mGoalTimestep[agent_id_1], cost_agent_id_1);
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
 			// std::cout<<"K";std::cin.get();
@@ -545,12 +548,6 @@ public:
 			std::vector< double> costs_agent_id_2 = p.costs;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
 			
-
-			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
-
-			shortestPaths_agent_id_2[agent_id_2] = planner.solve();
-
 			shortestPaths_agent_id_2[agent_id_2] = computeShortestPath(mGraphs[agent_id_2], mStartVertex[agent_id_2], mGoalVertex[agent_id_2], increase_constraints_agent_id_2[agent_id_2],  mStartTimestep[agent_id_2], mGoalTimestep[agent_id_2], cost_agent_id_2);
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 
