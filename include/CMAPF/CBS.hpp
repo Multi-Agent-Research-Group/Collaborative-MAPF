@@ -31,6 +31,8 @@
 #include "BGLDefinitions.hpp"
 #include "time_priority_queue.hpp"
 #include "CBSDefinitions.hpp"
+#include "ISPS.hpp"
+#include "PCSolver.hpp"
 #include "LoadGraphfromFile.hpp"
 
 #define PRINT if (cerr_disabled) {} else std::cout
@@ -74,8 +76,8 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
-	PrecedenceConstraintGraph &mPCGraph;
-	PrecedenceConstraintGraph &mPCGraph_T;
+	PrecedenceConstraintGraph mPCGraph;
+	PrecedenceConstraintGraph mPCGraph_T;
 
 	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
 
@@ -336,7 +338,7 @@ public:
 		std::vector<double> start_costs;
 
 		ISPS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-		mGraphs, mStartVertex, mGoalVertex, stationary_agents, constraints);
+		mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, constraints);
 
 		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve();
 
@@ -475,7 +477,9 @@ public:
 				std::vector< double> costs_agent_id_1 = p.costs;
 				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 				
-				shortestPaths_agent_id_1[agent_id_1] = computeShortestPath(mGraphs[agent_id_1], mStartVertex[agent_id_1], mGoalVertex[agent_id_1], increase_constraints_agent_id_1[agent_id_1], mStartTimestep[agent_id_1], mGoalTimestep[agent_id_1], cost_agent_id_1);
+				ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+					mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
+				shortestPaths_agent_id_1 = planner1.solve();
 				costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
 				if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
@@ -517,8 +521,9 @@ public:
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
 			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-				mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_1);
-			shortestPaths_agent_id_1[agent_id_1] = planner1.solve(cost_agent_id_1);
+				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
+			shortestPaths_agent_id_1 = planner1.solve();
+
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 			PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 
@@ -532,13 +537,92 @@ public:
 			
 
 			ISPS planner2(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-				mGraphs, mStartVertex, mGoalVertex, stationary_agents, increase_constraints_agent_id_2);
-			shortestPaths_agent_id_2[agent_id_2] = planner2.solve(cost_agent_id_2);
+				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
+			shortestPaths_agent_id_2 = planner2.solve();
+
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
 			PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 		}
 
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+	}
+
+		bool evaluateIndividualConfig(Eigen::VectorXd config)
+	{
+		int numberOfRows = mImage.rows;
+		int numberOfColumns = mImage.cols;
+
+		// agent
+		double x_point = config[0]*numberOfColumns + 0.000001;
+		double y_point = (1 - config[1])*numberOfRows + 0.000001;
+		cv::Point point((int)x_point, (int)y_point);
+
+		// Collision Check for agent with environment
+		int intensity = (int)mImage.at<uchar>(point.y, point.x);
+		if (intensity == 0) // Pixel is black
+			return false;
+
+		return true;
+	}
+
+	bool evaluateIndividualEdge(Graph &graph, Edge& e) // returns false if in collision
+	{
+		graph[e].isEvaluated = true;
+
+		Vertex source_vertex = source(e, graph);
+		Vertex target_vertex = target(e, graph);
+
+		Eigen::VectorXd sourceState(2);
+		sourceState << graph[source_vertex].state;
+
+		Eigen::VectorXd targetState(2);
+		targetState << graph[target_vertex].state;
+
+		double resolution = 0.0025;
+		unsigned int nStates = std::ceil(graph[e].length / resolution-0.000000001)+1;
+
+		// Just start and goal
+		if(nStates < 2u)
+		{
+			nStates = 2u;
+		}
+		// std::cout<<"nStates:"<<nStates<<std::endl;
+
+		bool checkResult = true;
+		
+		if (checkResult && !evaluateIndividualConfig(sourceState))
+		{
+			graph[source_vertex].status = CollisionStatus::BLOCKED;
+			graph[e].status = CollisionStatus::BLOCKED;
+			graph[e].length = INF;
+			checkResult = false;
+		}
+
+		if (checkResult && !evaluateIndividualConfig(targetState))
+		{
+			graph[target_vertex].status = CollisionStatus::BLOCKED;
+			graph[e].status = CollisionStatus::BLOCKED;
+			graph[e].length = INF;
+			checkResult = false;
+		}
+
+		if (checkResult)
+		{
+			// Evaluate the States in between
+			for (unsigned int i = 1; i < nStates-1; i++)
+			{
+
+				if(!evaluateIndividualConfig(sourceState + (resolution*i/graph[e].length)*(targetState-sourceState) ))
+				{
+					graph[e].status = CollisionStatus::BLOCKED;
+					graph[e].length = INF;
+					checkResult = false;
+					break;
+				}
+			}
+		}
+
+		return checkResult;
 	}
 
 	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
@@ -839,6 +923,7 @@ public:
 		cv::imshow("Graph Visualization", image);
 		cv::waitKey(0);
 	}
+};
 } // namespace CMAPF
 
 #endif 
