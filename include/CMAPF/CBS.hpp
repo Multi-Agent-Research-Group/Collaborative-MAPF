@@ -89,7 +89,7 @@ public:
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
-		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents)
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, PrecedenceConstraintGraph PCGraph, PrecedenceConstraintGraph PCGraph_T)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
@@ -100,7 +100,9 @@ public:
 		, mGraphs(graphs)
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
-		, mStationaryAgents(stationaryAgents){}
+		, mStationaryAgents(stationaryAgents)
+		, mPCGraph(PCGraph)
+		, mPCGraph_T(PCGraph_T){}
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -119,11 +121,16 @@ public:
 
 	bool checkCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1, int &agent_id_2, Constraint &constraint_2)
 	{
+		property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp = get(meta_data_t(), mPCGraph);
 		int timeStep = 0;
 		int maximum_timestep = 0;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+			meta_data *vertex = &get(mProp, agent_id);
+			mStartTimestep[agent_id] = vertex->start_time;
+			mGoalTimestep[agent_id] = vertex->end_time;
 			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
-		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
+		}
+		std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
 		{
 			std::vector<Vertex> source_vertices;
@@ -157,10 +164,10 @@ public:
 				}
 			}
 
-			// for(int i=0; i<agent_ids.size(); i++)
-			//  std::cout<<agent_ids[i]<<" ";
-			// std::cout<<std::endl;
-			// std::cin.get();
+			for(int i=0; i<agent_ids.size(); i++)
+			 std::cout<<agent_ids[i]<<" ";
+			std::cout<<std::endl;
+			std::cin.get();
 
 			for(int i=0; i<agent_ids.size(); i++)
 			for(int j=i+1; j<agent_ids.size(); j++)
@@ -342,20 +349,25 @@ public:
 
 		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve();
 
+		std::cerr << "planner done\n";
+		std::cerr << mNumAgents << std::endl;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
+				std::cerr << mNumAgents << std::endl;
 				// std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
 				// std::cin.get();
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
+			start_costs.push_back(start_shortestPaths.at(agent_id).size()*mUnitEdgeLength);
 		}
-
+		std::cerr << "planner done1\n";
 		// std::cout<<"K";std::cin.get();
 
 		PQ.insert(start_costs, constraints, start_shortestPaths);
 
+		std::cerr << "planner done2\n";
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
@@ -375,7 +387,7 @@ public:
 			// 	// break;
 			// }
 
-			// std::cout<<"K";std::cin.get();
+			std::cout<<"K";std::cin.get();
 
 			double total_cost = 0;
 			for(int i=0; i<p.costs.size(); i++)
@@ -393,6 +405,7 @@ public:
 			if(cost_increased)
 				break;
 
+			std::cout<<"K";std::cin.get();
 			// if(numSearches%10000 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -428,10 +441,11 @@ public:
 			int agent_id_2 = -1;
 			Constraint constraint_2;
 
-			// std::cout<<"K";std::cin.get();
+			std::cout<<"K";std::cin.get();
 
 			if(!checkCoupling(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
+				std::cout<<"K1";std::cin.get();
 				if(!checkStationaryCoupling(p.shortestPaths, agent_id_1, constraint_1))
 				{
 					// std::cout<<"numSearches: "<<numSearches<<std::endl;
@@ -482,6 +496,8 @@ public:
 				shortestPaths_agent_id_1 = planner1.solve();
 				costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
+				std::cout<<"K1";std::cin.get();
+
 				if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
 				{
 					PRINT<<"inserting left!"<<std::endl;
@@ -490,7 +506,7 @@ public:
 				continue;
 
 			} 
-
+			std::cout<<"K1";std::cin.get();
 			// if(numSearches%1000 == 0)
 			// {
 			// 	std::cout<<"CBS numSearches"<<numSearches<<std::endl;

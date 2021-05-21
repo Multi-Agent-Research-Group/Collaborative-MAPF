@@ -337,68 +337,20 @@ public:
 		// std::cout<<"in solve!!"<<std::endl;
 
 		transpose_graph(mPCGraph, G_T);
-		for(int i=0; i<mMaxIter; i++){
-
-			if(generatePaths(mPCGraph, G_T, mTopologicalOrder, mTopologicalOrder.begin(), mNumAgents, mNumRobots)){
-				std::cout <<mCount<<" ";
-				return true;
-			}
-
-			// std::cout<<i<<std::endl;
-			auto stop = high_resolution_clock::now();
-			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-			if (timespent.count() > 30000000)
-			{
-				std::cout<<"0 ";
-				// std::cout<<"Broke!";
-				break;
-			}
-
-			PCVertexIter v, vend;
-			for (boost::tie(v, vend) = vertices(mPCGraph); v != vend; ++v) {
-
-				container successors;
-				PCOutEdgeIter ei, ei_end;
-
-				for (boost::tie(ei, ei_end) = out_edges(*v, mPCGraph); ei != ei_end; ++ei) 
-				{
-						PCVertex curSuc = target(*ei, mPCGraph);
-						successors.push_back(curSuc);
-				}
-
-				if(successors.size() == 0){
-					meta_data *vertex = &get(name, *v);
-					vertex->slack+=1;
-				}
-
-			}
-
-		}
-		
-		std::cout <<mCount<<" ";
-		return false;
-	}
-
-	bool checkpathpossible(PrecedenceConstraintGraph &G, int &numAgents, int &numRobots)
-	{
-		mCount +=1;
-		// std::cout << "PC Iteration: "<<mCount<<std::endl;
 
 		std::vector<int> startTimesteps;
 		std::vector<int> goalTimesteps;
 
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-
 		// std::vector<int> sp_tasks_list(numRobots);
-		std::vector<Eigen::VectorXd> sp_goal(numRobots);
-		std::vector<int> sp_goal_timestep(numRobots);
+		std::vector<Eigen::VectorXd> sp_goal(mNumRobots);
+		std::vector<int> sp_goal_timestep(mNumRobots);
 
 		int makespan = 0;
 		
 		int id=0;
-		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		for ( int i=0; i<mNumAgents; i++)
 		{
-			meta_data vertex = get(name, *ii);
+			meta_data vertex = get(name, i);
 			startTimesteps.push_back(vertex.start_time);
 			goalTimesteps.push_back(vertex.end_time + vertex.slack);
 			makespan = std::max(makespan,vertex.end_time + vertex.slack);
@@ -427,7 +379,7 @@ public:
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 		std::vector<int> s_ids;
 
-		for(int robot_id=0; robot_id<numRobots; robot_id++)
+		for(int robot_id=0; robot_id<mNumRobots; robot_id++)
 			if(makespan != sp_goal_timestep[robot_id])
 			{
 				stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
@@ -440,11 +392,11 @@ public:
 		// Setup planner
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents);
+			mGraphs, mStartVertex, mGoalVertex, stationary_agents, mPCGraph, G_T);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
-		// std::cerr<<"returned!"<<std::endl;
+		std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
 		{
 			// std::cout<<"N";
@@ -452,7 +404,7 @@ public:
 		}
 
 		// std::cout<<"Y";
-		std::vector<std::vector< Eigen::VectorXd>> agent_paths(numRobots,std::vector< Eigen::VectorXd>());
+		std::vector<std::vector< Eigen::VectorXd>> agent_paths(mNumRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
 		id = 0;
@@ -528,65 +480,6 @@ public:
 		return true;
 	}
 
-	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii, int &numAgents, int &numRobots)
-	{
-
-		auto stop = high_resolution_clock::now();
-		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-		if (timespent.count() > 30000000)
-		{
-			return false;
-		}
-
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type name_t = get(meta_data_t(), G_T);
-			
-
-		if(c.rbegin().base()-1 == ii){
-			return checkpathpossible(G, numAgents, numRobots);
-		}
-
-		container predecessors;
-		PCOutEdgeIter ei, ei_end;
-		for (boost::tie(ei, ei_end) = out_edges(*ii, G_T); ei != ei_end; ++ei) 
-		{
-				PCVertex curPred = target(*ei, G_T);
-				predecessors.push_back(curPred);
-		}
-
-		if(predecessors.size() == 0){
-			return generatePaths(G, G_T, c, ii+1, numAgents, numRobots);
-		}
-
-		meta_data *curr_vertex = &get(name, *ii); 
-
-		if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
-			return true;
-		
-		int slack = curr_vertex->slack;
-		int start_time = curr_vertex->start_time;
-		int end_time = curr_vertex->end_time;
-
-		while(curr_vertex->slack){
-				curr_vertex->slack--;
-				curr_vertex->start_time++;
-				curr_vertex->end_time++;
-				for(auto pred:predecessors){
-					meta_data *vertex = &get(name, pred);
-					vertex->slack+=1;
-				}
-				if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
-					return true;
-		}
-		curr_vertex->slack = slack;
-		curr_vertex->start_time = start_time;
-		curr_vertex->end_time = end_time;
-		for(auto pred:predecessors){
-			meta_data *vertex = &get(name, pred);
-			vertex->slack-=slack;
-		}
-		return false;
-	}
 };
 
 
