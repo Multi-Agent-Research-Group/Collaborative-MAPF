@@ -34,6 +34,7 @@
 #include "ISPSDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
 #include "PCSolver.hpp"
+#include "PCDefinitions.hpp"
 
 // #define PRINT if (cerr_disabled) {} else std::cout
 // #define DEBUG if (cerr_disabled) {} else 
@@ -96,7 +97,7 @@ public:
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
 
 	ISPS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		PrecedenceConstraintGraph PCGraph, PrecedenceConstraintGraph PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
 		: mImage(img)
 		, mNumAgents(numAgents)
@@ -120,10 +121,10 @@ public:
 				std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
 											mGoalVertex[i], mConstraints[i], 0);
 				mComputedPaths.push_back(path);
-				mCosts[i] = path.size();
+				mCosts.push_back(path.size());
 			}
 
-			
+			std::cerr << "here\n";
 
 			for(int i=0; i<mNumAgents; i++){
 				meta_data *vertex = &get(mProp, i);
@@ -142,18 +143,22 @@ public:
 				vector <int> successors;
 				for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph); ei != ei_end; ++ei) 
 				{
-					PCVertex curSuc = target(*ei, mPCGraph_T);
+					PCVertex curSuc = target(*ei, mPCGraph);
 					successors.push_back(curSuc);
 				}
-
-				mPredecessors[i] = predecessors;
-				mSuccessors[i] = successors;
+				mPredecessors.push_back(predecessors);
+				mSuccessors.push_back(successors);
 			}
 
+			std::cerr << "here1\n";
+
 			updateSchedule();
+			initQueue();
+			std::cerr << "here1\n";
 		}
 
 	std::vector< std::vector<Vertex> > solve(){
+		std::cerr << "here2solve\n";
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
 
@@ -161,7 +166,7 @@ public:
 			meta_data *vertex = &get(mProp, agent_id);
 
 			std::vector<Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id],
-											mConstraints[agent_id], vertex->start_time );
+											mConstraints[agent_id], vertex->start_time);
 
 			mCosts[agent_id] = path.size();
 			vertex->end_time = vertex->start_time + mCosts[agent_id]; //update vertex final time
@@ -171,6 +176,15 @@ public:
 			updateSchedule();
 			initQueue();
 		}
+		std::cerr << "here1\n";
+		std::cerr << mNumAgents << std::endl;
+		// for (auto path1:mComputedPaths){
+		// 	for(auto vertex1: path1){
+		// 		std::cerr << vertex1 << " ";
+		// 	}
+		// 	std::cerr << std::endl;
+		// }
+		std::cerr << mComputedPaths.size() << std::endl;
 		return mComputedPaths;
 	}
 
