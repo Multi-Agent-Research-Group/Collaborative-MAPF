@@ -127,12 +127,14 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
 			meta_data *vertex = &get(mProp, agent_id);
 			mStartTimestep[agent_id] = vertex->start_time;
-			mGoalTimestep[agent_id] = vertex->end_time;
+			mGoalTimestep[agent_id] = vertex->start_time + paths[agent_id].size()-1;
+			std::cerr << paths[agent_id].size() << " " << vertex->end_time - vertex->start_time << std::endl;
 			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
 		}
 		std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
 		{
+			std::cout<<timeStep<<std::endl;std::cin.get();
 			std::vector<Vertex> source_vertices;
 			std::vector<Vertex> target_vertices;
 			std::vector<int> agent_ids;
@@ -244,6 +246,7 @@ public:
 			
 			timeStep++;
 		}
+
 		return false;
 	}
 

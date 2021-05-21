@@ -169,7 +169,7 @@ public:
 											mConstraints[agent_id], vertex->start_time);
 
 			mCosts[agent_id] = path.size();
-			vertex->end_time = vertex->start_time + mCosts[agent_id]; //update vertex final time
+			vertex->end_time = vertex->start_time + mCosts[agent_id]-1; //update vertex final time
 			mComputedPaths[agent_id] = path; // update route plan
 			mClosedSet.insert(agent_id);
 
