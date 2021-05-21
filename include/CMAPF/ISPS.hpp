@@ -112,53 +112,49 @@ public:
 		, mStationaryAgents(stationaryAgents)
 		, mConstraints(constraints)
 
-		{
-			mProp = get(meta_data_t(), mPCGraph);
-			mProp_T = get(meta_data_t(), mPCGraph_T);
-			topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
-			
-			for(int i=0; i<mNumAgents; i++){
-				std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
-											mGoalVertex[i], mConstraints[i], 0);
-				mComputedPaths.push_back(path);
-				mCosts.push_back(path.size());
-			}
-
-			std::cerr << "here\n";
-
-			for(int i=0; i<mNumAgents; i++){
-				meta_data *vertex = &get(mProp, i);
-				vertex->slack = 10000;
-				vertex->start_time = 0;
-				vertex->end_time = 0;
-
-				PCOutEdgeIter ei, ei_end;
-				vector <int> predecessors;
-				for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph_T); ei != ei_end; ++ei) 
-				{
-					PCVertex curPred = target(*ei, mPCGraph_T);
-					predecessors.push_back(curPred);
-				}
-
-				vector <int> successors;
-				for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph); ei != ei_end; ++ei) 
-				{
-					PCVertex curSuc = target(*ei, mPCGraph);
-					successors.push_back(curSuc);
-				}
-				mPredecessors.push_back(predecessors);
-				mSuccessors.push_back(successors);
-			}
-
-			std::cerr << "here1\n";
-
-			updateSchedule();
-			initQueue();
-			std::cerr << "here1\n";
+	{
+		mProp = get(meta_data_t(), mPCGraph);
+		mProp_T = get(meta_data_t(), mPCGraph_T);
+		topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
+		
+		for(int i=0; i<mNumAgents; i++){
+			std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
+										mGoalVertex[i], mConstraints[i], 0);
+			mComputedPaths.push_back(path);
+			mCosts.push_back(path.size());
 		}
 
+		std::cerr << "here\n";
+
+		for(int i=0; i<mNumAgents; i++){
+			meta_data *vertex = &get(mProp, i);
+			vertex->slack = 10000;
+			vertex->start_time = 0;
+			vertex->end_time = 0;
+
+			PCOutEdgeIter ei, ei_end;
+			vector <int> predecessors;
+			for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph_T); ei != ei_end; ++ei) 
+			{
+				PCVertex curPred = target(*ei, mPCGraph_T);
+				predecessors.push_back(curPred);
+			}
+
+			vector <int> successors;
+			for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph); ei != ei_end; ++ei) 
+			{
+				PCVertex curSuc = target(*ei, mPCGraph);
+				successors.push_back(curSuc);
+			}
+			mPredecessors.push_back(predecessors);
+			mSuccessors.push_back(successors);
+		}
+
+		updateSchedule();
+		initQueue();
+	}
+
 	std::vector< std::vector<Vertex> > solve(){
-		std::cerr << "here2solve\n";
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
 
@@ -176,15 +172,6 @@ public:
 			updateSchedule();
 			initQueue();
 		}
-		std::cerr << "here1\n";
-		std::cerr << mNumAgents << std::endl;
-		// for (auto path1:mComputedPaths){
-		// 	for(auto vertex1: path1){
-		// 		std::cerr << vertex1 << " ";
-		// 	}
-		// 	std::cerr << std::endl;
-		// }
-		std::cerr << mComputedPaths.size() << std::endl;
 		return mComputedPaths;
 	}
 
@@ -209,14 +196,15 @@ public:
 	}
 
 	void updateSchedule(){
-		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			int agent_id = *ii;
 			meta_data *vertex = &get(mProp, agent_id);
 			vector <int> predecessors = mPredecessors[agent_id];
 			if(predecessors.size() == 0){
 				vertex->start_time = 0;
-				vertex->end_time = std::max(vertex->end_time, mCosts[agent_id]-1);
+				vertex->end_time = mCosts[agent_id]-1;
+				// std::cerr << "here" << std::endl;
 			}
 			else{
 				int makespan = -1;
@@ -225,8 +213,10 @@ public:
 					if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
 				}
 				vertex->start_time = std::max(makespan, vertex->start_time);
-				vertex->end_time = std::max(vertex->end_time, makespan+mCosts[agent_id]-1);
+				vertex->end_time = makespan+mCosts[agent_id]-1;
+				// std::cerr << "there" << std::endl;
 			}
+			// std::cin.get();
 		}
 
 		int makespan = 0;
@@ -236,7 +226,7 @@ public:
 			makespan = std::max(makespan, vertex->end_time);
 		}
 
-		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
 		{
 			int agent_id = *ii;
 			meta_data *vertex = &get(mProp, agent_id);

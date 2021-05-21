@@ -105,9 +105,9 @@ public:
 		std::vector<int> goalTimesteps;
 
 		int j = 0;
-		for ( container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		for (int i=0; i<mNumAgents; i++)
 		{
-			meta_data vertex = get(name, *ii);
+			meta_data vertex = get(name, i);
 			start_config[j] = vertex.start.first;
 			start_config[j+1] = vertex.start.second;
 			goal_config[j] = vertex.goal.first;
@@ -402,7 +402,7 @@ public:
 			// std::cout<<"N";
 			return false;
 		}
-
+		std::cerr<<"returned!"<<std::endl;
 		// std::cout<<"Y";
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(mNumRobots,std::vector< Eigen::VectorXd>());
 
@@ -449,31 +449,46 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
-		// std::cin.get();
+		std::cin.get();
 		std::cerr<<path_cost<<" ";
+		std::cin.get();
 		std::vector<Eigen::VectorXd> path_configs;
 
-		for(int i=0; i<agent_paths[0].size(); i++)
+		std::cerr<<agent_paths[0][0][0] << std::endl;
+
+		makespan = 0;
+		for(int i=0; i<agent_paths.size(); i++)
+		{
+			if(agent_paths.size() > makespan) makespan = agent_paths.size();
+		}
+		std::cerr<<makespan<<" ";
+		for(int i=0; i<makespan; i++)
 		{
 			Eigen::VectorXd config(agent_paths.size()*2);
 			for(int j=0; j<agent_paths.size(); j++)
 			{
-				config[2*j]=agent_paths[j][i][0];
-				config[2*j+1]=agent_paths[j][i][1];
+				if(i < agent_paths[j].size()){
+					config[2*j]=agent_paths[j][i][0];
+					config[2*j+1]=agent_paths[j][i][1];
+				}
+				else{
+					config[2*j]=agent_paths[j][agent_paths[j].size()-1][0];
+					config[2*j+1]=agent_paths[j][agent_paths[j].size()-1][1];
+				}	
 			}
 			path_configs.push_back(config);
 		}
 
-		// std::cerr<<"returning!"<<std::endl;
-		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
+		
+		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = numRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = mNumRobots;
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
