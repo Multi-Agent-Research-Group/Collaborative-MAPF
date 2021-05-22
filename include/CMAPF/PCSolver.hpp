@@ -451,9 +451,9 @@ public:
 			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
-		std::cin.get();
-		std::cerr<<path_cost<<" ";
-		std::cin.get();
+		// std::cin.get();
+		// std::cerr<<path_cost<<" ";
+		// std::cin.get();
 		std::vector<Eigen::VectorXd> path_configs;
 
 		std::cerr<<agent_paths[0][0][0] << std::endl;
@@ -482,12 +482,12 @@ public:
 		}
 
 		
-		std::cout<<"Path config: "<<path_configs[0]<<std::endl;
+		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
 		std::cout<<"Press [ENTER] to display path: \n";
 		std::cin.get();
 		planner.mNumAgents = mNumRobots;
-		// planner.displayPath(path_configs);
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
