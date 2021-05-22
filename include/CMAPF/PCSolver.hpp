@@ -1,4 +1,3 @@
-
 /* Authors: Rajat Kumar Jenamani */
 
 #ifndef _PCSolver_HPP
@@ -488,7 +487,7 @@ public:
 		std::cout<<"Press [ENTER] to display path: \n";
 		std::cin.get();
 		planner.mNumAgents = mNumRobots;
-		planner.displayPath(path_configs);
+		// planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 

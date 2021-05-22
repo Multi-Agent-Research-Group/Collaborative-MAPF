@@ -27,6 +27,11 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include "opencv2/imgproc/imgproc_c.h"
+
+// using namespace cv;
+// #include <highgui.h>
 
 #include "BGLDefinitions.hpp"
 #include "time_priority_queue.hpp"
@@ -650,7 +655,7 @@ public:
 		return neighbors;
 	}
 
-	void displayPath(std::vector<Eigen::VectorXd> path)
+	void dicsplayPath(std::vector<Eigen::VectorXd> path)
 	{
 		cv::Mat image;
 		cv::cvtColor(mImage, image, CV_GRAY2BGR);

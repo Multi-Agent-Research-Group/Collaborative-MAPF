@@ -264,6 +264,22 @@ public:
 		return neighbors;
 	}
 
+	int countConflicts(int agent_id, Vertex &node, int timeStep){
+		int numConflicts = 0;
+		for(int i=0; i<mNumAgents; i++){
+			meta_data *vertex = &get(mProp, i);
+			
+			if(timeStep < vertex->start_time || timeStep > vertex->end_time) continue;
+
+			int indexToCheck = timeStep-vertex->start_time;
+
+			if(indexToCheck >= mComputedPaths[i].size()) indexToCheck = mComputedPaths[i].size()-1;
+			Vertex check = mComputedPaths[i][indexToCheck];
+			if ((int)(check) == (int)(node)) numConflicts += 1;
+		}
+		return numConflicts;
+	}
+
 	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, 
 		std::vector<Constraint> &constraints, int initial_timestep)
 	{
