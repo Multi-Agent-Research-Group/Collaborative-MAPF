@@ -655,7 +655,7 @@ public:
 		return neighbors;
 	}
 
-	void dicsplayPath(std::vector<Eigen::VectorXd> path)
+	void displayPath(std::vector<Eigen::VectorXd> path)
 	{
 		cv::Mat image;
 		cv::cvtColor(mImage, image, CV_GRAY2BGR);
