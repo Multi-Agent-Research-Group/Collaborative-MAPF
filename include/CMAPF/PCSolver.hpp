@@ -85,7 +85,7 @@ public:
 	PrecedenceConstraintGraph &mPCGraph;
 	int mMaxIter;
 
-	double mUnitEdgeLength = 0.1;
+	double mUnitEdgeLength = 0.04;
 
 	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
 		: mPCGraph(G)
@@ -351,7 +351,7 @@ public:
 		{
 			meta_data vertex = get(name, i);
 			startTimesteps.push_back(vertex.start_time);
-			goalTimesteps.push_back(vertex.end_time + vertex.slack);
+			goalTimesteps.push_back(vertex.end_time+vertex.slack);
 			makespan = std::max(makespan,vertex.end_time + vertex.slack);
 
 			// std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]<<std::endl;
@@ -365,7 +365,7 @@ public:
 			for (auto robotNum: agent_list)
 			{
 				sp_goal[robotNum] = goal_config;
-				sp_goal_timestep[robotNum] = vertex.end_time + vertex.slack;
+				sp_goal_timestep[robotNum] = vertex.end_time+vertex.slack;
 			}
 		}
 
@@ -387,7 +387,8 @@ public:
 				// std::cerr<<"Agent: "<<robot_id<<" Goal: "<<sp_goal[robot_id][0]<<" "
 					// <<sp_goal[robot_id][1]<<" "<<"Times: "<<sp_goal_timestep[robot_id]<<" "<<makespan<<std::endl;
 			}
-
+		// std::cerr << stationary_agents.size() << std::endl;
+		// std::cin.get();
 		// Setup planner
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
@@ -461,7 +462,7 @@ public:
 		makespan = 0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			if(agent_paths.size() > makespan) makespan = agent_paths.size();
+			if(agent_paths[i].size() > makespan) makespan = agent_paths[i].size();
 		}
 		std::cerr<<makespan<<" ";
 		for(int i=0; i<makespan; i++)
@@ -477,6 +478,7 @@ public:
 					config[2*j]=agent_paths[j][agent_paths[j].size()-1][0];
 					config[2*j+1]=agent_paths[j][agent_paths[j].size()-1][1];
 				}	
+				std:: cout << "Time " << i << " Agent Id: " << j << " Position x-" << config[2*j] << " Position y-" << config[2*j+1] << std::endl;
 			}
 			path_configs.push_back(config);
 		}

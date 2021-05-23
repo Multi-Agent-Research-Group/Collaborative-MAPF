@@ -42,7 +42,7 @@
 
 #define PRINT if (cerr_disabled) {} else std::cout
 #define DEBUG if (cerr_disabled) {} else 
-bool cerr_disabled = true;
+bool cerr_disabled = false;
 
 #include <chrono>
 using namespace std::chrono;
@@ -90,7 +90,7 @@ public:
 	int mNotHashUsed = 0;
 	int total_time = 0;
 
-	double mUnitEdgeLength = 0.1;
+	double mUnitEdgeLength = 0.04;
 
 	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
@@ -256,10 +256,34 @@ public:
 
 	bool checkStationaryCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1)
 	{
+		property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp = get(meta_data_t(), mPCGraph);
 		int timeStep = 0;
 		int maximum_timestep = 0;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+			meta_data *vertex = &get(mProp, agent_id);
+			mStartTimestep[agent_id] = vertex->start_time;
+			mGoalTimestep[agent_id] = vertex->start_time + paths[agent_id].size()-1;
 			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
+		}
+
+		// PCOutEdgeIter ei, ei_end;
+
+		// for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+		// 	vector <int> successors;
+		// 	for (boost::tie(ei, ei_end) = out_edges(agent_id, mPCGraph); ei != ei_end; ++ei) 
+		// 	{
+		// 		PCVertex curSuc = target(*ei, mPCGraph);
+		// 		successors.push_back(curSuc);
+		// 	}
+		// 	if(successors.size()==0) mGoalTimestep[agent_id] = maximum_timestep;
+		// }
+
+		for(auto &agent:mStationaryAgents){
+			// std:: cerr << maximum_timestep << " Agent_id = " << agent.second.second << std::endl;
+			agent.second.second = maximum_timestep;
+		}
+
+
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
 		{
@@ -361,11 +385,11 @@ public:
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
 				std::cerr << mNumAgents << std::endl;
-				// std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
-				// std::cin.get();
+				std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
+				std::cin.get();
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
-			start_costs.push_back(start_shortestPaths.at(agent_id).size()*mUnitEdgeLength);
+			start_costs.push_back(start_shortestPaths.at(agent_id).size()*1.00);
 		};
 		// std::cout<<"K";std::cin.get();
 
@@ -375,11 +399,12 @@ public:
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
+			std::cerr << numSearches << std::endl;
 			Element p = PQ.pop();
 
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - solve_start_time;
-			if (timespent.count() > 30000000)
+			if (timespent.count() > 300000000000)
 			{
 				break;
 			}
@@ -396,17 +421,17 @@ public:
 
 			bool cost_increased = false;
 
-			for(int i=0; i<p.costs.size(); i++)
-				if(std::abs(start_costs[i] - p.costs[i]) > 0.0001)
-				{
-					cost_increased = true;
-					break;
-				}
+			// for(int i=0; i<p.costs.size(); i++)
+			// 	if(std::abs(start_costs[i] - p.costs[i]) > 0.0001)
+			// 	{
+			// 		cost_increased = true;
+			// 		break;
+			// 	}
 
-			if(cost_increased)
-				break;
+			// if(cost_increased)
+			// 	break;
 
-			// if(numSearches%10000 == 0)
+			if(numSearches%1 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
 				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
@@ -492,15 +517,16 @@ public:
 				ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
 					mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
 				shortestPaths_agent_id_1 = planner1.solve();
+				cost_agent_id_1 = shortestPaths_agent_id_1[agent_id_1].size();
 				costs_agent_id_1[agent_id_1] = cost_agent_id_1;
 
-				if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
-				{
-					PRINT<<"inserting left!"<<std::endl;
-					PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
-				}
+				// if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
+				// {
+				if(cost_agent_id_1) PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
+				// PRINT<<"inserting left!"<<std::endl;
+				
+				// }
 				continue;
-
 			} 
 			// if(numSearches%1000 == 0)
 			// {
@@ -535,8 +561,10 @@ public:
 				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
 			shortestPaths_agent_id_1 = planner1.solve();
 
+			cost_agent_id_1 = shortestPaths_agent_id_1[agent_id_1].size();
 			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
-			PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
+			if(cost_agent_id_1)
+				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_2 = p.constraints;
 			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
@@ -550,9 +578,10 @@ public:
 			ISPS planner2(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
 				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
 			shortestPaths_agent_id_2 = planner2.solve();
-
+			cost_agent_id_2 = shortestPaths_agent_id_2[agent_id_2].size();
 			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
-			PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
+			if(cost_agent_id_2)
+				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 		}
 
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());

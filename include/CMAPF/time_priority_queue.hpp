@@ -24,6 +24,8 @@ private:
 		element(double _key1, double _key2, double _key3, double _key4, int _value, size_t _timestep): key1(_key1), key2(_key2), key3(_key3), key4(_key4), value(_value), timestep(_timestep) {} 
 		inline bool operator < (const element &b) const 
 		{
+			if(key3 < b.key3) return true;
+			return false;
         	if(key1<b.key1)
 				return true;
 			else if(key1 == b.key1 && key2<b.key2)
