@@ -91,13 +91,13 @@ public:
 	container mTopologicalOrder;
 	std::vector< std::vector<Vertex> > mComputedPaths;
 
-	double mUnitEdgeLength = 0.1;
+	double mUnitEdgeLength = 0.04;
 
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
 
 	ISPS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> &graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
 		: mImage(img)
 		, mNumAgents(numAgents)
@@ -148,13 +148,14 @@ public:
 
 		for(int i=0; i<mNumAgents; i++){
 			meta_data *vertex = &get(mProp, i);
+			std::vector<Constraint> v;
 			std::vector <Vertex> path = computeShortestPath(mGraphs[i], mStartVertex[i], 
-										mGoalVertex[i], mConstraints[i], vertex->start_time, vertex->end_time,
+										mGoalVertex[i], v, vertex->start_time, vertex->end_time,
 										i, vertex->slack);
 			mComputedPaths[i] = path;
 			mCosts[i] = path.size();
 
-			std::cerr << path.size() << std::endl;
+			// std::cerr << path.size() << std::endl;
 		}
 
 		// std::cerr << "here\n";
@@ -181,6 +182,29 @@ public:
 
 			updateSchedule();
 			initQueue();
+		}
+
+		int makespan = 0;
+
+		for(int i=0; i<mNumAgents; i++){
+			meta_data *vertex = &get(mProp, i);
+			makespan = std::max(makespan, vertex->end_time);
+		}
+
+		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		{
+			int agent_id = *ii;
+			meta_data *vertex = &get(mProp, agent_id);
+			vector <int> successors = mSuccessors[agent_id];
+			if(successors.size() == 0){
+				int cur_path_length = mComputedPaths[agent_id].size();
+				int slack = makespan-vertex->start_time-cur_path_length;
+				if(cur_path_length){
+					for(int i=0; i<slack; i++){
+						mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
+					}
+				}
+			}
 		}
 		return mComputedPaths;
 	}
@@ -289,6 +313,19 @@ public:
 		return numConflicts;
 	}
 
+	bool isEqualEdge(Graph &graph, Edge a, Edge b){
+		Vertex source_vertex1 = source(a, graph);
+ 		Vertex target_vertex1 = target(a, graph);
+
+ 		Vertex source_vertex2 = source(b, graph);
+ 		Vertex target_vertex2 = target(b, graph);
+
+ 		if(source_vertex1 == source_vertex2 && target_vertex1 == target_vertex2) {
+ 			return true;
+ 		}
+ 		return false;
+	}
+
 	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, 
 		std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, int agent_id, int slack)
 	{
@@ -299,7 +336,8 @@ public:
 		boost::unordered_map<int , Vertex> nodeMap;
 
 		double slackHeuristic = std::max(0.0, initial_timestep*mUnitEdgeLength+graph[start].heuristic-(slack-final_timestep)*mUnitEdgeLength);
-		pq.insert(graph[start].vertex_index,initial_timestep,slackHeuristic, countConflicts(agent_id, start, initial_timestep),
+		pq.insert(graph[start].vertex_index,initial_timestep,
+			slackHeuristic, countConflicts(agent_id, start, initial_timestep),
 			graph[start].heuristic,graph[start].heuristic);
 
 		nodeMap[graph[start].vertex_index]=start;
@@ -311,6 +349,15 @@ public:
 		int maximum_timestep = 10000;
 
 		int goal_timestep = -1;
+
+		std::cerr << "INIT: " << initial_timestep << " NODE st. : " << start << std::endl;
+		for(int i=0; i<constraints.size(); i++)
+		{
+			if(constraints[i].constraint_type==1)
+				std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
+			else
+				std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
+		}
 		while(pq.PQsize()!=0)
 		{
 			numSearches++;
@@ -339,7 +386,8 @@ public:
 					{
 						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
 						{
-							// std::cout<<"Constraint Encountered! "<<std::endl;
+							std::cout<<"Constraint Encountered! "<<std::endl;
+							std::cin.get();
 							col =true;
 							break;
 						}
@@ -358,8 +406,8 @@ public:
 
 							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack-final_timestep)*mUnitEdgeLength);
 							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timeStep+1
-								,slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
+							pq.insert(graph[successor].vertex_index,timeStep+1,
+								slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
 								priority,graph[successor].heuristic);
 
 							if(nodeMap.count(graph[successor].vertex_index)==0)
@@ -371,13 +419,20 @@ public:
 				else
 				{
 					Edge uv_edge = boost::edge(curr_node, successor, graph).first;
-
+					// std::cerr << uv_edge << " " << timeStep << std::endl;
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && uv_edge == c.e && c.t == timeStep + 1) )
+						// if(c.constraint_type == 2){
+						// 	std::cerr << uv_edge << " " << timeStep << std::endl;
+						// 	std::cerr << c.e << " " << c.t << std::endl;
+						// 	std::cerr << (int)(c.e == uv_edge) << std::endl;
+						// 	std::cerr << isEqualEdge(graph, c.e, uv_edge) << std::endl;
+						// }
+						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && isEqualEdge(graph, c.e, uv_edge) && c.t == timeStep + 1) )
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
+							// std::cin.get();
 							col =true;
 							break;
 						}
@@ -409,6 +464,8 @@ public:
 		if(goal_timestep == -1)
 		{
 			costOut = INF;
+			// std::cerr << "======================================\n=======================================\n" ;
+			// std::cin.get();
 			return std::vector<Vertex>();
 		}
 
@@ -426,6 +483,13 @@ public:
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
+		std::cerr << "INITIAL " << initial_timestep << std::endl;
+		for(auto node:finalPath)
+		{
+			std::cerr << node << " ";
+		}
+		std::cerr << std::endl;
+		std::cin.get();
 		return finalPath;
 	}
 

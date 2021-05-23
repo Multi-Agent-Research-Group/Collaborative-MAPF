@@ -33,9 +33,9 @@ int main(int argc, char *argv[])
 	po::options_description desc("ICTS-CBS Planner Options");
 	desc.add_options()
 			("help,h", "produce help message")
-			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/ICTS/9.txt"), "Path to PC Graph Metadata File")
+			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_4.txt"), "Path to PC Graph Metadata File")
 			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
-			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/0.png"), "Path to Obstacle Image File")
+			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
 	;
 
 	// Read arguments
