@@ -97,7 +97,7 @@ public:
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
 
 	ISPS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> &graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
 		: mImage(img)
 		, mNumAgents(numAgents)
@@ -313,7 +313,8 @@ public:
 		return numConflicts;
 	}
 
-	bool isEqualEdge(Graph &graph, Edge a, Edge b){
+	bool isEqualEdge(Graph &graph, Edge &a, Edge &b){
+
 		Vertex source_vertex1 = source(a, graph);
  		Vertex target_vertex1 = target(a, graph);
 
@@ -340,6 +341,7 @@ public:
 			slackHeuristic, countConflicts(agent_id, start, initial_timestep),
 			graph[start].heuristic,graph[start].heuristic);
 
+
 		nodeMap[graph[start].vertex_index]=start;
 
 		VertexIter vi, viend;
@@ -350,14 +352,19 @@ public:
 
 		int goal_timestep = -1;
 
-		std::cerr << "INIT: " << initial_timestep << " NODE st. : " << start << std::endl;
+		int max_C_timestep = 0;
 		for(int i=0; i<constraints.size(); i++)
 		{
 			if(constraints[i].constraint_type==1)
 				std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
 			else
 				std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
+			max_C_timestep = std::max(max_C_timestep,(int)constraints[i].t);
 		}
+
+		std::cerr << "INIT: " << initial_timestep <<"C T: "<<max_C_timestep << " NODE st. : " << start << std::endl;
+
+
 		while(pq.PQsize()!=0)
 		{
 			numSearches++;
@@ -366,7 +373,7 @@ public:
 			int timeStep = top_element.second;
 			// if(timeStep > final_timestep)
 			// 	continue;
-			if(index == graph[goal].vertex_index)
+			if(index == graph[goal].vertex_index && timeStep >= max_C_timestep)
 			{
 				goal_timestep = timeStep;
 				costOut = mDistance[std::make_pair(goal,goal_timestep)];
@@ -387,7 +394,7 @@ public:
 						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
 						{
 							std::cout<<"Constraint Encountered! "<<std::endl;
-							std::cin.get();
+							// std::cin.get();
 							col =true;
 							break;
 						}
@@ -489,7 +496,7 @@ public:
 			std::cerr << node << " ";
 		}
 		std::cerr << std::endl;
-		std::cin.get();
+		// std::cin.get();
 		return finalPath;
 	}
 

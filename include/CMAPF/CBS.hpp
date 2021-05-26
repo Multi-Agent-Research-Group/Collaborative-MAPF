@@ -431,7 +431,7 @@ public:
 			// if(cost_increased)
 			// 	break;
 
-			if(numSearches%1 == 0)
+			if(numSearches%1000 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
 				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
