@@ -33,6 +33,8 @@ using namespace std::chrono;
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include "opencv2/imgproc/imgproc_c.h"
 
 #include "BGLDefinitions.hpp"
 #include "PCDefinitions.hpp"
@@ -79,11 +81,17 @@ public:
 	std::vector<Eigen::VectorXd> mStartConfig;
 	std::vector<Vertex> mStartVertex;
 
+	vector <vector <int>> mPredecessors;
+	vector <vector <int>> mSuccessors;
+	vector <set <int>> mNeighbours;
+	// vector <vector <int>> mSuccessors;
+
 	/// Goal vertex.
 	std::vector<Eigen::VectorXd> mGoalConfig;
 	std::vector<Vertex> mGoalVertex;
 
-	PrecedenceConstraintGraph &mPCGraph;
+	PrecedenceConstraintGraph mPCGraph;
+	PrecedenceConstraintGraph mPCGraph_T;
 	int mMaxIter;
 
 	double mUnitEdgeLength = 0.1;
@@ -115,6 +123,43 @@ public:
 			j+=2;
 		}
 
+		transpose_graph(mPCGraph, mPCGraph_T);
+
+
+		for(int i=0; i<mNumAgents; i++){
+			PCOutEdgeIter ei, ei_end;
+			vector <int> predecessors;
+			for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph_T); ei != ei_end; ++ei) 
+			{
+				PCVertex curPred = target(*ei, mPCGraph_T);
+				predecessors.push_back(curPred);
+			}
+
+			vector <int> successors;
+			for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph); ei != ei_end; ++ei) 
+			{
+				PCVertex curSuc = target(*ei, mPCGraph);
+				successors.push_back(curSuc);
+			}
+			mPredecessors.push_back(predecessors);
+			mSuccessors.push_back(successors);
+
+
+		
+		}
+
+		for(int i=0; i<mNumAgents; i++){
+			set <int> neighbours;
+			for(auto pred:mPredecessors[i]){
+				for (auto succ: mSuccessors[pred]){
+					neighbours.insert(succ);
+					// meta_data *vertex = &get(name, succ);
+					// upstream_slack = std::min(upstream_slack, vertex->slack_prop);
+				}
+			}
+			mNeighbours.push_back(neighbours);
+		}
+		
 		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
 
 		// Space Information
@@ -338,7 +383,7 @@ public:
 
 		transpose_graph(mPCGraph, G_T);
 		for(int i=0; i<mMaxIter; i++){
-
+			// std::cout <<i<<"\n";
 			if(generatePaths(mPCGraph, G_T, mTopologicalOrder, mTopologicalOrder.begin(), mNumAgents, mNumRobots)){
 				std::cout <<mCount<<" ";
 				return true;
@@ -529,7 +574,6 @@ public:
 
 	bool generatePaths(PrecedenceConstraintGraph &G, PrecedenceConstraintGraph &G_T, container &c, container::iterator ii, int &numAgents, int &numRobots)
 	{
-
 		auto stop = high_resolution_clock::now();
 		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 		if (timespent.count() > 30000000)
@@ -545,14 +589,16 @@ public:
 			return checkpathpossible(G, numAgents, numRobots);
 		}
 
-		container predecessors;
-		PCOutEdgeIter ei, ei_end;
-		for (boost::tie(ei, ei_end) = out_edges(*ii, G_T); ei != ei_end; ++ei) 
-		{
-				PCVertex curPred = target(*ei, G_T);
-				predecessors.push_back(curPred);
-		}
+		int agent_id = *ii;
+		// container predecessors;
+		// PCOutEdgeIter ei, ei_end;
+		// for (boost::tie(ei, ei_end) = out_edges(*ii, G_T); ei != ei_end; ++ei) 
+		// {
+		// 		PCVertex curPred = target(*ei, G_T);
+		// 		predecessors.push_back(curPred);
+		// }
 
+		vector <int> predecessors = mPredecessors[agent_id];
 		if(predecessors.size() == 0){
 			return generatePaths(G, G_T, c, ii+1, numAgents, numRobots);
 		}
@@ -566,23 +612,65 @@ public:
 		int start_time = curr_vertex->start_time;
 		int end_time = curr_vertex->end_time;
 
-		while(curr_vertex->slack){
-				curr_vertex->slack--;
-				curr_vertex->start_time++;
-				curr_vertex->end_time++;
-				for(auto pred:predecessors){
-					meta_data *vertex = &get(name, pred);
-					vertex->slack+=1;
-				}
-				if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
-					return true;
+		if(curr_vertex->slack_prop){
+			std::cout << "There is something wrong with slack prop  " << curr_vertex << std::endl;
 		}
+		int upstream_slack = curr_vertex -> slack_prop;
+		int prev_prop_slack = 0;
+
+
+		while(curr_vertex->slack_prop != slack){
+			// std::cout << "stuck here\n";
+			// std:: cout << "prop_slack =" << curr_vertex -> slack_prop << std::endl;
+			// std::cin.get();
+
+			
+			curr_vertex->slack_prop += 1;
+			upstream_slack = curr_vertex->slack_prop;
+			
+			
+			// for(auto pred:predecessors){
+			// for (auto succ: mNeighbours[agent_id]){
+			// 	meta_data *vertex = &get(name, succ);
+			// 	upstream_slack = std::min(upstream_slack, vertex->slack);
+			// }
+
+			for (auto succ: mNeighbours[agent_id]){
+				meta_data *vertex = &get(name, succ);
+				upstream_slack = std::min(upstream_slack, vertex->slack_prop);
+			}
+
+			// }
+			// std::cout << "upstream_slack = " << upstream_slack << std::endl;
+			// std::cout << "prev_prop_slack = " << prev_prop_slack << std::endl;
+			for(auto pred:predecessors){
+				meta_data *vertex = &get(name, pred);
+				vertex->slack+=upstream_slack-prev_prop_slack;
+			}
+
+			// std::cout << "upstream_slack = " << upstream_slack << std::endl;
+			// if(upstream_slack == 1000000) upstream_slack = 0;
+			prev_prop_slack = upstream_slack;
+
+			curr_vertex->slack = slack-upstream_slack;
+			curr_vertex->start_time = start_time + upstream_slack;
+			// std::cout << "upstream_slack = " << curr_vertex->end_time  << std::endl;
+			curr_vertex->end_time = end_time + upstream_slack;
+			// std::cout << "upstream_slack = " << curr_vertex->end_time  << std::endl;
+
+			if(generatePaths(G, G_T, c, ii+1, numAgents, numRobots))
+				return true;
+		}
+		curr_vertex->slack_prop = 0;
 		curr_vertex->slack = slack;
+		// std::cout << "slack = " << curr_vertex->slack  << std::endl;
 		curr_vertex->start_time = start_time;
 		curr_vertex->end_time = end_time;
+		// std::cout << "end_time = " << curr_vertex->end_time  << std::endl;
+		// std::cout << "upstream_slack = " << upstream_slack << std::endl;
 		for(auto pred:predecessors){
 			meta_data *vertex = &get(name, pred);
-			vertex->slack-=slack;
+			vertex->slack-=upstream_slack;
 		}
 		return false;
 	}
@@ -592,3 +680,4 @@ public:
 } // namespace CMAPF
 
 #endif 
+// 6_8_25 - 60
