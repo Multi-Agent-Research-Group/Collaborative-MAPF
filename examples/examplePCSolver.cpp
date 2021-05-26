@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 	p.solve();
 	// std::cerr<<"solved!";
 	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<milliseconds>(stop - start);
+	auto duration = duration_cast<microseconds>(stop - start);
 	std::cout << duration.count()/1000.0<< std::endl;
 
 	return 0;

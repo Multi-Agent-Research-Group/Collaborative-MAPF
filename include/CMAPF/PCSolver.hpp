@@ -80,7 +80,7 @@ public:
 	PrecedenceConstraintGraph &mPCGraph;
 	int mMaxIter;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
 		: mPCGraph(G)
@@ -391,13 +391,13 @@ public:
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
-		std::cerr<<"returned!"<<std::endl;
+		// std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
 		{
 			// std::cout<<"N";
 			return false;
 		}
-		std::cerr<<"returned!"<<std::endl;
+		// std::cerr<<"returned!"<<std::endl;
 		// std::cout<<"Y";
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(mNumRobots,std::vector< Eigen::VectorXd>());
 
@@ -410,6 +410,7 @@ public:
 				// <<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
 
 			id++;
+			task_count = *ii;
 			meta_data vertex = get(name, *ii);
 			for(int agent = 0; agent < vertex.agent_list.size(); agent++){
 				if(agent_paths[vertex.agent_list[agent]].size() == 0)
@@ -425,7 +426,7 @@ public:
 				// 	std::cout<<"tis me! - "<<agent_paths[vertex.agent_list[agent]].size()<<std::endl;
 			}
 			
-			task_count++;
+			// task_count++;
 		}
 
 		// int ret_makespan = 0;
@@ -452,14 +453,14 @@ public:
 		// std::cin.get();
 		std::vector<Eigen::VectorXd> path_configs;
 
-		std::cerr<<agent_paths[0][0][0] << std::endl;
+		// std::cerr<<agent_paths[0][0][0] << std::endl;
 
 		makespan = 0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
 			if(agent_paths[i].size() > makespan) makespan = agent_paths[i].size();
 		}
-		std::cerr<<makespan<<" ";
+		// std::cerr<<makespan<<" ";
 		for(int i=0; i<makespan; i++)
 		{
 			Eigen::VectorXd config(agent_paths.size()*2);
@@ -473,7 +474,7 @@ public:
 					config[2*j]=agent_paths[j][agent_paths[j].size()-1][0];
 					config[2*j+1]=agent_paths[j][agent_paths[j].size()-1][1];
 				}	
-				std:: cout << "Time " << i << " Agent Id: " << j << " Position x-" << config[2*j] << " Position y-" << config[2*j+1] << std::endl;
+				// std:: cout << "Time " << i << " Agent Id: " << j << " Position x-" << config[2*j] << " Position y-" << config[2*j+1] << std::endl;
 			}
 			path_configs.push_back(config);
 		}
@@ -481,10 +482,10 @@ public:
 		
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: \n";
-		std::cin.get();
-		planner.mNumAgents = mNumRobots;
-		planner.displayPath(path_configs);
+		// std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		// planner.mNumAgents = mNumRobots;
+		// planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 

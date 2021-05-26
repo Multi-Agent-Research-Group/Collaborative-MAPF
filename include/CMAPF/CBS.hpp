@@ -84,7 +84,7 @@ public:
 	int mNotHashUsed = 0;
 	int total_time = 0;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	CBS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
@@ -375,9 +375,9 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
-				std::cerr << mNumAgents << std::endl;
-				std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
-				std::cin.get();
+				// std::cerr << mNumAgents << std::endl;
+				// std::cout<<"No Path exists for index "<<agent_id<<"! Press [ENTER] to exit: ";
+				// std::cin.get();
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
 
@@ -403,10 +403,10 @@ public:
 			// 	// break;
 			// }
 
-			if(numSearches%1000 == 0)
+			// if(numSearches%1000 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				// std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
