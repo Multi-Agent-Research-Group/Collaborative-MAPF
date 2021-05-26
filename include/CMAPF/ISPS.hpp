@@ -92,7 +92,7 @@ public:
 	container mTopologicalOrder;
 	std::vector< std::vector<Vertex> > mComputedPaths;
 
-	double mUnitEdgeLength = 0.04;
+	double mUnitEdgeLength = 0.1;
 
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
@@ -190,6 +190,8 @@ public:
 			makespan = std::max(makespan, vertex->end_time);
 		}
 
+		// std::cerr << "FINAL MAKESPAN ================= " << makespan << std::endl;
+
 		costOut = makespan*mUnitEdgeLength;
 
 		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
@@ -199,13 +201,27 @@ public:
 			vector <int> successors = mSuccessors[agent_id];
 			if(successors.size() == 0){
 				int cur_path_length = mComputedPaths[agent_id].size();
-				int slack = makespan-vertex->start_time-cur_path_length;
+				int slack = makespan-(vertex->start_time+cur_path_length-1);
 				if(cur_path_length){
 					for(int i=0; i<slack; i++){
 						mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
 					}
 				}
 			}
+
+			// else{
+			// std::cerr << "here1\n";
+			for(auto suc: mSuccessors[agent_id]){
+				int cur_path_length = mComputedPaths[agent_id].size();
+				meta_data *suc_vertex = &get(mProp, suc);
+				int pathCostToAdd = suc_vertex->start_time - (vertex->start_time + cur_path_length-1);
+				// std::cerr << pathCostToAdd << std::endl;
+				for(int i=0; i<pathCostToAdd; i++){
+					mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
+				}
+			}
+			// std::cerr << "here2\n";
+			// }
 		}
 		return mComputedPaths;
 	}
@@ -242,24 +258,25 @@ public:
 				// std::cerr << "here" << std::endl;
 			}
 			else{
-				int makespan = -1;
+				int makespan = 0;
 				for(auto pred: predecessors){
 					meta_data *pred_vertex = &get(mProp, pred);
 					if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
 				}
 				vertex->start_time = std::max(makespan, vertex->start_time);
-				vertex->end_time = makespan+mCosts[agent_id]-1;
+				vertex->end_time = vertex->start_time+mCosts[agent_id]-1;
 				// std::cerr << "there" << std::endl;
 			}
 			// std::cin.get();
 		}
 
 		int makespan = 0;
-
+		
 		for(int i=0; i<mNumAgents; i++){
 			meta_data *vertex = &get(mProp, i);
 			makespan = std::max(makespan, vertex->end_time);
 		}
+		// std::cerr << "CURRENT MAKESPAN " << makespan << std::endl;
 
 		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
 		{
@@ -273,6 +290,8 @@ public:
 				int makespan = -1;
 				for(auto suc: successors){
 					meta_data *suc_vertex = &get(mProp, suc);
+					// vertex->end_time = std::max(suc_vertex->start_time, vertex->end_time);
+					// suc_vertex->start_time = std::max(suc_vertex->start_time, vertex->end_time);
 					vertex->slack = std::min(vertex->slack, suc_vertex->start_time + suc_vertex->slack - vertex->end_time);
 				}
 			}
