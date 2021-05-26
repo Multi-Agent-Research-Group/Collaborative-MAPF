@@ -18,6 +18,8 @@
 #include <boost/property_map/dynamic_property_map.hpp>
 #include <boost/graph/transpose_graph.hpp>
 #include <boost/graph/topological_sort.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include "opencv2/imgproc/imgproc_c.h"
 
 #include <algorithm>        // std::reverse
 #include <cmath>            // pow, sqrt
