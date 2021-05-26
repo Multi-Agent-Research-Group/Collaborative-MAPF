@@ -26,6 +26,7 @@ using namespace boost;
 		int end_time;
 
 		int slack = 0;
+		int slack_prop = 0;
 
 		int start_vertex;
 		int goal_vertex;

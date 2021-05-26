@@ -357,8 +357,7 @@ public:
 			}
 		}
 
-		// std::cout<<"K";std::cin.get();
-
+		// std::cout<<"K";
 		PQ.insert(start_costs, constraints, start_shortestPaths);
 
 		int numSearches = 0;
