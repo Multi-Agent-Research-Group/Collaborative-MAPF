@@ -106,25 +106,17 @@ struct pair_hash {
 
 struct Element
 {
-	std::vector<double> costs;
+	double cost;
 	std::vector<std::vector< Constraint >> constraints;
 	std::vector<std::vector<Vertex>> shortestPaths;
 
-	Element(std::vector<double> _costs, std::vector<std::vector<Constraint>> _constraints, std::vector<std::vector<Vertex>> _shortestPaths): 
-		costs(_costs), constraints(_constraints), shortestPaths(_shortestPaths) 
+	Element(double _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<std::vector<Vertex>> _shortestPaths): 
+		cost(_cost), constraints(_constraints), shortestPaths(_shortestPaths) 
 		{}
 
 	inline bool operator < (const Element &b) const 
 	{
-		double cost = 0;
-		for(int i=0; i<costs.size(); i++)
-			cost = std::max(cost, costs[i]);
-
-		double b_cost = 0;
-		for(int i=0; i<b.costs.size(); i++)
-			b_cost = std::max(b_cost, b.costs[i]);
-
-    	if(cost<b_cost)
+    	if(cost<b.cost)
 			return true;
 		else
 			return false;
@@ -157,13 +149,13 @@ public:
 	CBSPriorityQueue(size_t numAgents)
 	{ 
 		mNumAgents = numAgents;
-		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
+		Element a(-1.0,std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
 		PQ.push_back(a);
 	}
 	void reset()
 	{
 		PQ.clear();
-		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
+		Element a(-1.0,std::vector<std::vector<Constraint>>(mNumAgents, std::vector<Constraint>()),std::vector<std::vector<Vertex>>(mNumAgents,std::vector<Vertex>()));
 		PQ.push_back(a);
 	}
 	int PQsize()
@@ -172,10 +164,7 @@ public:
 	}
 	double topKey()
 	{
-		double cost = 0;
-		for(int i=0; i<PQ[1].costs.size(); i++)
-			cost += PQ[1].costs[i];
-		return cost;
+		return PQ[1].cost;
 	}
 	Element pop()
 	{
@@ -185,7 +174,7 @@ public:
 		min_heapify(1);
 		return temp;
 	}
-	void insert(std::vector<double> _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<std::vector<Vertex>> _shortestPaths)
+	void insert(double _cost, std::vector<std::vector<Constraint>> _constraints, std::vector<std::vector<Vertex>> _shortestPaths)
 	{
 		Element a(_cost, _constraints, _shortestPaths);
 		PQ.push_back(a);
@@ -208,10 +197,7 @@ public:
 		cout<<"Elements: "<<endl;
 		for(int i=1;i<PQ.size();i++)
 		{
-			cout<<"Cost: ";
-			for(int j=0; j<PQ[i].costs.size(); j++)
-				cout<<PQ[i].costs[j]<<" ";
-			cout<<endl;
+			cout<<"Cost: "<<PQ[i].cost<<endl;
 
 			cout<<"Constraints: "<<endl;
 			//print constraints

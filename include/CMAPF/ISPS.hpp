@@ -44,21 +44,22 @@
 using namespace std::chrono;
 
 #define INF std::numeric_limits<double>::infinity()
+#define EPS 0.000001 // used for double precision
 
 namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
+/// Environment
+cv::Mat mImage;
+
+/// The fixed graphs denoting individual environment of corresponding agents
+std::vector<Graph> mGraphs;
+
 class ISPS
 {
 
 public:
-
-	/// Environment
-	cv::Mat mImage;
-
-	/// The fixed graphs denoting individual environment of corresponding agents
-	std::vector<Graph> mGraphs;
 
 	/// Number of agents
 	int mNumAgents; 
@@ -96,17 +97,15 @@ public:
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
 
-	ISPS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+	ISPS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
+		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
-		: mImage(img)
-		, mNumAgents(numAgents)
+		: mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mPCGraph(PCGraph)
 		, mPCGraph_T(PCGraph_T)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
-		, mGraphs(graphs)
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
 		, mStationaryAgents(stationaryAgents)
@@ -164,7 +163,7 @@ public:
 		initQueue();
 	}
 
-	std::vector< std::vector<Vertex> > solve(){
+	std::vector< std::vector<Vertex> > solve(double &costOut){
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
 
@@ -190,6 +189,8 @@ public:
 			meta_data *vertex = &get(mProp, i);
 			makespan = std::max(makespan, vertex->end_time);
 		}
+
+		costOut = makespan*mUnitEdgeLength;
 
 		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
 		{
@@ -289,7 +290,11 @@ public:
 			Vertex curSucc = target(*ei, graph);
 			Edge e = *ei;
 			if(!graph[e].isEvaluated)
+			{
+				std::cout<<"ISPS - not evaluated!"<<std::endl;
+				std::cin.get();
 				evaluateIndividualEdge(graph,e);
+			}
 			if(graph[e].status == CollisionStatus::FREE)
 				neighbors.push_back(curSucc);
 		}
@@ -321,6 +326,7 @@ public:
  		Vertex source_vertex2 = source(b, graph);
  		Vertex target_vertex2 = target(b, graph);
 
+ 		// if(a==b)
  		if(source_vertex1 == source_vertex2 && target_vertex1 == target_vertex2) {
  			return true;
  		}
@@ -355,14 +361,14 @@ public:
 		int max_C_timestep = 0;
 		for(int i=0; i<constraints.size(); i++)
 		{
-			if(constraints[i].constraint_type==1)
-				std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
-			else
-				std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
+			// if(constraints[i].constraint_type==1)
+			// 	std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
+			// else
+			// 	std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
 			max_C_timestep = std::max(max_C_timestep,(int)constraints[i].t);
 		}
 
-		std::cerr << "INIT: " << initial_timestep <<"C T: "<<max_C_timestep << " NODE st. : " << start << std::endl;
+		// std::cerr << "INIT: " << initial_timestep <<"C T: "<<max_C_timestep << " NODE st. : " << start << std::endl;
 
 
 		while(pq.PQsize()!=0)
@@ -393,7 +399,7 @@ public:
 					{
 						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
 						{
-							std::cout<<"Constraint Encountered! "<<std::endl;
+							// std::cout<<"Constraint Encountered! "<<std::endl;
 							// std::cin.get();
 							col =true;
 							break;
@@ -436,7 +442,7 @@ public:
 						// 	std::cerr << (int)(c.e == uv_edge) << std::endl;
 						// 	std::cerr << isEqualEdge(graph, c.e, uv_edge) << std::endl;
 						// }
-						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && isEqualEdge(graph, c.e, uv_edge) && c.t == timeStep + 1) )
+						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && c.e==uv_edge && c.t == timeStep + 1) )
 						{
 							// std::cout<<"Constraint Encountered! "<<std::endl;
 							// std::cin.get();
@@ -490,12 +496,12 @@ public:
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
-		std::cerr << "INITIAL " << initial_timestep << std::endl;
-		for(auto node:finalPath)
-		{
-			std::cerr << node << " ";
-		}
-		std::cerr << std::endl;
+		// std::cerr << "INITIAL " << initial_timestep << std::endl;
+		// for(auto node:finalPath)
+		// {
+		// 	std::cerr << node << " ";
+		// }
+		// std::cerr << std::endl;
 		// std::cin.get();
 		return finalPath;
 	}
