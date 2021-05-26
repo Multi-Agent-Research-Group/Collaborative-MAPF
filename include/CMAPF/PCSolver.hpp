@@ -59,11 +59,6 @@ public:
 
 	high_resolution_clock::time_point mSolveStartTime;
 
-	cv::Mat mImage;
-
-	/// The fixed graphs denoting individual environment of corresponding agents
-	std::vector<Graph> mGraphs;
-
 	/// Number of agents (tasks)
 	int mNumAgents; 
 
@@ -391,8 +386,8 @@ public:
 		// std::cin.get();
 		// Setup planner
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
-		CBS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mGraphs, mStartVertex, mGoalVertex, stationary_agents, mPCGraph, G_T);
+		CBS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
+			mStartVertex, mGoalVertex, stationary_agents, mPCGraph, G_T);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		

@@ -42,7 +42,7 @@
 
 #define PRINT if (cerr_disabled) {} else std::cout
 #define DEBUG if (cerr_disabled) {} else 
-bool cerr_disabled = false;
+bool cerr_disabled = true;
 
 #include <chrono>
 using namespace std::chrono;
@@ -57,12 +57,6 @@ class CBS
 {
 
 public:
-
-	/// Environment
-	cv::Mat mImage;
-
-	/// The fixed graphs denoting individual environment of corresponding agents
-	std::vector<Graph> mGraphs;
 
 	/// Number of agents
 	int mNumAgents; 
@@ -92,17 +86,15 @@ public:
 
 	double mUnitEdgeLength = 0.04;
 
-	CBS(cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Graph> graphs, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+	CBS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
+		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, PrecedenceConstraintGraph PCGraph, PrecedenceConstraintGraph PCGraph_T)
-		: mImage(img)
-		, mNumAgents(numAgents)
+		: mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mStartTimestep(startTimesteps)
 		, mGoalTimestep(goalTimesteps)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
-		, mGraphs(graphs)
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
 		, mStationaryAgents(stationaryAgents)
@@ -373,15 +365,14 @@ public:
 		CBSPriorityQueue PQ(mNumAgents);
 
 		std::vector<std::vector<Constraint>> constraints(mNumAgents, std::vector<Constraint>());
-		std::vector<double> start_costs;
+		double start_cost;
 
-		ISPS planner(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-		mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, constraints);
+		ISPS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+		mStartVertex, mGoalVertex, mStationaryAgents, constraints);
 
-		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve();
+		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve(start_cost);
 
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
 				std::cerr << mNumAgents << std::endl;
@@ -389,17 +380,14 @@ public:
 				std::cin.get();
 				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 			}
-			start_costs.push_back(start_shortestPaths.at(agent_id).size()*1.00);
-		};
-		// std::cout<<"K";std::cin.get();
 
-		PQ.insert(start_costs, constraints, start_shortestPaths);
+		PQ.insert(start_cost, constraints, start_shortestPaths);
 
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
 			numSearches++;
-			std::cerr << numSearches << std::endl;
+			PRINT<< numSearches << std::endl;
 			Element p = PQ.pop();
 
 			auto stop = high_resolution_clock::now();
@@ -415,26 +403,10 @@ public:
 			// 	// break;
 			// }
 
-			double total_cost = 0;
-			for(int i=0; i<p.costs.size(); i++)
-				total_cost = std::max(total_cost, p.costs[i]);
-
-			bool cost_increased = false;
-
-			// for(int i=0; i<p.costs.size(); i++)
-			// 	if(std::abs(start_costs[i] - p.costs[i]) > 0.0001)
-			// 	{
-			// 		cost_increased = true;
-			// 		break;
-			// 	}
-
-			// if(cost_increased)
-			// 	break;
-
 			if(numSearches%1000 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
@@ -473,7 +445,7 @@ public:
 				{
 					// std::cout<<"numSearches: "<<numSearches<<std::endl;
 
-					PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((total_cost+0.0001)/mUnitEdgeLength)<<std::endl;
+					PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 					for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 					{
 						PRINT<<"Agent ID: "<<agent_id<<std::endl;
@@ -485,7 +457,7 @@ public:
 
 					std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
-					// std::cout<<" Path Cost: "<<total_cost<<std::endl;
+					// std::cout<<" Path Cost: "<<p.cost<<std::endl;
 					for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 					{
 						// std::cout<<"Shortest Path Cost for index - "<<agent_id<<" : "<<p.costs[agent_id]<<std::endl;
@@ -509,22 +481,21 @@ public:
 				// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
 				increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 
+				ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+					mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
 				double cost_agent_id_1;
-
-				std::vector< double> costs_agent_id_1 = p.costs;
-				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
+				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
 				
-				ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-					mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
-				shortestPaths_agent_id_1 = planner1.solve();
-				cost_agent_id_1 = shortestPaths_agent_id_1[agent_id_1].size();
-				costs_agent_id_1[agent_id_1] = cost_agent_id_1;
+				bool all_paths_found = true;
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+					if(shortestPaths_agent_id_1.at(agent_id).size()==0)
+					{
+						all_paths_found = false;
+						break;
+					}
 
-				// if(costs_agent_id_1[agent_id_1] == p.costs[agent_id_1])
-				// {
-				if(cost_agent_id_1) PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
-				// PRINT<<"inserting left!"<<std::endl;
-				
+				if(all_paths_found) 
+					PQ.insert(cost_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 				// }
 				continue;
 			} 
@@ -551,37 +522,40 @@ public:
 
 			// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
 			increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
-
-			double cost_agent_id_1;
-
-			std::vector< double> costs_agent_id_1 = p.costs;
-			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = p.shortestPaths;
 			
-			ISPS planner1(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
-			shortestPaths_agent_id_1 = planner1.solve();
+			ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
+			double cost_agent_id_1;
+			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
+			
+			bool all_paths_found = true;
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(shortestPaths_agent_id_1.at(agent_id).size()==0)
+				{
+					all_paths_found = false;
+					break;
+				}
 
-			cost_agent_id_1 = shortestPaths_agent_id_1[agent_id_1].size();
-			costs_agent_id_1[agent_id_1] = cost_agent_id_1;
-			if(cost_agent_id_1)
-				PQ.insert(costs_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
+			if(all_paths_found)
+				PQ.insert(cost_agent_id_1,increase_constraints_agent_id_1,shortestPaths_agent_id_1);
 
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_2 = p.constraints;
 			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
 
+			ISPS planner2(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
 			double cost_agent_id_2;
+			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = planner2.solve(cost_agent_id_2);
+			all_paths_found = true;
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(shortestPaths_agent_id_2.at(agent_id).size()==0)
+				{
+					all_paths_found = false;
+					break;
+				}
 
-			std::vector< double> costs_agent_id_2 = p.costs;
-			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = p.shortestPaths;
-			
-
-			ISPS planner2(mImage,mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-				mGraphs, mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
-			shortestPaths_agent_id_2 = planner2.solve();
-			cost_agent_id_2 = shortestPaths_agent_id_2[agent_id_2].size();
-			costs_agent_id_2[agent_id_2] = cost_agent_id_2;
-			if(cost_agent_id_2)
-				PQ.insert(costs_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
+			if(all_paths_found)
+				PQ.insert(cost_agent_id_2,increase_constraints_agent_id_2,shortestPaths_agent_id_2);
 		}
 
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
@@ -675,7 +649,11 @@ public:
 			Vertex curSucc = target(*ei, graph);
 			Edge e = *ei;
 			if(!graph[e].isEvaluated)
+			{
+				std::cout<<"CBS - Not evaluated!!";
+				std::cin.get();
 				evaluateIndividualEdge(graph,e);
+			}
 			if(graph[e].status == CollisionStatus::FREE)
 				neighbors.push_back(curSucc);
 		}
