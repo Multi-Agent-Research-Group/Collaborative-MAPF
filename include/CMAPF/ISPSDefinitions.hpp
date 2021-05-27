@@ -78,6 +78,21 @@ public:
 		min_heapify(1);
 		return temp;
 	}
+	void remove(size_t v)
+	{
+		int i;
+		for(i=1;i<PQ.size();i++)
+			if(PQ[i].agent_id==v)
+				break;
+		if(i<PQ.size())
+		{
+			swap(PQ[i],PQ[PQ.size()-1]);
+			PQ.erase(PQ.end()-1);
+			// printPQ();
+			min_heapify(i);
+			// printPQ();
+		}
+	}
 	void insert(size_t agent_id, size_t slack)
 	{
 		slackElement a(agent_id, slack);
@@ -94,6 +109,14 @@ public:
 				i=i/2;
 			}
 		}
+	}
+
+	void print()
+	{
+		cout<<"\nPQ Elements: ";
+		for(int i=1;i<PQ.size();i++)
+			cout<<PQ[i].agent_id<<":"<<PQ[i].slack<<" ";
+		cout<<endl;
 	}
 };
 
