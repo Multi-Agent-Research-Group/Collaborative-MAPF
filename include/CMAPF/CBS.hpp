@@ -776,7 +776,8 @@ public:
 		
 
 		std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
-		for(int tid=0; tid<mNumAgents; tid++)
+		std::cout << mNumAgents << std::endl;
+		for(int tid=0; tid<mStartVertex.size(); tid++)
 		{
 			int start_x = int( (mGraphs[0][mStartVertex[tid]].state[0]+0.0001)/mUnitEdgeLength);
 			int start_y = int( (mGraphs[0][mStartVertex[tid]].state[1]+0.0001)/mUnitEdgeLength);
