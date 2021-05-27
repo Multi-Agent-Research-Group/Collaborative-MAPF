@@ -42,7 +42,7 @@
 
 #define PRINT if (cerr_disabled) {} else std::cout
 #define DEBUG if (cerr_disabled) {} else 
-bool cerr_disabled = true;
+bool cerr_disabled = false;
 
 #include <chrono>
 using namespace std::chrono;
@@ -75,9 +75,6 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
-	PrecedenceConstraintGraph mPCGraph;
-	PrecedenceConstraintGraph mPCGraph_T;
-
 	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
 
 	int mHashUsed = 0;
@@ -88,7 +85,7 @@ public:
 
 	CBS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
 		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
-		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, PrecedenceConstraintGraph PCGraph, PrecedenceConstraintGraph PCGraph_T)
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents)
 		: mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mStartTimestep(startTimesteps)
@@ -97,9 +94,7 @@ public:
 		, mGoalConfig(goalConfig)
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
-		, mStationaryAgents(stationaryAgents)
-		, mPCGraph(PCGraph)
-		, mPCGraph_T(PCGraph_T){}
+		, mStationaryAgents(stationaryAgents){}
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -118,7 +113,7 @@ public:
 
 	bool checkCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1, int &agent_id_2, Constraint &constraint_2)
 	{
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp = get(meta_data_t(), mPCGraph);
+		mProp = get(meta_data_t(), mPCGraph);
 		int timeStep = 0;
 		int maximum_timestep = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
@@ -248,7 +243,7 @@ public:
 
 	bool checkStationaryCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1)
 	{
-		property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp = get(meta_data_t(), mPCGraph);
+		mProp = get(meta_data_t(), mPCGraph);
 		int timeStep = 0;
 		int maximum_timestep = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
@@ -367,8 +362,8 @@ public:
 		std::vector<std::vector<Constraint>> constraints(mNumAgents, std::vector<Constraint>());
 		double start_cost;
 
-		ISPS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
-		mStartVertex, mGoalVertex, mStationaryAgents, constraints);
+		ISPS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
+			mStartVertex, mGoalVertex, mStationaryAgents, constraints);
 
 		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve(start_cost);
 
@@ -481,7 +476,7 @@ public:
 				// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
 				increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 
-				ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+				ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig, 
 					mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
 				double cost_agent_id_1;
 				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
@@ -523,7 +518,7 @@ public:
 			// std::cout<<increase_constraints_agent_id_1.size()<<" "<<agent_id_1<<std::endl;
 			increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 			
-			ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+			ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
 				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
 			double cost_agent_id_1;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
@@ -542,7 +537,7 @@ public:
 			std::vector<std::vector<Constraint>> increase_constraints_agent_id_2 = p.constraints;
 			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
 
-			ISPS planner2(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,mPCGraph, mPCGraph_T, 
+			ISPS planner2(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
 				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
 			double cost_agent_id_2;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = planner2.solve(cost_agent_id_2);

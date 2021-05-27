@@ -56,6 +56,12 @@ cv::Mat mImage;
 /// The fixed graphs denoting individual environment of corresponding agents
 std::vector<Graph> mGraphs;
 
+PrecedenceConstraintGraph mPCGraph;
+PrecedenceConstraintGraph mPCGraph_T;
+
+property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
+property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
+
 class ISPS
 {
 
@@ -75,9 +81,6 @@ public:
 	std::vector<Eigen::VectorXd> mGoalConfig;
 	std::vector<Vertex> mGoalVertex;
 
-	PrecedenceConstraintGraph mPCGraph;
-	PrecedenceConstraintGraph mPCGraph_T;
-
 	std::vector<std::vector<Constraint>> mConstraints;
 
 	ISPSPriorityQueue mPQ;
@@ -94,16 +97,11 @@ public:
 
 	double mUnitEdgeLength = 0.1;
 
-	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
-	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
-
 	ISPS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		PrecedenceConstraintGraph &PCGraph, PrecedenceConstraintGraph &PCGraph_T, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
+		std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
 		: mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mPCGraph(PCGraph)
-		, mPCGraph_T(PCGraph_T)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
 		, mStartVertex(startVertex)
@@ -183,6 +181,16 @@ public:
 			initQueue();
 		}
 
+		std::cout<<"Before Append Paths returned ----------\n\n "<<std::endl;
+
+		for(int i=0; i<mNumAgents; i++)
+		{
+			std::cout<<"Index: "<<i<<" -- ";
+			for(int j=0; j<mComputedPaths[i].size(); j++)
+				cout<<mComputedPaths[i][j]<<" ";
+			std::cout<<std::endl;
+		}
+
 		int makespan = 0;
 
 		for(int i=0; i<mNumAgents; i++){
@@ -194,9 +202,12 @@ public:
 
 		costOut = makespan*mUnitEdgeLength;
 
-		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		std::cout<<"\n\n\n\n";
+
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			int agent_id = *ii;
+			bool flag = false;
 			meta_data *vertex = &get(mProp, agent_id);
 			vector <int> successors = mSuccessors[agent_id];
 			if(successors.size() == 0){
@@ -209,19 +220,37 @@ public:
 				}
 			}
 
-			// else{
+			else{
 			// std::cerr << "here1\n";
-			for(auto suc: mSuccessors[agent_id]){
+				int max_start_time = 0;
+				for(auto suc: mSuccessors[agent_id]){
+					meta_data *suc_vertex = &get(mProp, suc);
+					
+					max_start_time = std::max(suc_vertex->start_time, max_start_time);
+				}
 				int cur_path_length = mComputedPaths[agent_id].size();
-				meta_data *suc_vertex = &get(mProp, suc);
-				int pathCostToAdd = suc_vertex->start_time - (vertex->start_time + cur_path_length-1);
-				// std::cerr << pathCostToAdd << std::endl;
+				int pathCostToAdd = max_start_time - (vertex->start_time + cur_path_length-1);
+
+				std::cerr<<"Agent id: "<<agent_id<<" Path Length: "<<cur_path_length<<
+					" Succ ST: "<<max_start_time<<" Vertex ST: "<<vertex->start_time<<" To Add: "
+					<< pathCostToAdd << "\n";
 				for(int i=0; i<pathCostToAdd; i++){
 					mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
 				}
-			}
 			// std::cerr << "here2\n";
-			// }
+			}
+			
+			updateSchedule();
+		}
+
+		std::cout<<"ISPS Paths returned ----------\n\n "<<std::endl;
+
+		for(int i=0; i<mNumAgents; i++)
+		{
+			std::cout<<"Index: "<<i<<" -- ";
+			for(int j=0; j<mComputedPaths[i].size(); j++)
+				cout<<mComputedPaths[i][j]<<" ";
+			std::cout<<std::endl;
 		}
 		return mComputedPaths;
 	}
@@ -254,7 +283,7 @@ public:
 			vector <int> predecessors = mPredecessors[agent_id];
 			if(predecessors.size() == 0){
 				vertex->start_time = 0;
-				vertex->end_time = mCosts[agent_id]-1;
+				vertex->end_time = mComputedPaths[agent_id].size()-1;
 				// std::cerr << "here" << std::endl;
 			}
 			else{
@@ -264,7 +293,7 @@ public:
 					if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
 				}
 				vertex->start_time = std::max(makespan, vertex->start_time);
-				vertex->end_time = vertex->start_time+mCosts[agent_id]-1;
+				vertex->end_time = vertex->start_time+mComputedPaths[agent_id].size()-1;
 				// std::cerr << "there" << std::endl;
 			}
 			// std::cin.get();
@@ -380,14 +409,14 @@ public:
 		int max_C_timestep = 0;
 		for(int i=0; i<constraints.size(); i++)
 		{
-			// if(constraints[i].constraint_type==1)
-			// 	std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
-			// else
-			// 	std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
+			if(constraints[i].constraint_type==1)
+				std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
+			else
+				std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
 			max_C_timestep = std::max(max_C_timestep,(int)constraints[i].t);
 		}
 
-		// std::cerr << "INIT: " << initial_timestep <<"C T: "<<max_C_timestep << " NODE st. : " << start << std::endl;
+		std::cerr << "INIT: " << initial_timestep <<" ConstraintT: "<<max_C_timestep << " NODE st. : " << start << std::endl;
 
 
 		while(pq.PQsize()!=0)
@@ -515,12 +544,12 @@ public:
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
-		// std::cerr << "INITIAL " << initial_timestep << std::endl;
-		// for(auto node:finalPath)
-		// {
-		// 	std::cerr << node << " ";
-		// }
-		// std::cerr << std::endl;
+		std::cerr << "INITIAL " << initial_timestep << std::endl;
+		for(auto node:finalPath)
+		{
+			std::cerr << node << " ";
+		}
+		std::cerr << std::endl;
 		// std::cin.get();
 		return finalPath;
 	}

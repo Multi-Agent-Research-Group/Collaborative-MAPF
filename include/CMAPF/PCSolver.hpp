@@ -77,17 +77,16 @@ public:
 	std::vector<Eigen::VectorXd> mGoalConfig;
 	std::vector<Vertex> mGoalVertex;
 
-	PrecedenceConstraintGraph &mPCGraph;
 	int mMaxIter;
 
 	double mUnitEdgeLength = 0.1;
 
 	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
-		: mPCGraph(G)
-		, mMaxIter(maxIter)
+		: mMaxIter(maxIter)
 		, mNumAgents(numAgents)
 		, mNumRobots(numRobots)
 	{
+		mPCGraph = G;
 		topological_sort(G, std::back_inserter(mTopologicalOrder));
 		property_map<PrecedenceConstraintGraph, meta_data_t>::type name = get(meta_data_t(), G);
 
@@ -386,8 +385,9 @@ public:
 		// std::cin.get();
 		// Setup planner
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
+		mPCGraph_T = G_T;
 		CBS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mStartVertex, mGoalVertex, stationary_agents, mPCGraph, G_T);
+			mStartVertex, mGoalVertex, stationary_agents);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
