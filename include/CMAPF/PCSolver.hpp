@@ -348,7 +348,7 @@ public:
 		mPCGraph_T = G_T;
 		CBS planner(mNumAgents,mNumRobots,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
 			mStartVertex, mGoalVertex);
-		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
+		std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
 		// std::cerr<<"returned!"<<std::endl;
@@ -456,7 +456,7 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();
@@ -493,10 +493,10 @@ public:
 		
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = mNumRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = mNumRobots;
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
