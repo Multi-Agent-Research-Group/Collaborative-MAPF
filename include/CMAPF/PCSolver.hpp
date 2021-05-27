@@ -391,6 +391,7 @@ public:
 					stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
 						std::make_pair(sp_goal_timestep[robot_id],maximum_timestep)));
 					s_ids.push_back(robot_id);
+					// std::cout<<"Robot ID: "<<robot_id<<" GT: "<<sp_goal_timestep[robot_id]<<" MT: "<<maximum_timestep<<std::endl;
 				}
 		}
 
@@ -426,8 +427,11 @@ public:
 
 		int ret_makespan = 0;
 		for(int i=0; i<agent_paths.size(); i++)
+		{
+			// std::cout<<"Agent ID: "<<i<<" "<<agent_paths[i].size()<<std::endl;
 			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
-		std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
+		}
+		// std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
 
 		// PCOutEdgeIter ei, ei_end;
 
@@ -452,7 +456,7 @@ public:
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
-			std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
+			// std::cout<<"Path size for agent "<<i<<" = "<<agent_paths[i].size()<<std::endl;
 			path_cost = std::max(path_cost,(int)agent_paths[i].size());
 		}
 		// std::cin.get();
