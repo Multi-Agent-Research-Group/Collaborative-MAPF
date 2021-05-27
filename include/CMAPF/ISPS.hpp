@@ -43,9 +43,6 @@
 #include <chrono>
 using namespace std::chrono;
 
-#define INF std::numeric_limits<double>::infinity()
-#define EPS 0.000001 // used for double precision
-
 namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
@@ -86,8 +83,6 @@ public:
 	ISPSPriorityQueue mPQ;
 	std::set<int> mClosedSet;
 
-	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
-
 	vector <vector <int>> mPredecessors;
 	vector <vector <int>> mSuccessors;
 
@@ -98,18 +93,17 @@ public:
 	double mUnitEdgeLength = 0.1;
 
 	ISPS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
-		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents, std::vector<std::vector<Constraint>> constraints)
+		std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex, std::vector<std::vector<Constraint>> constraints)
 		: mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
 		, mStartVertex(startVertex)
 		, mGoalVertex(goalVertex) 
-		, mStationaryAgents(stationaryAgents)
 		, mConstraints(constraints)
 
 	{
+		mPQ.reset();
 		mProp = get(meta_data_t(), mPCGraph);
 		mProp_T = get(meta_data_t(), mPCGraph_T);
 		topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
@@ -161,7 +155,9 @@ public:
 		initQueue();
 	}
 
-	std::vector< std::vector<Vertex> > solve(double &costOut){
+	std::vector< std::vector<Vertex> > solve(double &costOut)
+	{
+		// std::cout<<"Checking start times: \n\n "<<std::endl;
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
 
@@ -177,18 +173,16 @@ public:
 			mComputedPaths[agent_id] = path; // update route plan
 			mClosedSet.insert(agent_id);
 
+			// std::cout<<"\n\n --- agent id: "<<agent_id<<" ST: "<<vertex->start_time<<" PS: "<<mCosts[agent_id]<<std::endl;
+
 			updateSchedule();
 			initQueue();
-		}
 
-		std::cout<<"Before Append Paths returned ----------\n\n "<<std::endl;
-
-		for(int i=0; i<mNumAgents; i++)
-		{
-			std::cout<<"Index: "<<i<<" -- ";
-			for(int j=0; j<mComputedPaths[i].size(); j++)
-				cout<<mComputedPaths[i][j]<<" ";
-			std::cout<<std::endl;
+			// mPQ.print();
+			// std::cout<<"mClosedSet elements: ";
+			// for(auto i:mClosedSet)
+			// 	std::cout<<i<<" ";
+			// std::cout<<std::endl;
 		}
 
 		int makespan = 0;
@@ -202,13 +196,21 @@ public:
 
 		costOut = makespan*mUnitEdgeLength;
 
-		std::cout<<"\n\n\n\n";
-
 		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
+			updateSchedule();
 			int agent_id = *ii;
+			// std::cout<<"\n\nAgent id: "<<agent_id<<std::endl;
 			bool flag = false;
 			meta_data *vertex = &get(mProp, agent_id);
+			// for(auto agent: vertex->agent_list){
+			// 	// if(agent==2) {
+			// 		std::cout << "Start Time agent " << agent << " : " << vertex->start_time<< std::endl;
+			// 		std::cout << "Goal Time agent " << agent << " : " << vertex->start_time + mComputedPaths[agent_id].size()-1<< std::endl;
+			// 		flag=true;
+			// 	// }
+			// }
+			if (flag) std::cout << "Path Size " << mComputedPaths[agent_id].size()<< std::endl;
 			vector <int> successors = mSuccessors[agent_id];
 			if(successors.size() == 0){
 				int cur_path_length = mComputedPaths[agent_id].size();
@@ -218,6 +220,8 @@ public:
 						mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
 					}
 				}
+				if (flag) std::cout << "Path Cost to Add!! " << slack << std::endl;
+				vertex->end_time = makespan;
 			}
 
 			else{
@@ -228,30 +232,29 @@ public:
 					
 					max_start_time = std::max(suc_vertex->start_time, max_start_time);
 				}
+				// if(flag) std::cout <<max_start_time << std::endl;
 				int cur_path_length = mComputedPaths[agent_id].size();
 				int pathCostToAdd = max_start_time - (vertex->start_time + cur_path_length-1);
-
-				std::cerr<<"Agent id: "<<agent_id<<" Path Length: "<<cur_path_length<<
-					" Succ ST: "<<max_start_time<<" Vertex ST: "<<vertex->start_time<<" To Add: "
-					<< pathCostToAdd << "\n";
+				if (flag) std::cout << "Path Cost to Add " << pathCostToAdd<< std::endl;
 				for(int i=0; i<pathCostToAdd; i++){
 					mComputedPaths[agent_id].push_back(mComputedPaths[agent_id][cur_path_length-1]);
 				}
+				vertex->end_time = max_start_time;
 			// std::cerr << "here2\n";
 			}
+			if (flag) std::cout << "Path Size " << mComputedPaths[agent_id].size()<< std::endl;
 			
 			updateSchedule();
-		}
 
-		std::cout<<"ISPS Paths returned ----------\n\n "<<std::endl;
-
-		for(int i=0; i<mNumAgents; i++)
-		{
-			std::cout<<"Index: "<<i<<" -- ";
-			for(int j=0; j<mComputedPaths[i].size(); j++)
-				cout<<mComputedPaths[i][j]<<" ";
-			std::cout<<std::endl;
+			// for(auto agent: vertex->agent_list){
+			// 	// if(agent==2) {
+			// 		std::cout << "Start Time agent " << agent << " : " << vertex->start_time<< std::endl;
+			// 		std::cout << "Goal Time agent " << agent << " : " << vertex->start_time + mComputedPaths[agent_id].size()-1<< std::endl;
+			// 		flag=true;
+			// 	// }
+			// }
 		}
+		// std::cin.get();
 		return mComputedPaths;
 	}
 
@@ -270,6 +273,7 @@ public:
 
 			if(closedPred) {
 				meta_data *vertex = &get(mProp, i);
+				mPQ.remove(i);
 				mPQ.insert(i, vertex->slack);
 			}
 		}
@@ -390,7 +394,7 @@ public:
 		boost::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
 		boost::unordered_map<int , Vertex> nodeMap;
 
-		double slackHeuristic = std::max(0.0, initial_timestep*mUnitEdgeLength+graph[start].heuristic-(slack-final_timestep)*mUnitEdgeLength);
+		double slackHeuristic = std::max(0.0, initial_timestep*mUnitEdgeLength+graph[start].heuristic-(slack+final_timestep)*mUnitEdgeLength);
 		pq.insert(graph[start].vertex_index,initial_timestep,
 			slackHeuristic, countConflicts(agent_id, start, initial_timestep),
 			graph[start].heuristic,graph[start].heuristic);
@@ -409,14 +413,14 @@ public:
 		int max_C_timestep = 0;
 		for(int i=0; i<constraints.size(); i++)
 		{
-			if(constraints[i].constraint_type==1)
-				std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
-			else
-				std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
+			// if(constraints[i].constraint_type==1)
+			// 	std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
+			// else
+			// 	std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
 			max_C_timestep = std::max(max_C_timestep,(int)constraints[i].t);
 		}
 
-		std::cerr << "INIT: " << initial_timestep <<" ConstraintT: "<<max_C_timestep << " NODE st. : " << start << std::endl;
+		// std::cerr << "INIT: " << initial_timestep <<" ConstraintT: "<<max_C_timestep << " NODE st. : " << start << std::endl;
 
 
 		while(pq.PQsize()!=0)
@@ -465,7 +469,7 @@ public:
 							double priority;
 							// std::cout<<"FOUND FREE EDGE!!"<<std::endl;
 
-							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack-final_timestep)*mUnitEdgeLength);
+							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack+final_timestep)*mUnitEdgeLength);
 							priority = new_cost + graph[successor].heuristic;
 							pq.insert(graph[successor].vertex_index,timeStep+1,
 								slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
@@ -507,7 +511,7 @@ public:
 							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
 							double priority;
 
-							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack-final_timestep)*mUnitEdgeLength);
+							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack+final_timestep)*mUnitEdgeLength);
 							priority = new_cost + graph[successor].heuristic;
 							pq.insert(graph[successor].vertex_index,timeStep+1
 								,slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
@@ -544,12 +548,12 @@ public:
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
-		std::cerr << "INITIAL " << initial_timestep << std::endl;
-		for(auto node:finalPath)
-		{
-			std::cerr << node << " ";
-		}
-		std::cerr << std::endl;
+		// std::cerr << "INITIAL " << initial_timestep << std::endl;
+		// for(auto node:finalPath)
+		// {
+		// 	std::cerr << node << " ";
+		// }
+		// std::cerr << std::endl;
 		// std::cin.get();
 		return finalPath;
 	}

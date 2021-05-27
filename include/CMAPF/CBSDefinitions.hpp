@@ -192,30 +192,30 @@ public:
 		}
 
 	}
-	void printPQ(size_t numAgents)
+	void print()
 	{
-		cout<<"Elements: "<<endl;
+		cout<<"\n\n --------------------------------------- CBS PQ Elements: "<<endl;
 		for(int i=1;i<PQ.size();i++)
 		{
-			cout<<"Cost: "<<PQ[i].cost<<endl;
+			cout<<PQ[i].cost<<" ";
 
-			cout<<"Constraints: "<<endl;
-			//print constraints
-			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			{
-				std::cout<<" Agent: "<<agent_id<<" - ";
-				for(auto it=PQ[i].constraints[agent_id].begin(); it != PQ[i].constraints[agent_id].end(); it++)
-				{
-					if((*it).constraint_type == 1)
-						cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).t<<endl;
-					else
-						cout<<"Edge: "<<(*it).e<<" Time: "<<(*it).t<<endl;
-				}
-			}
+			// cout<<"Constraints: "<<endl;
+			// //print constraints
+			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			// {
+			// 	std::cout<<" Agent: "<<agent_id<<" - ";
+			// 	for(auto it=PQ[i].constraints[agent_id].begin(); it != PQ[i].constraints[agent_id].end(); it++)
+			// 	{
+			// 		if((*it).constraint_type == 1)
+			// 			cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).t<<endl;
+			// 		else
+			// 			cout<<"Edge: "<<(*it).e<<" Time: "<<(*it).t<<endl;
+			// 	}
+			// }
 
-			// cout<<"shortestPaths: "<<endl;
-			// not print paths as indexmap needed
-			cout<<endl;
+			// // cout<<"shortestPaths: "<<endl;
+			// // not print paths as indexmap needed
+			// cout<<endl;
 		}
 		cout<<endl;
 	}

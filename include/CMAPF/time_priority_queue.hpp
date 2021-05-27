@@ -10,6 +10,9 @@ namespace CMAPF {
 
 using namespace BGL_DEFINITIONS;
 
+#define INF std::numeric_limits<double>::infinity()
+#define EPS 0.000001 // used for double precision
+
 class timePriorityQueue
 {
 private:
@@ -28,11 +31,11 @@ private:
 			// return false;
         	if(key1<b.key1)
 				return true;
-			else if(key1 == b.key1 && key2<b.key2)
+			else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
 				return true;
-			else if(key1 == b.key1 && key2 == b.key2 && key3<b.key3)
+			else if(std::abs(key1-b.key1)<EPS && std::abs(key2-b.key2)<EPS && key3<b.key3)
 				return true;
-			else if(key1 == b.key1 && key2 == b.key2 && key3==b.key3 && key4<b.key4)
+			else if(std::abs(key1-b.key1)<EPS && std::abs(key2-b.key2)<EPS && std::abs(key3-b.key3)<EPS && key4<b.key4)
 				return true;
 			else
 				return false;	

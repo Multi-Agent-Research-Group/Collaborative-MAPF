@@ -178,7 +178,7 @@ public:
 		int numberOfColumns = mImage.cols;
 
 		// agent
-		double x_point = config[0]*numberOfColumns + 0.000001;
+		double x_point = config[0]*numberOfColumns + 0.000001; 
 		double y_point = (1 - config[1])*numberOfRows + 0.000001;
 		cv::Point point((int)x_point, (int)y_point);
 
@@ -333,12 +333,6 @@ public:
 
 		std::vector<int> startTimesteps;
 		std::vector<int> goalTimesteps;
-
-		// std::vector<int> sp_tasks_list(numRobots);
-		std::vector<Eigen::VectorXd> sp_goal(mNumRobots);
-		std::vector<int> sp_goal_timestep(mNumRobots);
-
-		int makespan = 0;
 		
 		int id=0;
 		for ( int i=0; i<mNumAgents; i++)
@@ -346,48 +340,14 @@ public:
 			meta_data vertex = get(name, i);
 			startTimesteps.push_back(vertex.start_time);
 			goalTimesteps.push_back(vertex.end_time+vertex.slack);
-			makespan = std::max(makespan,vertex.end_time + vertex.slack);
 
 			// std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]<<std::endl;
 			id++;
-
-			Eigen::VectorXd goal_config(2);
-			goal_config[0] = vertex.goal.first;
-			goal_config[1] = vertex.goal.second;
-
-			std::vector <int> agent_list = vertex.agent_list;
-			for (auto robotNum: agent_list)
-			{
-				sp_goal[robotNum] = goal_config;
-				sp_goal_timestep[robotNum] = vertex.end_time+vertex.slack;
-			}
 		}
 
-		// int makespan = 0;
-		// for(int robot_id=0; robot_id<numRobots; robot_id++)
-		// 	makespan = std::max(makespan,sp_goal_timestep[robot_id]);
-
-		// std::cerr<<"Makespan :"<<makespan<<std::endl;
-
-		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
-		std::vector<int> s_ids;
-
-		for(int robot_id=0; robot_id<mNumRobots; robot_id++)
-			if(makespan != sp_goal_timestep[robot_id])
-			{
-				stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
-					std::make_pair(sp_goal_timestep[robot_id],makespan)));
-				s_ids.push_back(robot_id);
-				// std::cerr<<"Agent: "<<robot_id<<" Goal: "<<sp_goal[robot_id][0]<<" "
-					// <<sp_goal[robot_id][1]<<" "<<"Times: "<<sp_goal_timestep[robot_id]<<" "<<makespan<<std::endl;
-			}
-		// std::cerr << stationary_agents.size() << std::endl;
-		// std::cin.get();
-		// Setup planner
-		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		mPCGraph_T = G_T;
-		CBS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mStartVertex, mGoalVertex, stationary_agents);
+		CBS planner(mNumAgents,mNumRobots,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
+			mStartVertex, mGoalVertex);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
@@ -399,6 +359,41 @@ public:
 		}
 		// std::cerr<<"returned!"<<std::endl;
 		// std::cout<<"Y";
+
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
+		std::vector<int> s_ids;
+		{
+			std::vector<Eigen::VectorXd> sp_goal(mNumRobots);
+			std::vector<int> sp_goal_timestep(mNumRobots,0);
+			mProp = get(meta_data_t(), mPCGraph);
+
+			int timeStep = 0;
+			int maximum_timestep = 0;
+
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				meta_data *vertex = &get(mProp, agent_id);
+				maximum_timestep = std::max(maximum_timestep, int( vertex->start_time + path[agent_id].size()-1));
+				std::vector <int> agent_list = vertex->agent_list;
+				for (auto robotNum: agent_list)
+				{
+					if(vertex->start_time + path[agent_id].size()-1 > sp_goal_timestep[robotNum])
+					{
+						sp_goal[robotNum] = mGoalConfig[agent_id];
+						sp_goal_timestep[robotNum] = vertex->start_time + path[agent_id].size()-1;
+					}
+				}
+			}
+			
+			for(int robot_id=0; robot_id<mNumRobots; robot_id++)
+				if(maximum_timestep != sp_goal_timestep[robot_id])
+				{
+					stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
+						std::make_pair(sp_goal_timestep[robot_id],maximum_timestep)));
+					s_ids.push_back(robot_id);
+				}
+		}
+
 		std::vector<std::vector< Eigen::VectorXd>> agent_paths(mNumRobots,std::vector< Eigen::VectorXd>());
 
 		int task_count = 0;
@@ -407,7 +402,7 @@ public:
 		{
 			// std::cout << std::endl;
 			// std::cout<<"Agent ID: "<<id<<" "<<startTimesteps[id]<<" "<<goalTimesteps[id]
-				// <<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
+			// 	<<" "<<goalTimesteps[id]-startTimesteps[id]+1<<" "<<path[task_count].size()<<std::endl;
 
 			id++;
 			task_count = *ii;
@@ -429,18 +424,30 @@ public:
 			// task_count++;
 		}
 
-		// int ret_makespan = 0;
-		// for(int i=0; i<agent_paths.size(); i++)
-		// 	ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
-		// std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
+		int ret_makespan = 0;
+		for(int i=0; i<agent_paths.size(); i++)
+			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
+		std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
+
+		// PCOutEdgeIter ei, ei_end;
+
+		// for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+		// 	vector <int> successors;
+		// 	for (boost::tie(ei, ei_end) = out_edges(agent_id, mPCGraph); ei != ei_end; ++ei) 
+		// 	{
+		// 		PCVertex curSuc = target(*ei, mPCGraph);
+		// 		successors.push_back(curSuc);
+		// 	}
+		// 	if(successors.size()==0) mGoalTimestep[agent_id] = maximum_timestep;
+		// }
+
+		// std::cerr<<"agent path found!"<<std::endl;
 
 		for(int i=0; i<s_ids.size(); i++)
 		{
 			for(int j = stationary_agents[i].second.first; j < stationary_agents[i].second.second; j++)
 				agent_paths[s_ids[i]].push_back(stationary_agents[i].first);
 		}
-
-		// std::cerr<<"agent path found!"<<std::endl;
 
 		int path_cost =0;
 		for(int i=0; i<agent_paths.size(); i++)
@@ -455,7 +462,7 @@ public:
 
 		// std::cerr<<agent_paths[0][0][0] << std::endl;
 
-		makespan = 0;
+		int makespan = 0;
 		for(int i=0; i<agent_paths.size(); i++)
 		{
 			if(agent_paths[i].size() > makespan) makespan = agent_paths[i].size();

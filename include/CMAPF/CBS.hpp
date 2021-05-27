@@ -42,7 +42,7 @@
 
 #define PRINT if (cerr_disabled) {} else std::cout
 #define DEBUG if (cerr_disabled) {} else 
-bool cerr_disabled = false;
+bool cerr_disabled = true;
 
 #include <chrono>
 using namespace std::chrono;
@@ -61,6 +61,9 @@ public:
 	/// Number of agents
 	int mNumAgents; 
 
+	/// Number of Robots
+	int mNumRobots;
+
 	/// Path to the roadmap files.
 	std::vector<std::string> mRoadmapFileNames;
 
@@ -75,7 +78,7 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
-	std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> mStationaryAgents;
+	// std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 
 	int mHashUsed = 0;
 	int mNotHashUsed = 0;
@@ -83,18 +86,17 @@ public:
 
 	double mUnitEdgeLength = 0.1;
 
-	CBS(int numAgents, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex,
-		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>>& stationaryAgents)
+	CBS(int numAgents, int numRobots, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
+		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex)
 		: mNumAgents(numAgents)
+		, mNumRobots(numRobots)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mStartTimestep(startTimesteps)
 		, mGoalTimestep(goalTimesteps)
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
 		, mStartVertex(startVertex)
-		, mGoalVertex(goalVertex) 
-		, mStationaryAgents(stationaryAgents){}
+		, mGoalVertex(goalVertex){}
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -243,33 +245,37 @@ public:
 
 	bool checkStationaryCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1)
 	{
+		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 		mProp = get(meta_data_t(), mPCGraph);
+
 		int timeStep = 0;
 		int maximum_timestep = 0;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+
+		std::vector<Eigen::VectorXd> sp_goal(mNumRobots);
+		std::vector<int> sp_goal_timestep(mNumRobots,0);
+
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
 			meta_data *vertex = &get(mProp, agent_id);
 			mStartTimestep[agent_id] = vertex->start_time;
 			mGoalTimestep[agent_id] = vertex->start_time + paths[agent_id].size()-1;
 			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
+
+			std::vector <int> agent_list = vertex->agent_list;
+			for (auto robotNum: agent_list)
+			{
+				if(mGoalTimestep[agent_id] > sp_goal_timestep[robotNum])
+				{
+					sp_goal[robotNum] = mGoalConfig[agent_id];
+					sp_goal_timestep[robotNum] = mGoalTimestep[agent_id];
+				}
+			}
 		}
 
-		// PCOutEdgeIter ei, ei_end;
-
-		// for(int agent_id=0; agent_id<mNumAgents; agent_id++){
-		// 	vector <int> successors;
-		// 	for (boost::tie(ei, ei_end) = out_edges(agent_id, mPCGraph); ei != ei_end; ++ei) 
-		// 	{
-		// 		PCVertex curSuc = target(*ei, mPCGraph);
-		// 		successors.push_back(curSuc);
-		// 	}
-		// 	if(successors.size()==0) mGoalTimestep[agent_id] = maximum_timestep;
-		// }
-
-		for(auto &agent:mStationaryAgents){
-			// std:: cerr << maximum_timestep << " Agent_id = " << agent.second.second << std::endl;
-			agent.second.second = maximum_timestep;
-		}
-
+		for(int robot_id=0; robot_id<mNumRobots; robot_id++)
+			if(maximum_timestep != sp_goal_timestep[robot_id])
+				stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
+					std::make_pair(sp_goal_timestep[robot_id],maximum_timestep)));
 
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
@@ -296,9 +302,9 @@ public:
 					target_vertices.push_back(paths[agent_id].at(timeStep - mStartTimestep[agent_id]+1));
 				}
 			}
-			for(int s_id=0; s_id<mStationaryAgents.size(); s_id++)
+			for(int s_id=0; s_id<stationary_agents.size(); s_id++)
 			{
-				if( timeStep - mStationaryAgents[s_id].second.first >= 0 &&  mStationaryAgents[s_id].second.second - timeStep >= 1)
+				if( timeStep - stationary_agents[s_id].second.first >= 0 &&  stationary_agents[s_id].second.second - timeStep >= 1)
 				{
 					s_ids.push_back(s_id);
 				}
@@ -312,7 +318,7 @@ public:
 			for(int i=0; i<agent_ids.size(); i++)
 			for(int j=0; j<s_ids.size(); j++)
 			{
-				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, mStationaryAgents[s_ids[j]].first))
+				if(getVerticesCollisionStatus(mGraphs[agent_ids[i]][target_vertices[i]].state, stationary_agents[s_ids[j]].first))
 				{
 					agent_id_1 = agent_ids[i];
 					int agent_id_2 = s_ids[j];
@@ -327,7 +333,7 @@ public:
 					}
 				}
 				
-				if(getEdgesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[i]][target_vertices[i]].state, mStationaryAgents[s_ids[j]].first, mStationaryAgents[s_ids[j]].first))
+				if(getEdgesCollisionStatus(mGraphs[agent_ids[i]][source_vertices[i]].state, mGraphs[agent_ids[i]][target_vertices[i]].state, stationary_agents[s_ids[j]].first, stationary_agents[s_ids[j]].first))
 				{
 					agent_id_1 = agent_ids[i];
 					int agent_id_2 = s_ids[j];
@@ -363,7 +369,7 @@ public:
 		double start_cost;
 
 		ISPS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
-			mStartVertex, mGoalVertex, mStationaryAgents, constraints);
+			mStartVertex, mGoalVertex, constraints);
 
 		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve(start_cost);
 
@@ -381,6 +387,7 @@ public:
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
+			// PQ.print();
 			numSearches++;
 			PRINT<< numSearches << std::endl;
 			Element p = PQ.pop();
@@ -398,10 +405,10 @@ public:
 			// 	// break;
 			// }
 
-			// if(numSearches%1000 == 0)
+			// if(numSearches%100 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				// std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
@@ -477,7 +484,7 @@ public:
 				increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 
 				ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig, 
-					mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
+					mStartVertex, mGoalVertex, increase_constraints_agent_id_1);
 				double cost_agent_id_1;
 				std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
 				
@@ -519,7 +526,7 @@ public:
 			increase_constraints_agent_id_1[agent_id_1].push_back(constraint_1);
 			
 			ISPS planner1(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
-				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_1);
+				mStartVertex, mGoalVertex, increase_constraints_agent_id_1);
 			double cost_agent_id_1;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_1 = planner1.solve(cost_agent_id_1);
 			
@@ -538,7 +545,7 @@ public:
 			increase_constraints_agent_id_2[agent_id_2].push_back(constraint_2);
 
 			ISPS planner2(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
-				mStartVertex, mGoalVertex, mStationaryAgents, increase_constraints_agent_id_2);
+				mStartVertex, mGoalVertex, increase_constraints_agent_id_2);
 			double cost_agent_id_2;
 			std::vector< std::vector<Vertex> > shortestPaths_agent_id_2 = planner2.solve(cost_agent_id_2);
 			all_paths_found = true;
