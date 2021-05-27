@@ -59,6 +59,9 @@ PrecedenceConstraintGraph mPCGraph_T;
 property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
 property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
 
+vector <vector <int>> mPredecessors;
+vector <vector <int>> mSuccessors;
+
 class ISPS
 {
 
@@ -82,9 +85,6 @@ public:
 
 	ISPSPriorityQueue mPQ;
 	std::set<int> mClosedSet;
-
-	vector <vector <int>> mPredecessors;
-	vector <vector <int>> mSuccessors;
 
 	std::vector <int> mCosts;
 	container mTopologicalOrder;
@@ -192,6 +192,19 @@ public:
 			makespan = std::max(makespan, vertex->end_time);
 		}
 
+		int maximum_timestep = 0;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			meta_data *vertex = &get(mProp, agent_id);
+			maximum_timestep = std::max(maximum_timestep, int(vertex->start_time + mComputedPaths[agent_id].size()-1));
+		}
+
+		if(maximum_timestep!=makespan)
+		{
+			std::cout<<"not equal!";
+			std::cin.get();
+		}
+
 		// std::cerr << "FINAL MAKESPAN ================= " << makespan << std::endl;
 
 		costOut = makespan*mUnitEdgeLength;
@@ -251,10 +264,22 @@ public:
 			// 		std::cout << "Start Time agent " << agent << " : " << vertex->start_time<< std::endl;
 			// 		std::cout << "Goal Time agent " << agent << " : " << vertex->start_time + mComputedPaths[agent_id].size()-1<< std::endl;
 			// 		flag=true;
-			// 	// }
+			// 	// }   
 			// }
 		}
 		// std::cin.get();
+		maximum_timestep = 0;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			meta_data *vertex = &get(mProp, agent_id);
+			maximum_timestep = std::max(maximum_timestep, int(vertex->start_time + mComputedPaths[agent_id].size()-1));
+		}
+		if(maximum_timestep!=makespan)
+		{
+			std::cout<<"later not equal!";
+			std::cin.get();
+		}
+		// std::cout<<"Maximum timestep: "<<maximum_timestep<<std::endl;
 		return mComputedPaths;
 	}
 

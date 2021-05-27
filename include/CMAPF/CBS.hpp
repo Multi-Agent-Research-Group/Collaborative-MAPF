@@ -277,6 +277,8 @@ public:
 				stationary_agents.push_back(std::make_pair(sp_goal[robot_id],
 					std::make_pair(sp_goal_timestep[robot_id],maximum_timestep)));
 
+		// std::cout<<"Stationary Conflict Makespan Timestep: "<<maximum_timestep<<std::endl;
+
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
 		{
@@ -405,7 +407,7 @@ public:
 			// 	// break;
 			// }
 
-			// if(numSearches%100 == 0)
+			if(numSearches%100 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
 				std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
@@ -439,6 +441,33 @@ public:
 
 			int agent_id_2 = -1;
 			Constraint constraint_2;
+
+			{
+				container mTopologicalOrder;
+				topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
+				for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+				{
+					int agent_id = *ii;
+					meta_data *vertex = &get(mProp, agent_id);
+					vector <int> predecessors = mPredecessors[agent_id];
+					if(predecessors.size() == 0){
+						vertex->start_time = 0;
+						vertex->end_time = p.shortestPaths[agent_id].size()-1;
+						// std::cerr << "here" << std::endl;
+					}
+					else{
+						int makespan = 0;
+						for(auto pred: predecessors){
+							meta_data *pred_vertex = &get(mProp, pred);
+							if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
+						}
+						vertex->start_time = makespan;
+						vertex->end_time = vertex->start_time+p.shortestPaths[agent_id].size()-1;
+						// std::cerr << "there" << std::endl;
+					}
+					// std::cin.get();
+				}
+			}
 
 
 			if(!checkCoupling(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
