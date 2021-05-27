@@ -354,7 +354,7 @@ public:
 		// std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
 		{
-			// std::cout<<"N";
+			std::cout<<"0 ";
 			return false;
 		}
 		// std::cerr<<"returned!"<<std::endl;
@@ -431,7 +431,7 @@ public:
 			// std::cout<<"Agent ID: "<<i<<" "<<agent_paths[i].size()<<std::endl;
 			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
 		}
-		// std::cout<<"R Makespan: "<<ret_makespan<<std::endl;
+		std::cout<<ret_makespan<<" ";
 
 		// PCOutEdgeIter ei, ei_end;
 

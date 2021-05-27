@@ -375,6 +375,7 @@ public:
 
 		std::vector< std::vector<Vertex> > start_shortestPaths = planner.solve(start_cost);
 
+		
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
@@ -386,6 +387,9 @@ public:
 
 		PQ.insert(start_cost, constraints, start_shortestPaths);
 
+
+		// auto solve_start_time = high_resolution_clock::now();
+
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
@@ -396,7 +400,7 @@ public:
 
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - solve_start_time;
-			if (timespent.count() > 300000000000)
+			if (timespent.count() > 30000000)
 			{
 				break;
 			}
@@ -410,7 +414,7 @@ public:
 			if(numSearches%100 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				// std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
