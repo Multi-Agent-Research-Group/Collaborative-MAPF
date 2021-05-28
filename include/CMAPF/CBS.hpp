@@ -115,7 +115,7 @@ public:
 
 	bool checkCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1, int &agent_id_2, Constraint &constraint_2)
 	{
-		std::cerr<<"C-I";
+		// std::cerr<<"C-I";
 		mProp = get(meta_data_t(), mPCGraph);
 		int timeStep = 0;
 		int maximum_timestep = 0;
@@ -125,7 +125,7 @@ public:
 			mGoalTimestep[agent_id] = vertex->start_time + paths[agent_id].size()-1;
 			maximum_timestep = std::max(maximum_timestep, mGoalTimestep[agent_id]);
 		}
-		std::cerr<<"L";
+		// std::cerr<<"L";
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;std::cin.get();
 		while(timeStep < maximum_timestep)
 		{
@@ -201,7 +201,7 @@ public:
 					{
 						constraint_1 = Constraint(target_vertices[i],timeStep+1);
 						constraint_2 = Constraint(target_vertices[j],timeStep+1);
-						std::cerr<<"O\n";
+						// std::cerr<<"O\n";
 						return true;
 					}
 					// else{
@@ -235,7 +235,7 @@ public:
 
 						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[agent_ids[j]]).first;
 						constraint_2 = Constraint(edge_2,timeStep+1);
-						std::cerr<<"O\n";
+						// std::cerr<<"O\n";
 						return true;
 					}
 				}
@@ -244,14 +244,14 @@ public:
 			timeStep++;
 		}
 
-		std::cerr<<"O\n";
+		// std::cerr<<"O\n";
 
 		return false;
 	}
 
 	bool checkStationaryCoupling(std::vector<std::vector<Vertex>> &paths, int &agent_id_1, Constraint &constraint_1)
 	{
-		std::cerr<<"S-I\n";
+		// std::cerr<<"S-I\n";
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
 		mProp = get(meta_data_t(), mPCGraph);
 
@@ -338,7 +338,7 @@ public:
 					if( !agent_1_safe)
 					{
 						constraint_1 = Constraint(target_vertices[i],timeStep+1);
-						std::cerr<<"O\n";
+						// std::cerr<<"O\n";
 						return true;
 					}
 				}
@@ -360,7 +360,7 @@ public:
 					{
 						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[agent_ids[i]]).first;
 						constraint_1 = Constraint(edge_1,timeStep+1);
-						std::cerr<<"O\n";
+						// std::cerr<<"O\n";
 						return true;
 					}
 				}
@@ -368,7 +368,7 @@ public:
 			
 			timeStep++;
 		}
-		std::cerr<<"O\n";
+		// std::cerr<<"O\n";
 		return false;
 	}
 
@@ -424,7 +424,7 @@ public:
 			// if(numSearches%100 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
+				// std::cerr<<"CBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Agent ID: "<<agent_id<<std::endl;
@@ -488,8 +488,8 @@ public:
 			{
 				if(!checkStationaryCoupling(p.shortestPaths, agent_id_1, constraint_1))
 				{
-					std::cerr<<"returning!";
-					std::cin.get();
+					// std::cerr<<"returning!";
+					// std::cin.get();
 					// std::cout<<"numSearches: "<<numSearches<<std::endl;
 
 					PRINT<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<int((p.cost+0.0001)/mUnitEdgeLength)<<std::endl;

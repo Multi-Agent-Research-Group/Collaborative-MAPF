@@ -1,4 +1,4 @@
- 
+
 /* Authors: Rajat Kumar Jenamani */
 
 #ifndef _ISPS_HPP
@@ -157,7 +157,7 @@ public:
 
 	std::vector< std::vector<Vertex> > solve(double &costOut)
 	{
-		std::cerr<<"I";
+		// std::cerr<<"I";
 		// std::cout<<"Checking start times: \n\n "<<std::endl;
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
@@ -168,6 +168,10 @@ public:
 			std::vector<Vertex> path = computeShortestPath(mGraphs[agent_id], mStartVertex[agent_id], mGoalVertex[agent_id],
 											mConstraints[agent_id], vertex->start_time, vertex->end_time,
 											agent_id, vertex->slack);
+			if(path.size() == 0)
+			{
+				return std::vector< std::vector<Vertex> > (mNumAgents,std::vector<Vertex>());
+			}
 
 			mCosts[agent_id] = path.size();
 			vertex->end_time = vertex->start_time + mCosts[agent_id]-1; //update vertex final time
@@ -281,7 +285,7 @@ public:
 			std::cin.get();
 		}
 		// std::cout<<"Maximum timestep: "<<maximum_timestep<<std::endl;
-		std::cerr<<"O\n";
+		// std::cerr<<"O\n";
 		return mComputedPaths;
 	}
 
