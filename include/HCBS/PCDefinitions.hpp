@@ -4,7 +4,7 @@
 #include "BGLDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
 
-namespace CMAPF {
+namespace HCBS {
 
 using namespace boost;
 
@@ -46,6 +46,6 @@ using namespace boost;
 	typedef boost::graph_traits<PrecedenceConstraintGraph>::out_edge_iterator PCOutEdgeIter;
 	typedef boost::graph_traits<PrecedenceConstraintGraph>::vertex_iterator PCVertexIter;
 
-} // namespace CMAPF
+} // namespace HCBS
 
 #endif
