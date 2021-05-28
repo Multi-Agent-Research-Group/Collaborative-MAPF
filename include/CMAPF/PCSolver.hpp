@@ -357,7 +357,7 @@ public:
 			std::cout<<"0 ";
 			return false;
 		}
-		std::cerr<<"returned!"<<std::endl;
+		// std::cerr<<"returned!"<<std::endl;
 		// std::cout<<"Y";
 
 		std::vector<std::pair<Eigen::VectorXd,std::pair<int,int>>> stationary_agents;
