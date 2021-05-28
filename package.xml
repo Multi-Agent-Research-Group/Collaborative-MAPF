@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>MAPF</name>
+    <name>CMAPF</name>
     <version>0.0.0</version>
     <description>Multi Agent Pathfinding for Collaborative Tasks</description>
     <author email="kushal.k@iitkgp.ac.in">Kushal Kedia</author>
