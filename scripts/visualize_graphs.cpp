@@ -19,9 +19,13 @@
 #include <opencv2/highgui/highgui.hpp>
 
 // Custom header files
-#include "../include/utils/graphFileUtils.hpp"
+#include "../include/CMAPF/BGLDefinitions.hpp"
+#include "../include/CMAPF/LoadGraphfromFile.hpp"
 
 namespace po = boost::program_options;
+
+using namespace boost;
+using namespace CMAPF;
 using namespace BGL_DEFINITIONS;
 
 int main(int argc, char *argv[])
@@ -77,7 +81,7 @@ int main(int argc, char *argv[])
 			(int)((1-graph[source(*ei,graph)].state[1])*numberOfColumns));
 		cv::Point target_Point((int)(graph[target(*ei,graph)].state[0]*numberOfColumns), 
 			(int)((1-graph[target(*ei,graph)].state[1])*numberOfColumns));
-		cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 2);
+		cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 10);
 	}
 
 	// VertexIter vi, vi_end;
@@ -86,7 +90,7 @@ int main(int argc, char *argv[])
 		double x_point = graph[*vi].state[0]*numberOfColumns;
 		double y_point = (1 - graph[*vi].state[1])*numberOfRows;
 		cv::Point centre_Point((int)x_point, (int)y_point);
-		cv::circle(image, centre_Point, 3,  cv::Scalar(0, 255, 0), -1);
+		cv::circle(image, centre_Point, 20,  cv::Scalar(0, 255, 0), -1);
 	}
 
 
