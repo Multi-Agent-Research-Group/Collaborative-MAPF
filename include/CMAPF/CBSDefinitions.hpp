@@ -194,10 +194,10 @@ public:
 	}
 	void print()
 	{
-		cout<<"\n\n --------------------------------------- CBS PQ Elements: "<<endl;
+		cerr<<"\n\n --------------------------------------- CBS PQ Elements: "<<endl;
 		for(int i=1;i<PQ.size();i++)
 		{
-			cout<<PQ[i].cost<<" ";
+			cerr<<PQ[i].cost<<" ";
 
 			// cout<<"Constraints: "<<endl;
 			// //print constraints
@@ -217,7 +217,7 @@ public:
 			// // not print paths as indexmap needed
 			// cout<<endl;
 		}
-		cout<<endl;
+		cerr<<endl;
 	}
 };
 
