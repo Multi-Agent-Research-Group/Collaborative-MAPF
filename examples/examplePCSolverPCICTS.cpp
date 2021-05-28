@@ -22,20 +22,20 @@ using namespace std::chrono;
 #include <opencv2/highgui/highgui.hpp>
 
 // Custom header files
-#include "CMAPF/PCSolver.hpp"
+#include "PCICTS/PCSolver.hpp"
 
 namespace po = boost::program_options;
 using namespace boost;
-using namespace CMAPF;
+using namespace PCICTS;
 
 int main(int argc, char *argv[])
 {
 	po::options_description desc("ICTS-CBS Planner Options");
 	desc.add_options()
 			("help,h", "produce help message")
-			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/ICTS/9.txt"), "Path to PC Graph Metadata File")
-			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
-			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/0.png"), "Path to Obstacle Image File")
+			("file,f", po::value<std::string>()->default_value("./src/PCICTS/data/sample_problems/ICTS/9.txt"), "Path to PC Graph Metadata File")
+			("graph,g", po::value<std::string>()->default_value("./src/PCICTS/data/new_graphs/graph0.graphml"), "Path to Graph File")
+			("obstacles,o", po::value<std::string>()->default_value("./src/PCICTS/data/obstacles/0.png"), "Path to Obstacle Image File")
 	;
 
 	// Read arguments
@@ -51,15 +51,15 @@ int main(int argc, char *argv[])
 
 	std::string file_name(vm["file"].as<std::string>());
 	if (file_name == "")
-		file_name = "./src/CMAPF/data/sample_problems/ICTS/9.txt";
+		file_name = "./src/PCICTS/data/sample_problems/ICTS/9.txt";
 
 	std::string graph_file_name(vm["graph"].as<std::string>());
 	if (graph_file_name == "")
-		graph_file_name = "./src/CMAPF/data/new_graphs/graph0.graphml";
+		graph_file_name = "./src/PCICTS/data/new_graphs/graph0.graphml";
 
 	std::string obstacle_file_name(vm["obstacles"].as<std::string>());
 	if (file_name == "")
-		obstacle_file_name = "./src/CMAPF/data/obstacles/0.png";
+		obstacle_file_name = "./src/PCICTS/data/obstacles/0.png";
 
 	ifstream cin(file_name);
 

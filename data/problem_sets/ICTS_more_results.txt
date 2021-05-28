@@ -268,7 +268,7 @@
 0 52 10
 93 1 0.013
 0 612 10
-95 examplePCSolver: /usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:408: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator[](Eigen::Index) [with Derived = Eigen::Matrix<double, -1, 1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `index >= 0 && index < size()' failed.
+95 examplePCSolverPCICTS: /usr/include/eigen3/Eigen/src/Core/DenseCoeffsBase.h:408: Eigen::DenseCoeffsBase<Derived, 1>::Scalar& Eigen::DenseCoeffsBase<Derived, 1>::operator[](Eigen::Index) [with Derived = Eigen::Matrix<double, -1, 1>; Eigen::DenseCoeffsBase<Derived, 1>::Scalar = double; Eigen::Index = long int]: Assertion `index >= 0 && index < size()' failed.
 Aborted (core dumped)
 100 1 0.019
 91 1 0.012

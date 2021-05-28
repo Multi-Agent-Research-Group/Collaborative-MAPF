@@ -42,7 +42,7 @@ using namespace std::chrono;
 
 #define INF std::numeric_limits<double>::infinity()
 
-namespace CMAPF {
+namespace PCICTS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -670,7 +670,7 @@ public:
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
-			ss << "./src/CMAPF/data/viz/";
+			ss << "./src/PCICTS/data/viz/";
 			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
@@ -1078,6 +1078,6 @@ public:
 };
 
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif 

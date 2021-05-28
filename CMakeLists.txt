@@ -21,14 +21,14 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-add_executable(examplePCSolver examples/examplePCSolver.cpp)
-target_link_libraries(examplePCSolver 
+add_executable(examplePCSolverPCICTS examples/examplePCSolverPCICTS.cpp)
+target_link_libraries(examplePCSolverPCICTS 
   ${OpenCV_LIBS}
   ${Boost_LIBRARIES}
   ${DART_LIBRARIES}
   ${OMPL_LIBRARIES}
   )
-install(TARGETS examplePCSolver RUNTIME DESTINATION bin)
+install(TARGETS examplePCSolverPCICTS RUNTIME DESTINATION bin)
 
 # This custom target doesn't affect building the project but is only for
 # displaying the header files in IDEs.

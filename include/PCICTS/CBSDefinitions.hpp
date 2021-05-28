@@ -5,7 +5,7 @@
 #include "LoadGraphfromFile.hpp"
 #include <boost/functional/hash.hpp>
 
-namespace CMAPF {
+namespace PCICTS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -235,6 +235,6 @@ public:
 	}
 };
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif

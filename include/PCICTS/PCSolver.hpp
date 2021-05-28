@@ -46,7 +46,7 @@ using namespace std::chrono;
 
 #define INF std::numeric_limits<double>::infinity()
 
-namespace CMAPF {
+namespace PCICTS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -163,10 +163,10 @@ public:
 		// std::cout << "PC Iteration: "<<mCount<<std::endl; std::cin.get();
 
 		// Space Information
-		// mImage = cv::imread("./src/CMAPF/include/CMAPF/test_final.png", 0);
-		// mImage = cv::imread("./src/CMAPF/data/obstacles/0.png", 0);
+		// mImage = cv::imread("./src/PCICTS/include/PCICTS/test_final.png", 0);
+		// mImage = cv::imread("./src/PCICTS/data/obstacles/0.png", 0);
 		mImage = cv::imread(obstacle_file, 0);
-		// std::string graph_file = std::string("./src/CMAPF/data/graphs/graph0.graphml");
+		// std::string graph_file = std::string("./src/PCICTS/data/graphs/graph0.graphml");
 
 		std::vector<std::string> graph_files;
 		for(int agent_id=0; agent_id<numAgents;agent_id++)
@@ -677,7 +677,7 @@ public:
 };
 
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif 
 // 6_8_25 - 60

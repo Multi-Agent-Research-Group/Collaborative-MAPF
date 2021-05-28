@@ -6,7 +6,7 @@
 
 using namespace std;
 
-namespace CMAPF {
+namespace PCICTS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -124,6 +124,6 @@ public:
 	}
 };
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif 
