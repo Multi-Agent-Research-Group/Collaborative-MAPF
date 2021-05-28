@@ -18,7 +18,7 @@
 
 #include "BGLDefinitions.hpp"
 
-namespace CMAPF{
+namespace PCICTS{
 
 using namespace BGL_DEFINITIONS;
 
@@ -132,6 +132,6 @@ void create_edges(Graph& g, EPLengthMap weight_map)
 // 	fp.close();
 // }
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif

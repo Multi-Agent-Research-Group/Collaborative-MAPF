@@ -20,7 +20,7 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
-namespace CMAPF {
+namespace PCICTS {
 
 namespace BGL_DEFINITIONS {
 
@@ -118,6 +118,6 @@ namespace BGL_DEFINITIONS {
 
 } // namespace BGL_DEFINITIONS
 
-} // namespace CMAPF
+} // namespace PCICTS
 
 #endif

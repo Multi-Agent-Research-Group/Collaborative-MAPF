@@ -13,48 +13,48 @@ problemset = ["3_8_25","3_10_25","3_12_25","7_8_25","7_10_25","7_12_25", \
 
 for ps in problemset:
 	for i in range(1,101):
-		command = "./build/CMAPF/examplePCSolver -f src/CMAPF/data/problem_sets/" + ps + "/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+		command = "./build/PCICTS/examplePCSolverPCICTS -f src/PCICTS/data/problem_sets/" + ps + "/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 		# print(command)
 		os.system(command)
 
 # for i in range(1,101):
 # 	if (i-1) not in a:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/05_03/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/05_03/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
 
 # for i in range(1,101):
 # 	if (i-1) not in b:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/05_04/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/05_04/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
 
 # for i in range(1,101):
 # 	if (i-1) not in c:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/05_05/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/05_05/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
 
 # for i in range(1,101):
 # 	if (i-1) not in d:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/06_03/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/06_03/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
 
 # for i in range(1,101):
 # 	if (i-1) not in e:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/06_04/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/06_04/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
 
 # for i in range(1,101):
 # 	if (i-1) not in f:
-# 		command = "./build/CMAPF/examplePCSolver -f test_problems/06_05/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/CMAPF/data/obstacles/0.png"
+# 		command = "./build/PCICTS/examplePCSolverPCICTS -f test_problems/06_05/CBS/" + str(i) +".txt -g test_graphs/graph0.graphml -o src/PCICTS/data/obstacles/0.png"
 # 		os.system(command)
 # 	else:
 # 		print("0 0 0")
