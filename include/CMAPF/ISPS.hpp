@@ -157,6 +157,7 @@ public:
 
 	std::vector< std::vector<Vertex> > solve(double &costOut)
 	{
+		std::cerr<<"I";
 		// std::cout<<"Checking start times: \n\n "<<std::endl;
 		while(mPQ.PQsize()!=0){
 			slackElement node = mPQ.pop();
@@ -280,6 +281,7 @@ public:
 			std::cin.get();
 		}
 		// std::cout<<"Maximum timestep: "<<maximum_timestep<<std::endl;
+		std::cerr<<"O\n";
 		return mComputedPaths;
 	}
 
