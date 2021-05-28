@@ -177,6 +177,8 @@ std::vector<Vertex> AStar(Mat &img, Graph &graph, Vertex &start_vertex, Vertex &
 					// std::cout<<"Edge is Free!"<<std::endl; 
 				if(new_cost < graph[successor].distance)
 				{
+					if(qUseful.find(successor)!=qUseful.end())
+						qUseful.erase(successor);
 					graph[successor].distance = new_cost;
 					qUseful.insert(successor);
 					graph[successor].parent= vTop;
@@ -302,6 +304,8 @@ int main(int argc, char *argv[])
 			for (boost::tie(vi, vi_end) = vertices(graph); vi != vi_end; ++vi)
 				if(evaluateConfig(image,graph[*vi].state))
 					vertex_list.push_back(*vi);
+
+			std::cout<<"Vertex List Size: "<<vertex_list.size()<<" ";
 
 			random_shuffle(vertex_list.begin(), vertex_list.end());
 
