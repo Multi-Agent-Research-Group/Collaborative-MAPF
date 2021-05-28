@@ -5,7 +5,7 @@
 #include "LoadGraphfromFile.hpp"
 #include <boost/functional/hash.hpp>
 
-namespace CMAPF {
+namespace HCBS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -120,6 +120,6 @@ public:
 	}
 };
 
-} // namespace CMAPF
+} // namespace HCBS
 
 #endif

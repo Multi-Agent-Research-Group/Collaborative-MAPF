@@ -6,7 +6,7 @@
 
 using namespace std;
 
-namespace CMAPF {
+namespace HCBS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -135,6 +135,6 @@ public:
 	}
 };
 
-} // namespace CMAPF
+} // namespace HCBS
 
 #endif 

@@ -16,7 +16,7 @@
 using namespace boost;
 // using namespace std;
 
-// namespace CMAPF {
+// namespace HCBS {
 
 
 
@@ -62,15 +62,15 @@ bool checkpathpossible(PrecedenceConstraintGraph &G){
 
 
 	// Space Information
-	cv::Mat image = cv::imread("/home/rajat/melodic_ws/src/CMAPF/include/test_final.png", 0);
-	std::string graph_file = std::string("/home/rajat/melodic_ws/src/CMAPF/data/graphs/graph0.graphml");
+	cv::Mat image = cv::imread("/home/rajat/melodic_ws/src/HCBS/include/test_final.png", 0);
+	std::string graph_file = std::string("/home/rajat/melodic_ws/src/HCBS/data/graphs/graph0.graphml");
 
 	std::vector<std::string> graph_files;
 	for(int agent_id=0; agent_id<numAgents;agent_id++)
 		graph_files.push_back(graph_file);
 	
 	// Setup planner
-	// CMAPF::CBS planner(image,numAgents,graph_files,start_config,goal_config,startTimesteps,goalTimesteps);
+	// HCBS::CBS planner(image,numAgents,graph_files,start_config,goal_config,startTimesteps,goalTimesteps);
 	return false;
 }
 

@@ -43,7 +43,7 @@
 #include <chrono>
 using namespace std::chrono;
 
-namespace CMAPF {
+namespace HCBS {
 
 using namespace BGL_DEFINITIONS;
 
@@ -668,6 +668,6 @@ public:
 	}
 };
 
-} // namespace CMAPF
+} // namespace HCBS
 
 #endif 
