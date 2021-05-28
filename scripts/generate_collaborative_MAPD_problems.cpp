@@ -30,6 +30,178 @@ using namespace CMAPF;
 // using namespace BGL_DEFINITIONS;
 using namespace cv;
 
+bool evaluateConfig(Mat &img, Eigen::VectorXd config)
+{
+  int numberOfRows = img.rows;
+  int numberOfColumns = img.cols;
+
+  // agent
+  double x_point = config[0]*numberOfColumns;
+  double y_point = (1 - config[1])*numberOfRows;
+  cv::Point point((int)x_point, (int)y_point);
+
+  // Collision Check for agent with environment
+  int intensity = (int)img.at<uchar>(point.y, point.x);
+  if (intensity == 0) // Pixel is black
+    return false;
+  return true;
+}
+
+bool evaluateEdge(Mat &img, Graph &graph, Edge &e)
+{
+	Vertex source_vertex = source(e, graph);
+	Vertex target_vertex = target(e, graph);
+
+	Eigen::VectorXd sourceState(2);
+	sourceState << graph[source_vertex].state;
+
+	Eigen::VectorXd targetState(2);
+	targetState << graph[target_vertex].state;
+
+	double resolution = 0.005;
+	unsigned int nStates = std::ceil(graph[e].length / resolution-0.000000001)+1;
+
+	// Just start and goal
+	if(nStates < 2u)
+	{
+		nStates = 2u;
+	}
+	// std::cout<<"nStates:"<<nStates<<std::endl;
+
+	bool checkResult = true;
+	
+	if (checkResult && !evaluateConfig(img, sourceState))
+	{
+		graph[source_vertex].status = CollisionStatus::BLOCKED;
+		graph[e].status = CollisionStatus::BLOCKED;
+		graph[e].length = INF;
+		checkResult = false;
+	}
+
+	if (checkResult && !evaluateConfig(img, targetState))
+	{
+		graph[target_vertex].status = CollisionStatus::BLOCKED;
+		graph[e].status = CollisionStatus::BLOCKED;
+		graph[e].length = INF;
+		checkResult = false;
+	}
+
+	if (checkResult)
+	{
+		// Evaluate the States in between
+		for (unsigned int i = 1; i < nStates-1; i++)
+		{
+
+			if(!evaluateConfig(img, sourceState + (resolution*i/graph[e].length)*(targetState-sourceState) ))
+			{
+				graph[e].status = CollisionStatus::BLOCKED;
+				graph[e].length = INF;
+				checkResult = false;
+				break;
+			}
+		}
+	}
+
+	return checkResult;
+}
+
+std::vector<Vertex> AStar(Mat &img, Graph &graph, Vertex &start_vertex, Vertex &goal_vertex)
+{
+
+	VertexIter vi, vi_end;
+	for (boost::tie(vi, vi_end) = vertices(graph); vi != vi_end; ++vi)
+	{
+	  graph[*vi].distance = std::numeric_limits<double>::infinity();
+	  graph[*vi].visited = false;
+	  graph[*vi].status = CollisionStatus::FREE;
+	  graph[*vi].heuristic = std::abs(graph[*vi].state[0] - graph[goal_vertex].state[0])
+	  			+ std::abs(graph[*vi].state[1] - graph[goal_vertex].state[1]);
+	}
+
+	// Priority Function: f-value
+	auto cmpFValue = [&](const Vertex& left, const Vertex& right)
+	{
+		double estimateLeft = graph[left].distance + graph[left].heuristic;
+		double estimateRight = graph[right].distance + graph[right].heuristic;
+
+		if (estimateRight - estimateLeft > 0)
+			return true;
+		if (estimateLeft - estimateRight > 0)
+			return false;
+		if (left < right)
+			return true;
+		else
+			return false;
+	};
+
+	std::set<Vertex, decltype(cmpFValue)> qUseful(cmpFValue);
+
+	bool solutionFound = false;
+
+	graph[start_vertex].distance = 0;
+	graph[start_vertex].parent = -1;
+	graph[start_vertex].visited = true;
+	qUseful.insert(start_vertex);
+
+	size_t iteration=0;
+	while(qUseful.size()!=0)
+	{
+		iteration++;
+		Vertex vTop = *qUseful.begin();
+		// std::cout<<"Vertex Index: "<<graph[vTop].vertex_index<<" Distance: "<<graph[vTop].distance<<
+		// " heuristic: "<<graph[vTop].heuristic<<std::endl;
+		qUseful.erase(qUseful.begin());
+		if(vTop == goal_vertex)
+		{
+			solutionFound = true;
+			break;      
+		}
+
+		NeighborIter ai, ai_end;
+		for (boost::tie(ai, ai_end) = adjacent_vertices(vTop, graph); ai != ai_end; ++ai) 
+		{
+			// displayGraph(graph);
+			Vertex successor = *ai; 
+			Edge uv;
+			bool edgeExists;
+			boost::tie(uv, edgeExists) = edge(vTop,successor, graph);
+			if (edgeExists == false)
+			{
+				std::cout<<"Edge does not exist. Press [ENTER] to get segmentation fault :( :"<<std::endl;
+		  		std::cin.get();
+		  	}
+			if(evaluateEdge(img, graph, uv))
+			{
+				double edgeLength = graph[uv].length;
+				double new_cost = graph[vTop].distance + edgeLength;
+					// std::cout<<"Edge is Free!"<<std::endl; 
+				if(new_cost < graph[successor].distance)
+				{
+					graph[successor].distance = new_cost;
+					qUseful.insert(successor);
+					graph[successor].parent= vTop;
+				}	
+			}	
+		}
+	}
+	if (!solutionFound)
+		return std::vector<Vertex>();
+
+	std::vector<Vertex> path;
+	
+	Vertex node = goal_vertex;
+	
+	while(node!=start_vertex)
+	{
+		path.push_back(node);
+		node=graph[node].parent;
+	}
+
+	path.push_back(start_vertex);
+	std::reverse(path.begin(), path.end());
+	return path;
+}
+
 int main(int argc, char *argv[])
 {
 	srand(time(NULL));
@@ -81,7 +253,7 @@ int main(int argc, char *argv[])
 
 	std::string CBS_planning_problems_file = planning_problems_file + "CBS/";
 	std::string ICTS_planning_problems_file = planning_problems_file + "ICTS/";
-	int obstacle_no=0;
+	int obstacle_no=1;
 	cv::Mat image = cv::imread(obstacle_file + std::to_string(obstacle_no) + ".png", 0);
 	int graph_no = 0;
 	Graph graph;
@@ -128,7 +300,8 @@ int main(int argc, char *argv[])
 
 			VertexIter vi, vi_end;
 			for (boost::tie(vi, vi_end) = vertices(graph); vi != vi_end; ++vi)
-				vertex_list.push_back(*vi);
+				if(evaluateConfig(image,graph[*vi].state))
+					vertex_list.push_back(*vi);
 
 			random_shuffle(vertex_list.begin(), vertex_list.end());
 
@@ -161,15 +334,77 @@ int main(int argc, char *argv[])
 				for(int i=0; i<agents_assigned_list.size(); i++)
 					ICTS_terminal[agents_assigned_list[i]]=true;
 
-				Vertex start_vertex = vertex_list[vertex_list_index];
-				vertex_list_index++;
-				int start_x = (graph[start_vertex].state[0]+0.0001)/0.1;
-				int start_y = (graph[start_vertex].state[1]+0.0001)/0.1;
+				int start_x,start_y,goal_x,goal_y;
+				std::vector<int> agents_assigned_go_costs;
+				int agents_assigned_carry_cost;
+				while(true)
+				{
 
-				Vertex goal_vertex = vertex_list[vertex_list_index];
-				vertex_list_index++;
-				int goal_x = (graph[goal_vertex].state[0]+0.0001)/0.1;
-				int goal_y = (graph[goal_vertex].state[1]+0.0001)/0.1;
+					Vertex start_vertex = vertex_list[vertex_list_index];
+					vertex_list_index++;
+					start_x = (graph[start_vertex].state[0]+0.0001)/0.1;
+					start_y = (graph[start_vertex].state[1]+0.0001)/0.1;
+
+					bool go_exist = true;
+
+					agents_assigned_go_costs.clear();
+					for(int i=0; i<agents_assigned_list.size(); i++)
+					{
+						Vertex begin_vertex;
+						bool found=false;
+						int carry_task_pre = ICTS_current_task[agents_assigned_list[i]].first;
+						int init_x, init_y;
+						if(carry_task_pre == -1)
+						{
+							init_x = agent_inits[agents_assigned_list[i]].first;
+							init_y = agent_inits[agents_assigned_list[i]].second;
+						}
+						else
+						{
+							init_x = ICTS_start_goal[carry_task_pre].second.first;
+							init_y = ICTS_start_goal[carry_task_pre].second.second;
+						}
+						for(int v=0; v<vertex_list.size(); v++)
+							if( int((graph[vertex_list[v]].state[0]+0.0001)/0.1) == init_x
+								&& int((graph[vertex_list[v]].state[1]+0.0001)/0.1) == init_y)
+							{
+								begin_vertex = vertex_list[v];
+								found=true;
+								break;
+							}
+						if(!found)
+						{
+							std::cout<<"wtf!";
+							std::cin.get();
+						}
+
+						std::vector<Vertex> go_path = AStar(image, graph, begin_vertex, start_vertex);
+
+						if(go_path.size()==0)
+						{
+							go_exist == false;
+							break;
+						}
+						agents_assigned_go_costs.push_back(go_path.size()-1);
+					}
+
+					if(!go_exist)
+						continue;
+
+					Vertex goal_vertex = vertex_list[vertex_list_index];
+					vertex_list_index++;
+					goal_x = (graph[goal_vertex].state[0]+0.0001)/0.1;
+					goal_y = (graph[goal_vertex].state[1]+0.0001)/0.1;
+
+					std::vector<Vertex> carry_path = AStar(image, graph, start_vertex, goal_vertex);
+
+					if(carry_path.size()==0)
+						continue;
+
+					agents_assigned_carry_cost = carry_path.size()-1;
+
+					break;
+				}
 
 				{
 					int max_goal_time = 0;
@@ -177,19 +412,10 @@ int main(int argc, char *argv[])
 					{
 						int carry_task_pre = ICTS_current_task[agents_assigned_list[i]].first;
 						if(carry_task_pre == -1)
-						{
-							int init_x = agent_inits[agents_assigned_list[i]].first;
-							int init_y = agent_inits[agents_assigned_list[i]].second;
-							max_goal_time = std::max(max_goal_time,	std::abs(start_x-init_x)+std::abs(start_y-init_y));
-						
-						}
+							max_goal_time = std::max(max_goal_time,	agents_assigned_go_costs[i]);
 						else
-						{
-							int init_x = ICTS_start_goal[carry_task_pre].second.first;
-							int init_y = ICTS_start_goal[carry_task_pre].second.second;
 							max_goal_time = std::max(max_goal_time,ICTS_current_task[agents_assigned_list[i]].second + 
-								std::abs(start_x-init_x)+std::abs(start_y-init_y));
-						}
+								agents_assigned_go_costs[i]);
 					}
 					for(int i=0; i<agents_assigned_list.size(); i++)
 					{
@@ -214,7 +440,7 @@ int main(int argc, char *argv[])
 						ICTS_start_goal.push_back(std::make_pair(std::make_pair(init_x,init_y),
 							std::make_pair(start_x,start_y)));
 						 
-						int goal_time = start_time + std::abs(start_x-init_x)+std::abs(start_y-init_y);
+						int goal_time = start_time + agents_assigned_go_costs[i];
 						int slack_time = max_goal_time - goal_time;
 
 						ICTS_task_times.push_back(std::make_pair(std::make_pair(start_time,goal_time),slack_time));
@@ -228,7 +454,7 @@ int main(int argc, char *argv[])
 					ICTS_start_goal.push_back(std::make_pair(std::make_pair(start_x,start_y),
 						std::make_pair(goal_x,goal_y)));
 					int start_time = max_goal_time;
-					int goal_time = start_time + std::abs(goal_x-start_x)+std::abs(goal_y-start_y);
+					int goal_time = start_time + agents_assigned_carry_cost;
 					int slack_time = 0;
 					ICTS_task_times.push_back(std::make_pair(std::make_pair(start_time,goal_time),slack_time));
 					for(int i=0; i<agents_assigned_list.size(); i++)
@@ -248,25 +474,16 @@ int main(int argc, char *argv[])
 					for(int i=0; i<agents_assigned_list.size(); i++)
 					{
 						int carry_task_pre = CBS_current_task[agents_assigned_list[i]].first;
-						int init_x,init_y;
 						int go_end_time;
 						if(carry_task_pre == -1)
-						{
-							init_x = agent_inits[agents_assigned_list[i]].first;
-							init_y = agent_inits[agents_assigned_list[i]].second;
-							go_end_time = std::abs(start_x-init_x)+std::abs(start_y-init_y);
-						}
+							go_end_time = agents_assigned_go_costs[i];
 						else
-						{
-							init_x = CBS_start_goal[carry_task_pre].second.first;
-							init_y = CBS_start_goal[carry_task_pre].second.second;
 							go_end_time = CBS_current_task[agents_assigned_list[i]].second +
-								std::abs(start_x-init_x)+std::abs(start_y-init_y);
-						}
+								agents_assigned_go_costs[i];
 						start_time = std::max(start_time, go_end_time);
 					}
 
-					int goal_time = start_time + std::abs(goal_x-start_x)+std::abs(goal_y-start_y);
+					int goal_time = start_time + agents_assigned_carry_cost;
 
 					CBS_task_times.push_back(std::make_pair(start_time,goal_time));
 					for(int i=0; i<agents_assigned_list.size(); i++)
