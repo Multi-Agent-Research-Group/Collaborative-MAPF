@@ -1,3 +1,4 @@
+ 
 #include <bits/stdc++.h>
 // OpenCV libraries
 #include <opencv2/core/core.hpp>
@@ -80,21 +81,58 @@ Mat triangle(Mat a , int j , int k , int r )
 int main()
 {
     srand(time(0));
-    int i=100;
-    // for(int i=0; i<10;i++)
-    {    
-        Mat img(1000,1000,CV_8UC1,Scalar(255));
-        int k=0;
-        while(k--)
-        {
-            int x = rand() %300;
-            int y = rand() %300;
-            int length = 30 + rand() %(30);
-            int breadth = 30 + rand() %(30);
+    // vector<vector<int>> v {
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,0,0,0,0,0,0,0,0},
+    // {0,0,0,0,1,0,0,0,0},
+    // {1,1,0,1,1,1,0,1,1},
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,0,0,0,0,0,0,0,0},
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,0,0,0,1,0,0,0,0}
+    // };
+    // vector<vector<int>> v {
+    // {0,0,0,0,0,0,0,0,0},
+    // {0,0,0,1,1,1,0,0,0},
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,1,0,0,1,0,0,1,0},
+    // {0,1,1,1,1,1,1,1,0},
+    // {0,1,0,0,1,0,0,1,0},
+    // {0,0,0,0,1,0,0,0,0},
+    // {0,0,0,1,1,1,0,0,0},
+    // {0,0,0,0,0,0,0,0,0}
+    // };
 
-            img = rectangle(img,x,y,length,breadth);
-        }
-        imwrite("../data/obstacles/"+to_string(i)+".png",img); 
+    vector<vector<int>> v {
+    {0,0,0,0,0,0,0,0,0},
+    {0,1,0,1,0,1,0,1,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,1,0,1,0,1,0,1,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,1,0,1,0,1,0,1,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,1,0,1,0,1,0,1,0},
+    {0,0,0,0,0,0,0,0,0}
+    };
+    Mat img(1000,1000,CV_8UC1,Scalar(255));
+    int length = 100, breadth = 100;
+    for(int i=0; i<v.size();i++)
+        for(int j=0; j<v.size(); j++)
+            if(v[i][j])
+                img = rectangle(img,(i+1)*100,(j+1)*100,length,breadth); 
+
+    std::cin.get();
+    for(int i=0; i<=v.size()+1;i++)
+    {
+        img = rectangle(img,i*100,0,length,breadth); 
+        img = rectangle(img,i*100,1000,length,breadth); 
+        img = rectangle(img,0,i*100,length,breadth); 
+        img = rectangle(img,1000,i*100,length,breadth); 
     }
+    cv::namedWindow("Agents",cv::WINDOW_NORMAL);
+    cv::imshow("Agents", img);
+    cv::waitKey(1000000);
+    imwrite("../data/obstacles/warehouse_hard.png",img);
     return 0;
 }
