@@ -10,7 +10,7 @@
 #define search_state_timestep(t) t.first.second
 #define search_state_tasks_completed(t) t.second.first
 #define search_state_in_delivery(t) t.second.second
-
+#define EPS 0.000001
 using namespace std;
 
 namespace PCCBS {
@@ -43,25 +43,83 @@ bool compareCollaborationConstraints(SearchState &i1, SearchState &i2)
     return (i1.timestep < i2.timestep);
 }
 
+// struct state_hash
+// {
+//   std::size_t operator()(const SearchState& k) const
+//   {
+//       using boost::hash_value;
+//       using boost::hash_combine;
+
+//       // Start with a hash value of 0    .
+//       std::size_t seed = 0;
+
+//       // Modify 'seed' by XORing and bit-shifting in
+//       // one member of 'SearchState' after the other:
+//       hash_combine(seed,hash_value(k.vertex));
+//       hash_combine(seed,hash_value(k.timestep));
+//       hash_combine(seed,hash_value(k.tasks_completed));
+//       hash_combine(seed,hash_value(k.in_delivery));
+
+//       // Return the result.
+//       return seed;
+//   }
+// };
+// std::vector < SearchState > hashVector(100000000, -1);
 struct state_hash
 {
   std::size_t operator()(const SearchState& k) const
   {
-      using boost::hash_value;
-      using boost::hash_combine;
+ //  	size_t h(14695981039346656037UL); // Offset basis
+	// unsigned i(0);
+	// Start with a hash value of 0    .
+	// std::size_t seed = 0;
+	std::vector<size_t> hash_elements;
+	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
+	// hash_elements.push_back();
+	// hash_elements.push_back(k.timestep);
+	// hash_elements.push_back(k.tasks_completed);
+	// hash_elements.push_back(k.in_delivery);
+	// // Modify 'seed' by XORing and bit-shifting in
+	// // one member of 'SearchState' after the other:
+	// for(int hi=0; hi<hash_elements.size(); hi++)
+	// {
+	// 	size_t h1(hash_elements[hi]);
+	// 	uint8_t c[sizeof(size_t)];
+	// 	memcpy(c,&h1,sizeof(size_t));
+	// 	for(unsigned j(0); j<sizeof(size_t); ++j){
+	// 		//hash[k*sizeof(uint64_t)+j]=((int)c[j])?c[j]:1; // Replace null-terminators in the middle of the string
+	// 		h=h^c[j]; // Xor with octet
+	// 		h=h*1099511628211; // multiply by the FNV prime
+	// 	}
+	// }
+	// Return the result.
+	// return h;
+  }
+};
+
+struct time_state_hash
+{
+  std::size_t operator()(const std::pair<int, SearchState>& k1) const
+  {
+      // using boost::hash_value;
+      // using boost::hash_combine;
 
       // Start with a hash value of 0    .
       std::size_t seed = 0;
 
       // Modify 'seed' by XORing and bit-shifting in
       // one member of 'SearchState' after the other:
-      hash_combine(seed,hash_value(k.vertex));
-      hash_combine(seed,hash_value(k.timestep));
-      hash_combine(seed,hash_value(k.tasks_completed));
-      hash_combine(seed,hash_value(k.in_delivery));
-
+      // hash_combine(seed, hash_value(k1.first));
+      SearchState k = k1.second;
+      // hash_combine(seed,hash_value(k.vertex));
+      // hash_combine(seed,hash_value(k.timestep));
+      // hash_combine(seed,hash_value(k.tasks_completed));
+      // hash_combine(seed,hash_value(k.in_delivery));
+      std::vector<size_t> hash_elements;
+	  return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+
+	  size_t(k.timestep)*2*16*1024+size_t(k1.first)*2*16*1024*1024;
       // Return the result.
-      return seed;
+      // return seed;
   }
 };
 
@@ -79,12 +137,17 @@ private:
 		element(double _key1, double _key2, SearchState _s): key1(_key1), key2(_key2), s(_s) {} 
 		inline bool operator < (const element &b) const 
 		{
-			if(std::abs(key1-b.key1)<0.001)
-			{
-				// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
-				return s.vertex < b.s.vertex;
-			}
-			return key1 < b.key1;
+			if(key1<b.key1)
+				return true;
+			else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
+				return true;
+			return false;
+			// if(std::abs(key1-b.key1)<0.001)
+			// {
+			// 	// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
+			// 	return s.vertex < b.s.vertex;
+			// }
+			// return key1 < b.key1;
    //      	if(key1<b.key1)
 			// 	return true;
 			// else if(key1 == b.key1 && key2<b.key2)
