@@ -2012,12 +2012,11 @@ public:
 			
 			std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
 				non_collaboration_constraints, segmentCost, startTimestep, constraintState.timestep);
+			costOut += segmentCost;
 			if (pathSegment.size()==0) return std::vector<SearchState>();
 
 			start = goal;
 			startTimestep = constraintState.timestep;
-
-			costOut += segmentCost;
 			for (auto s:pathSegment)
 				path.push_back(s);
 		}
@@ -2026,11 +2025,12 @@ public:
 		std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
 				non_collaboration_constraints, segmentCost, startTimestep, -1);
 
+		costOut += segmentCost;
 		if (pathSegment.size()==0) return std::vector<SearchState>();
 
 		// start = goal;
 
-		costOut += segmentCost;
+		
 		for (auto s:pathSegment)
 			path.push_back(s);
 
