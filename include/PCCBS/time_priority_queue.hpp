@@ -38,6 +38,11 @@ struct SearchState
 
 };
 
+bool compareCollaborationConstraints(SearchState &i1, SearchState &i2)
+{
+    return (i1.timestep < i2.timestep);
+}
+
 struct state_hash
 {
   std::size_t operator()(const SearchState& k) const

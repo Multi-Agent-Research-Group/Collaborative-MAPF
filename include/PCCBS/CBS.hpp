@@ -1976,26 +1976,46 @@ public:
 		std::vector<SearchState> path;
 		SearchState start = SearchState(mStartVertex[agent_id], 0, 0, 0);
 		// Vertex goal = mGoalVertex[agent_id];		
-		std::map<int, SearchState> collabMap;
+		// std::map<int, SearchState> collabMap;
+		// for( CollaborationConstraint &c: collaboration_constraints)
+		// {
+		// 	SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
+		// 	collabMap[c.timestep] = state;
+		// }
+
+
+		std::vector <SearchState> wayPoints;
 		for( CollaborationConstraint &c: collaboration_constraints)
 		{
-			SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
-			collabMap[c.timestep] = state;
+			int collaboration_tasks_completed=-1;
+			for(int i=0; i<mTasksList[agent_id].size(); i++)
+				if(c.task_id == mTasksList[agent_id][i].first)
+					collaboration_tasks_completed = i;
+			if(collaboration_tasks_completed==-1){
+				std::cout << "TASK NOT FOUND\n";
+				std::cin.get();
+			}
+
+			if (c.is_pickup) collaboration_tasks_completed += 1;
+			SearchState state = SearchState(c.v,c.timestep,collaboration_tasks_completed,c.is_pickup);
+			wayPoints.push_back(state);
 		}
+
+		std::sort(wayPoints.begin(), wayPoints.end(), compareCollaborationConstraints);
 
 		double segmentCost;
 		int startTimestep = 0;
 		int tasks_completed = 0;
 
-		for(auto constraintState: collabMap){
-			SearchState goal = constraintState.second;
+		for(auto constraintState: wayPoints){
+			SearchState goal = constraintState;
 			
 			std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
-				non_collaboration_constraints, segmentCost, startTimestep, constraintState.first);
+				non_collaboration_constraints, segmentCost, startTimestep, constraintState.timestep);
 			if (pathSegment.size()==0) return std::vector<SearchState>();
 
 			start = goal;
-			startTimestep = constraintState.first;
+			startTimestep = constraintState.timestep;
 
 			costOut += segmentCost;
 			for (auto s:pathSegment)
