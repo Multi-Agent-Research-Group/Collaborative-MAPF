@@ -1974,7 +1974,7 @@ public:
 		std::vector<CollaborationConstraint> &collaboration_constraints, std::vector<CollaborationConstraint> &non_collaboration_constraints, double& costOut){
 		costOut = 0;
 		std::vector<SearchState> path;
-		Vertex start = mStartVertex[agent_id];
+		SearchState start = SearchState(mStartVertex[agent_id], 0, 0, 0);
 		// Vertex goal = mGoalVertex[agent_id];		
 		std::map<int, SearchState> collabMap;
 		for( CollaborationConstraint &c: collaboration_constraints)
@@ -1984,22 +1984,27 @@ public:
 		}
 
 		double segmentCost;
+		int startTimestep = 0;
+		int tasks_completed = 0;
+
 		for(auto constraintState: collabMap){
-			Vertex goal = constraintState.second.vertex;
+			SearchState goal = constraintState.second;
 			
 			std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
-				non_collaboration_constraints, segmentCost, constraintState.first);
+				non_collaboration_constraints, segmentCost, startTimestep, constraintState.first);
 			if (pathSegment.size()==0) return std::vector<SearchState>();
 
 			start = goal;
+			startTimestep = constraintState.first;
 
 			costOut += segmentCost;
 			for (auto s:pathSegment)
 				path.push_back(s);
 		}
 
-		std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, start,
-				non_collaboration_constraints, segmentCost, -1);
+		SearchState goal = SearchState();
+		std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
+				non_collaboration_constraints, segmentCost, startTimestep, -1);
 
 		if (pathSegment.size()==0) return std::vector<SearchState>();
 
@@ -2058,8 +2063,8 @@ public:
 	}
 
 	std::vector<SearchState> computeShortestPathSegment(int &agent_id, std::vector<CollisionConstraint> &collision_constraints,
-		Vertex &start, Vertex &goal, std::vector<CollaborationConstraint> &non_collaboration_constraints, 
-		double& costOut, int collaboration_timestep)
+		SearchState &start_state, SearchState &goal_state, std::vector<CollaborationConstraint> &non_collaboration_constraints, 
+		double& costOut, int start_timestep, int collaboration_timestep)
 	{
 		auto start1 = high_resolution_clock::now();
 
@@ -2078,7 +2083,7 @@ public:
 		boost::unordered_map<SearchState, double, state_hash> mDistance;
 		boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
 
-		SearchState start_state = SearchState(start,0,0,0);
+		// SearchState start_state = SearchState(start,start_timestep,tasks_completed,0);
 		pq.insert(start_state,getHeuristic(agent_id, start_state),0.0);
 		mDistance[start_state]=0;
 
@@ -2087,7 +2092,7 @@ public:
 
 		int goal_timestep = -1;
 
-		SearchState goal_state = SearchState();
+		// SearchState goal_state = SearchState();
 
 		costOut = INF;
 
@@ -2142,12 +2147,11 @@ public:
 			}
 
 			else{
-				if(current_vertex==goal && current_timestep==collaboration_timestep){
+				if(current_state==goal_state){
 					costOut = mDistance[current_state];
-					goal_state = current_state;
 					break;
 				}
-				if(current_timestep >= collaboration_timestep) {
+				if(current_timestep > collaboration_timestep || current_tasks_completed > goal_state.tasks_completed) {
 					continue;
 				}
 			}
