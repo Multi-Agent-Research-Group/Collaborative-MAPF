@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 
 	std::string CBS_planning_problems_file = planning_problems_file + "CBS/";
 	std::string ICTS_planning_problems_file = planning_problems_file + "ICTS/";
-	int obstacle_no=2;
+	int obstacle_no=1;
 	cv::Mat image = cv::imread(obstacle_file + std::to_string(obstacle_no) + ".png", 0);
 	int graph_no = 0;
 	Graph graph;
