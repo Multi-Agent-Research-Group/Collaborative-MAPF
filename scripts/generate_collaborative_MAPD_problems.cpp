@@ -20,13 +20,13 @@
 #include <opencv2/highgui/highgui.hpp>
 
 // Custom header files
-#include "../include/CMAPF/LoadGraphfromFile.hpp"
+#include "../include/PCCBS/LoadGraphfromFile.hpp"
 
 #define INF std::numeric_limits<double>::infinity()
 
 namespace po = boost::program_options;
 
-using namespace CMAPF;
+using namespace PCCBS;
 // using namespace BGL_DEFINITIONS;
 using namespace cv;
 
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 
 	std::string CBS_planning_problems_file = planning_problems_file + "CBS/";
 	std::string ICTS_planning_problems_file = planning_problems_file + "ICTS/";
-	int obstacle_no=1;
+	int obstacle_no=2;
 	cv::Mat image = cv::imread(obstacle_file + std::to_string(obstacle_no) + ".png", 0);
 	int graph_no = 0;
 	Graph graph;
