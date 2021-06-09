@@ -131,17 +131,28 @@ private:
 
 	struct element
 	{
-		double key1;
-		double key2;
+		std::vector<int> keys;
 		SearchState s;
-		element(double _key1, double _key2, SearchState _s): key1(_key1), key2(_key2), s(_s) {} 
+		element(SearchState _s, std::vector<int> _keys): s(_s), keys(_keys) {} 
 		inline bool operator < (const element &b) const 
 		{
-			if(key1<b.key1)
-				return true;
-			else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
-				return true;
-			return false;
+			if(keys.size() != b.keys.size())
+			{
+				std::cerr<<"ERROR: Key sizes are not equal!";
+				std::cin.get();
+			}
+			for(int i=0; i<keys.size(); i++)
+				if(keys[i] < b.keys[i])
+					return true;
+				else if(keys[i] > b.keys[i])
+					return false;
+			return true;
+
+			// if(key1<b.key1)
+			// 	return true;
+			// else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
+			// 	return true;
+			// return false;
 			// if(std::abs(key1-b.key1)<0.001)
 			// {
 			// 	// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
@@ -178,23 +189,23 @@ public:
 	timePriorityQueue()
 	{ 
 		SearchState s = SearchState();
-		element a(-1,-1,s);
+		element a(s,std::vector<int>());
 		PQ.push_back(a);
 	}
 	void reset()
 	{
 		PQ.clear();
 		SearchState s = SearchState();
-		element a(-1,-1,s);
+		element a(s,std::vector<int>());
 		PQ.push_back(a);
 	}
 	int PQsize()
 	{
 		return PQ.size()-1;
 	}
-	pair<double,double> topKey()
+	std::vector<int> topKey()
 	{
-		return make_pair(PQ[1].key1,PQ[1].key2);
+		return PQ[1].keys;
 	}
 	SearchState pop()
 	{
@@ -204,10 +215,10 @@ public:
 		min_heapify(1);
 		return s;
 	}
-	void insert(SearchState s, double k1, double k2)
+	void insert(SearchState s, std::vector<int> k)
 	{
 		// std::cout<<"Inserting : "<<v<<std::endl;
-		element a(k1,k2,s);
+		element a(s,k);
 		PQ.push_back(a);
 		// printPQ();
 		int i=PQ.size()-1;
@@ -223,12 +234,11 @@ public:
 		}
 
 	}
-	void remove(SearchState s)
+	void remove(SearchState &s)
 	{
 		int i;
 		for(i=1;i<PQ.size();i++)
-			if(PQ[i].s.vertex==s.vertex && PQ[i].s.timestep == s.timestep 
-				&& PQ[i].s.tasks_completed == s.tasks_completed && PQ[i].s.in_delivery == s.in_delivery)
+			if(PQ[i].s == s)
 				break;
 		swap(PQ[i],PQ[PQ.size()-1]);
 		PQ.erase(PQ.end()-1);
@@ -236,11 +246,10 @@ public:
 		min_heapify(i);
 		// printPQ();
 	}
-	bool contains(SearchState s)
+	bool contains(SearchState &s)
 	{
 		for(int i=1;i<PQ.size();i++)
-			if(PQ[i].s.vertex==s.vertex && PQ[i].s.timestep == s.timestep 
-				&& PQ[i].s.tasks_completed == s.tasks_completed && PQ[i].s.in_delivery == s.in_delivery)
+			if(PQ[i].s == s)
 				break;
 		return false;
 	}
@@ -248,10 +257,15 @@ public:
 	{
 		cout<<"Elements: "<<endl;
 		for(int i=1;i<PQ.size();i++)
+		{
 			cout<<"( Vertex: "<<PQ[i].s.vertex<<", Timestep: "<<PQ[i].s.timestep
 				<<", Tasks Completed: "<<PQ[i].s.tasks_completed<<", In Delivery: "<<PQ[i].s.in_delivery
-				<<", Key1: "<<PQ[i].key1<<", Key2: "<<PQ[i].key2<<"), ";
-		cout<<endl;
+				<<", Keys: ";
+
+			for(int j=0; j<PQ[i].keys.size(); j++)
+				cout<<PQ[i].keys[j]<<" ";
+			cout<<"\n";
+		}
 	}
 };
 

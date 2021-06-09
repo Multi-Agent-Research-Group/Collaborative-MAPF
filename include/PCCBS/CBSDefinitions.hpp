@@ -52,13 +52,13 @@ struct CollaborationConstraint
 
 struct Element
 {
-	std::vector<double> costs;
+	std::vector<int> costs;
 	std::vector<std::vector< CollisionConstraint >> collision_constraints;
 	std::vector<std::vector< CollaborationConstraint >> collaboration_constraints;
 	std::vector<std::vector< CollaborationConstraint >> non_collaboration_constraints;
 	std::vector<std::vector<SearchState>> shortestPaths;
 
-	Element(std::vector<double> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
+	Element(std::vector<int> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
 		std::vector<std::vector<CollaborationConstraint>> _collaboration_constraints, std::vector<std::vector<CollaborationConstraint>> _non_collaboration_constraints,
 		std::vector<std::vector<SearchState>> _shortestPaths): 
 		costs(_costs), collision_constraints(_collision_constraints), collaboration_constraints(_collaboration_constraints), non_collaboration_constraints(_non_collaboration_constraints), shortestPaths(_shortestPaths) 
@@ -66,11 +66,11 @@ struct Element
 
 	inline bool operator < (const Element &b) const 
 	{
-		double cost = 0;
+		int cost = 0;
 		for(int i=0; i<costs.size(); i++)
 			cost = std::max(cost,costs[i]);
 
-		double b_cost = 0;
+		int b_cost = 0;
 		for(int i=0; i<b.costs.size(); i++)
 			b_cost = std::max(b_cost,b.costs[i]);
 
@@ -107,7 +107,7 @@ public:
 	CBSPriorityQueue(int numAgents)
 	{ 
 		mNumAgents = numAgents;
-		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
+		Element a(std::vector<int>(mNumAgents, -1),std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
 			std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()), std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()),
 			std::vector<std::vector<SearchState>>(mNumAgents,std::vector<SearchState>()));
 		PQ.push_back(a);
@@ -115,7 +115,7 @@ public:
 	void reset()
 	{
 		PQ.clear();
-		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
+		Element a(std::vector<int>(mNumAgents, -1),std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
 			std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()), std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()),
 			std::vector<std::vector<SearchState>>(mNumAgents,std::vector<SearchState>()));
 		PQ.push_back(a);
@@ -124,9 +124,9 @@ public:
 	{
 		return PQ.size()-1;
 	}
-	double topKey()
+	int topKey()
 	{
-		double cost = 0;
+		int cost = 0;
 		for(int i=0; i<PQ[1].costs.size(); i++)
 			cost = std::max(cost,PQ[1].costs[i]);
 		return cost;
@@ -139,7 +139,7 @@ public:
 		min_heapify(1);
 		return temp;
 	}
-	void insert(std::vector<double> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
+	void insert(std::vector<int> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
 		std::vector<std::vector<CollaborationConstraint>> _collaboration_constraints, std::vector<std::vector<CollaborationConstraint>> _non_collaboration_constraints,
 		std::vector<std::vector<SearchState>> _shortestPaths)
 
