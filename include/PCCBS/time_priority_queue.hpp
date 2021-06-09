@@ -146,7 +146,7 @@ private:
 					return true;
 				else if(keys[i] > b.keys[i])
 					return false;
-			return true;
+			return s.vertex < b.s.vertex;
 
 			// if(key1<b.key1)
 			// 	return true;
