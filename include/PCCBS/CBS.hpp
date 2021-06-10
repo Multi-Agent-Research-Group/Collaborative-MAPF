@@ -454,7 +454,7 @@ public:
 								safe_j = (mTasksList[agent_ids[j]][target_tasks_completed[j]-1].second.second == target_vertices[j] || mTasksList[agent_ids[j]][target_tasks_completed[j]].second.first == target_vertices[j]);
 						}
 						else
-							safe_j = (mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j] || mTasksList[agent_ids[j]][target_tasks_completed[j]].second.second == target_vertices[j]);
+							safe_j = (mTasksList[agent_ids[j]][target_tasks_completed[j]].second.first == target_vertices[j] || mTasksList[agent_ids[j]][target_tasks_completed[j]].second.second == target_vertices[j]);
 						
 						if(safe_i == false || safe_j == false)
 						{
@@ -630,7 +630,7 @@ public:
 
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 200000000)
+			if (timespent.count() > 100000000)
 			{
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
@@ -2111,7 +2111,6 @@ public:
 				for(int j=0; j<mTasksToAgentsList[delivery_taskid].size(); j++)
 					if(mTasksToAgentsList[delivery_taskid][j].first == consider_agents[i])
 					{
-						int agent_id = mTasksToAgentsList[delivery_taskid][j].first;
 						int agent_index = consider_agents[i];
 						int task_index = mTasksToAgentsList[delivery_taskid][j].second;
 						for(int k=1; k<paths[agent_index].size(); k++)
@@ -2130,7 +2129,6 @@ public:
 				for(int j=0; j<mTasksToAgentsList[pickup_taskid].size(); j++)
 					if(mTasksToAgentsList[pickup_taskid][j].first == consider_agents[i])
 					{
-						int agent_id = mTasksToAgentsList[pickup_taskid][j].first;
 						int agent_index = consider_agents[i];
 						int task_index = mTasksToAgentsList[pickup_taskid][j].second;
 						for(int k=1; k<paths[agent_index].size(); k++)
@@ -2149,29 +2147,106 @@ public:
 			std::cout<<"[ERROR]: on increase timestep action! ";
 			std::cin.get();
 		}
-		return 0;
-		// int count_conflicts = 0;
-		// for(int i=0; i<consider_agents.size(); i++)
-		// {
-		// 	std::vector<int> agent_ids;
-		// 	std::vector<std::vector<SearchState>> paths;
 
-		// 	agent_ids.push_back(agent_id);
-		// 	paths.push_back(currentPath);
+		int count_conflicts = 0;
+		int current_taskid = mTasksList[agent_id][state.tasks_completed].first;
 
-		// 	agent_ids.push_back(consider_agents[i]);
-		// 	paths.push_back(shortestPaths[consider_agents[i]]);
+		bool vertex_safe_i = false;
+		if(new_state.in_delivery == false)
+		{
+			if(new_state.tasks_completed == 0)
+				vertex_safe_i = (mStartVertex[agent_id] == new_state.vertex || mTasksList[agent_id][new_state.tasks_completed].second.first == new_state.vertex);
+			else
+				vertex_safe_i = (mTasksList[agent_id][new_state.tasks_completed-1].second.second == new_state.vertex || mTasksList[agent_id][new_state.tasks_completed].second.first == new_state.vertex);
+		}
+		else
+			vertex_safe_i = (mTasksList[agent_id][new_state.tasks_completed].second.first == new_state.vertex || mTasksList[agent_id][new_state.tasks_completed].second.second == new_state.vertex);
+						
+		bool edge_safe_i = false;
+		if(new_state.in_delivery == false)
+		{
+			if(new_state.tasks_completed == 0)
+				edge_safe_i = ( (new_state.vertex == state.vertex)
+					&& ((mStartVertex[agent_id] == state.vertex) 
+						|| (mTasksList[agent_id][new_state.tasks_completed].second.first == state.vertex)));
+			else
+				edge_safe_i = ( (new_state.vertex == state.vertex)
+					&& ((mTasksList[agent_id][new_state.tasks_completed-1].second.second == state.vertex) 
+						|| (mTasksList[agent_id][new_state.tasks_completed].second.first == state.vertex)));
+		}
+		else
+			edge_safe_i = ( (new_state.vertex == state.vertex)
+					&& ((mTasksList[agent_id][new_state.tasks_completed].second.first == state.vertex) 
+						|| (mTasksList[agent_id][new_state.tasks_completed].second.second == state.vertex)));
+		
+						
 
-		// 	std::vector<int> agent_id_1;
-		// 	CollisionConstraint constraint_1;
+		for(int i=0; i<consider_agents.size(); i++)
+		{
+			bool in_collaboration = false;
+			for(int j=0; j<mTasksToAgentsList[current_taskid].size(); j++)
+				if(mTasksToAgentsList[current_taskid][j].first == consider_agents[i])
+						in_collaboration = true;
+			
+			if(!in_collaboration)
+			{
+				int other_agent_id = consider_agents[i];
+				for(int j=1; j<paths[other_agent_id].size(); j++)
+				{
+					if(paths[other_agent_id][j-1].timestep == paths[other_agent_id][j].timestep)
+						continue;
+					SearchState prev_path_state = paths[other_agent_id][j-1];
+					SearchState path_state = paths[other_agent_id][j];
+					if(getVerticesCollisionStatus(mGraphs[agent_id][new_state.vertex].state, mGraphs[other_agent_id][path_state.vertex].state))
+					{
+						bool safe_j = false;
+						
+						if(path_state.in_delivery == false)
+						{
+							if(path_state.tasks_completed == 0)
+								safe_j = (mStartVertex[other_agent_id] == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+							else
+								safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+						}
+						else
+							safe_j = (mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.second == path_state.vertex);
+						
+						if(vertex_safe_i == false || safe_j == false)
+						{
+							count_conflicts++;
+						}
+					}
+					if(getEdgesCollisionStatus(mGraphs[agent_id][state.vertex].state, mGraphs[agent_id][new_state.vertex].state, mGraphs[other_agent_id][prev_path_state.vertex].state, mGraphs[other_agent_id][path_state.vertex].state))
+					{
+						
+						bool safe_j = false;
+						if(path_state.in_delivery == false)
+						{
+							if(path_state.tasks_completed == 0)
+								safe_j = ( (path_state.vertex == prev_path_state.vertex)
+									&& ((mStartVertex[other_agent_id] == prev_path_state.vertex) 
+										|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+							else
+								safe_j = ( (path_state.vertex == prev_path_state.vertex)
+									&& ((mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == prev_path_state.vertex) 
+										|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+						}
+						else
+							safe_j = ( (path_state.vertex == prev_path_state.vertex)
+									&& ((mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex) 
+										|| (mTasksList[other_agent_id][path_state.tasks_completed].second.second == prev_path_state.vertex)));
+						
+						
+						if(edge_safe_i == false || safe_j == false)
+						{
+							count_conflicts++;
+						}
+					}
+				}
+			}
+		}
 
-		// 	std::vector<int> agent_id_2;
-		// 	CollisionConstraint constraint_2;
-
-
-		// 	count_conflicts += checkCollisionConflicts(agent_ids, paths, agent_id_1, constraint_1, agent_id_2, constraint_2);
-		// }
-		// return count_conflicts;
+		return count_conflicts;
 	}
 
 	std::vector<int> getHeuristics(int &agent_id, SearchState &state, int g_value, int &current_makespan,  
@@ -2193,11 +2268,11 @@ public:
 
 		std::vector<int> heuristics;
 		heuristics.push_back(std::max(0, g_value + h_value - current_makespan));
-		// heuristics.push_back(count_collaboration_conflicts);
-		// heuristics.push_back(count_collision_conflicts);
-		// heuristics.push_back(count_move_actions+h_value);
-		// heuristics.push_back(h_value);
-		// heuristics.push_back(g_value + h_value);
+		heuristics.push_back(count_collaboration_conflicts);
+		heuristics.push_back(count_collision_conflicts);
+		heuristics.push_back(count_move_actions+h_value);
+		heuristics.push_back(h_value);
+		heuristics.push_back(g_value + h_value);
 		return heuristics;
 	}
 
@@ -2268,7 +2343,7 @@ public:
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 200000000)
+			if (timespent.count() > 100000000)
 			{
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
