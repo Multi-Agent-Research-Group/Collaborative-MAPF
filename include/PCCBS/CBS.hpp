@@ -72,6 +72,9 @@ public:
 
 	high_resolution_clock::time_point mSolveStartTime;
 
+	boost::unordered_map <std::pair <int, SearchState>, std::vector<int>, time_state_hash> mHeuristicsMap;
+
+
 	int mCBSIterations;
 
 	/// Environment
@@ -2300,6 +2303,14 @@ public:
 		int count_collaboration_conflicts, int count_collision_conflicts, int count_move_actions)
 	{
 		auto start1 = high_resolution_clock::now();
+
+		if(mHeuristicsMap.find(std::make_pair(agent_id,state)) != mHeuristicsMap.end())
+		{
+			auto stop1 = high_resolution_clock::now();
+			mHeuristicsTime += (stop1 - start1);
+			return mHeuristicsMap[std::make_pair(agent_id,state)];
+		}
+		
 		int h_value=0;
 		if(state.in_delivery == true)
 			h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
@@ -2321,6 +2332,8 @@ public:
 		heuristics.push_back(count_move_actions+h_value);
 		heuristics.push_back(h_value);
 		heuristics.push_back(g_value + h_value);
+
+		mHeuristicsMap[std::make_pair(agent_id,state)] = heuristics;
 		auto stop1 = high_resolution_clock::now();
 		mHeuristicsTime += (stop1 - start1);
 		return heuristics;
@@ -2331,59 +2344,59 @@ public:
 		int start_timestep, int collaboration_timestep, boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap,
 		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
 	{
-		// std::vector<boost::unordered_map<std::pair<int,int>, bool >> mVertexCollisionPathsMap;
-		// std::vector<boost::unordered_map<std::pair<int,std::pair<int,int>>, bool >> mEdgeCollisionPathsMap;
-		// for(int i=0; i<consider_agents.size(); i++)
-		// {
-		// 	int other_agent_id = consider_agents[i];
-		// 	boost::unordered_map<std::pair<int,int>, bool > vertex_collision_path_map;
-		// 	boost::unordered_map<std::pair<int,std::pair<int,int>>, bool > edge_collision_path_map;
-		// 	for(int j=1; j<shortestPaths[other_agent_id].size(); j++)
-		// 	{
-		// 		if(shortestPaths[other_agent_id][j-1].timestep == shortestPaths[other_agent_id][j].timestep)
-		// 			continue;
+		std::vector<boost::unordered_map<std::pair<int,int>, bool >> mVertexCollisionPathsMap;
+		std::vector<boost::unordered_map<std::pair<int,std::pair<int,int>>, bool >> mEdgeCollisionPathsMap;
+		for(int i=0; i<consider_agents.size(); i++)
+		{
+			int other_agent_id = consider_agents[i];
+			boost::unordered_map<std::pair<int,int>, bool > vertex_collision_path_map;
+			boost::unordered_map<std::pair<int,std::pair<int,int>>, bool > edge_collision_path_map;
+			for(int j=1; j<shortestPaths[other_agent_id].size(); j++)
+			{
+				if(shortestPaths[other_agent_id][j-1].timestep == shortestPaths[other_agent_id][j].timestep)
+					continue;
 
-		// 		SearchState prev_path_state = shortestPaths[other_agent_id][j-1];
-		// 		SearchState path_state = shortestPaths[other_agent_id][j];
+				SearchState prev_path_state = shortestPaths[other_agent_id][j-1];
+				SearchState path_state = shortestPaths[other_agent_id][j];
 
-		// 		bool vertex_safe_j = false;	
-		// 		if(path_state.in_delivery == false)
-		// 		{
-		// 			if(path_state.tasks_completed == 0)
-		// 				vertex_safe_j = (mStartVertex[other_agent_id] == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
-		// 			else
-		// 				vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
-		// 		}
-		// 		else
-		// 			vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.second == path_state.vertex);
+				bool vertex_safe_j = false;	
+				if(path_state.in_delivery == false)
+				{
+					if(path_state.tasks_completed == 0)
+						vertex_safe_j = (mStartVertex[other_agent_id] == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+					else
+						vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+				}
+				else
+					vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.second == path_state.vertex);
 							
-		// 		vertex_collision_path_map[std::make_pair(path_state.timestep, getStateHash(mGraphs[other_agent_id][path_state.vertex].state))]
-		// 			= vertex_safe_j;
+				vertex_collision_path_map[std::make_pair(path_state.timestep, getStateHash(mGraphs[other_agent_id][path_state.vertex].state))]
+					= vertex_safe_j;
 
-		// 		bool edge_safe_j = false;
-		// 		if(path_state.in_delivery == false)
-		// 		{
-		// 			if(path_state.tasks_completed == 0)
-		// 				edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
-		// 					&& ((mStartVertex[other_agent_id] == prev_path_state.vertex) 
-		// 						|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
-		// 			else
-		// 				edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
-		// 					&& ((mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == prev_path_state.vertex) 
-		// 						|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
-		// 		}
-		// 		else
-		// 			edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
-		// 					&& ((mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex) 
-		// 						|| (mTasksList[other_agent_id][path_state.tasks_completed].second.second == prev_path_state.vertex)));
+				bool edge_safe_j = false;
+				if(path_state.in_delivery == false)
+				{
+					if(path_state.tasks_completed == 0)
+						edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mStartVertex[other_agent_id] == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+					else
+						edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+				}
+				else
+					edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.second == prev_path_state.vertex)));
 							
 							
 
-		// 		edge_collision_path_map[std::make_pair(path_state.timestep, std::make_pair(getStateHash(mGraphs[other_agent_id][prev_path_state.vertex].state),getStateHash(mGraphs[other_agent_id][path_state.vertex].state)))]
-		// 			= edge_safe_j;
-		// 	}
-		// 	mVertexCollisionPathsMap.push_back(vertex_collision_path_map);
-		// 	mEdgeCollisionPathsMap.push_back(edge_collision_path_map);
+				edge_collision_path_map[std::make_pair(path_state.timestep, std::make_pair(getStateHash(mGraphs[other_agent_id][prev_path_state.vertex].state),getStateHash(mGraphs[other_agent_id][path_state.vertex].state)))]
+					= edge_safe_j;
+			}
+			mVertexCollisionPathsMap.push_back(vertex_collision_path_map);
+			mEdgeCollisionPathsMap.push_back(edge_collision_path_map);
 		}
 
 		mCSPIterations++;
