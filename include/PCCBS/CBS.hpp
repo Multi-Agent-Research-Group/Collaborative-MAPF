@@ -648,7 +648,7 @@ public:
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
-				std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<current_makespan<<std::endl;
+				// std::cerr<<"\n-\nCBS numSearches: "<<numSearches<<" Cost: "<<current_makespan<<std::endl;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				{
 					PRINT<<"Collision constraints size: "<<p.collision_constraints[agent_id].size()<<std::endl;
@@ -1028,10 +1028,10 @@ public:
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
-			std::cout<<"Press [ENTER] to display path: ";
-			std::cin.get();
-			displayPath(path_configs);
-			printStats();
+			// std::cout<<"Press [ENTER] to display path: ";
+			// std::cin.get();
+			// displayPath(path_configs);
+			// printStats();
 			return collision_free_path;
 		}
 
@@ -2095,60 +2095,87 @@ public:
 		return path;
 	}
 
-	int countCollaborationConflicts(int &agent_id, SearchState &node, std::vector<SearchState> &currentPath, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
+	int countCollaborationConflicts(int &agent_id, SearchState &state, SearchState &new_state, std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents)
 	{
-		int count_conflicts = 0;
-		for(int i=0; i<consider_agents.size(); i++)
+		if(state.timestep != new_state.timestep)
 		{
-			std::vector<int> all_task_ids;
-			for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
-				all_task_ids.push_back(tid);
-
-			std::vector<int> agent_ids;
-			std::vector<std::vector<SearchState>> paths;
-
-			agent_ids.push_back(agent_id);
-			paths.push_back(currentPath);
-
-			agent_ids.push_back(consider_agents[i]);
-			paths.push_back(shortestPaths[consider_agents[i]]);
-
-			std::vector<int> collaborating_agent_ids;
-			CollaborationConstraint constraint_c;
-
-			count_conflicts += checkCollaborationConflicts(all_task_ids, agent_ids, paths, collaborating_agent_ids, constraint_c);
+			std::cout<<"[ERROR]: on pickup/delivery action! ";
+			std::cin.get();
 		}
-		return count_conflicts;
+		if(state.tasks_completed != new_state.tasks_completed) // delivery state
+		{
+			int delivery_taskid = mTasksList[agent_id][state.tasks_completed].first;
+			std::set<int> delivery_timesteps;
+			delivery_timesteps.insert(state.timestep);
+			for(int i=0; i<consider_agents.size(); i++)
+				for(int j=0; j<mTasksToAgentsList[delivery_taskid].size(); j++)
+					if(mTasksToAgentsList[delivery_taskid][j].first == consider_agents[i])
+					{
+						int agent_id = mTasksToAgentsList[delivery_taskid][j].first;
+						int agent_index = consider_agents[i];
+						int task_index = mTasksToAgentsList[delivery_taskid][j].second;
+						for(int k=1; k<paths[agent_index].size(); k++)
+							if(paths[agent_index][k].tasks_completed == task_index+1 && paths[agent_index][k].in_delivery == false
+								&& paths[agent_index][k-1].in_delivery == true)
+								delivery_timesteps.insert(paths[agent_index][k].timestep);
+					}
+			return delivery_timesteps.size() - 1;
+		}
+		else // pickup state
+		{
+			int pickup_taskid = mTasksList[agent_id][state.tasks_completed].first;
+			std::set<int> pickup_timesteps;
+			pickup_timesteps.insert(state.timestep);
+			for(int i=0; i<consider_agents.size(); i++)
+				for(int j=0; j<mTasksToAgentsList[pickup_taskid].size(); j++)
+					if(mTasksToAgentsList[pickup_taskid][j].first == consider_agents[i])
+					{
+						int agent_id = mTasksToAgentsList[pickup_taskid][j].first;
+						int agent_index = consider_agents[i];
+						int task_index = mTasksToAgentsList[pickup_taskid][j].second;
+						for(int k=1; k<paths[agent_index].size(); k++)
+							if(paths[agent_index][i].tasks_completed == task_index && paths[agent_index][i].in_delivery == true
+								&& paths[agent_index][i-1].in_delivery == false)
+								pickup_timesteps.insert(paths[agent_index][i].timestep);
+					}
+			return pickup_timesteps.size() - 1;
+		}
 	}
 
-	int countCollisionConflicts(int &agent_id, SearchState &node, std::vector<SearchState> &currentPath, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
+	int countCollisionConflicts(int &agent_id, SearchState &state, SearchState &new_state, std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents)
 	{
-		int count_conflicts = 0;
-		for(int i=0; i<consider_agents.size(); i++)
+		if(state.timestep + 1 != new_state.timestep)
 		{
-			std::vector<int> agent_ids;
-			std::vector<std::vector<SearchState>> paths;
-
-			agent_ids.push_back(agent_id);
-			paths.push_back(currentPath);
-
-			agent_ids.push_back(consider_agents[i]);
-			paths.push_back(shortestPaths[consider_agents[i]]);
-
-			std::vector<int> agent_id_1;
-			CollisionConstraint constraint_1;
-
-			std::vector<int> agent_id_2;
-			CollisionConstraint constraint_2;
-
-
-			count_conflicts += checkCollisionConflicts(agent_ids, paths, agent_id_1, constraint_1, agent_id_2, constraint_2);
+			std::cout<<"[ERROR]: on increase timestep action! ";
+			std::cin.get();
 		}
-		return count_conflicts;
+		return 0;
+		// int count_conflicts = 0;
+		// for(int i=0; i<consider_agents.size(); i++)
+		// {
+		// 	std::vector<int> agent_ids;
+		// 	std::vector<std::vector<SearchState>> paths;
+
+		// 	agent_ids.push_back(agent_id);
+		// 	paths.push_back(currentPath);
+
+		// 	agent_ids.push_back(consider_agents[i]);
+		// 	paths.push_back(shortestPaths[consider_agents[i]]);
+
+		// 	std::vector<int> agent_id_1;
+		// 	CollisionConstraint constraint_1;
+
+		// 	std::vector<int> agent_id_2;
+		// 	CollisionConstraint constraint_2;
+
+
+		// 	count_conflicts += checkCollisionConflicts(agent_ids, paths, agent_id_1, constraint_1, agent_id_2, constraint_2);
+		// }
+		// return count_conflicts;
 	}
 
-	std::vector<int> getHeuristics(int &agent_id, SearchState &state, int g_value, SearchState &start_state,
-		int &current_makespan, boost::unordered_map<SearchState , SearchState, state_hash > &mPrev, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
+	std::vector<int> getHeuristics(int &agent_id, SearchState &state, int g_value, int &current_makespan,  
+		int count_collaboration_conflicts, int count_collision_conflicts, int count_move_actions)
 	{
 		int h_value=0;
 		if(state.in_delivery == true)
@@ -2164,28 +2191,13 @@ public:
 			h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
 		}
 
-		int move_actions = 0;
-
-		// std::vector<SearchState> currentPath;
-		// SearchState node = state;
-		// while(!(node == start_state))
-		// {
-		// 	if(mPrev[node].vertex != node.vertex)
-		// 		move_actions++;
-		// 	currentPath.push_back(node);
-		// 	node=mPrev[node];
-		// }
-
-		// currentPath.push_back(start_state);
-		// std::reverse(currentPath.begin(), currentPath.end());
-
 		std::vector<int> heuristics;
-		// heuristics.push_back(std::max(0, g_value + h_value - current_makespan));
-		// heuristics.push_back(countCollaborationConflicts(agent_id, node, currentPath, shortestPaths, consider_agents));
-		// heuristics.push_back(countCollisionConflicts(agent_id, node, currentPath, shortestPaths, consider_agents));
-		// heuristics.push_back(move_actions+h_value);
+		heuristics.push_back(std::max(0, g_value + h_value - current_makespan));
+		// heuristics.push_back(count_collaboration_conflicts);
+		// heuristics.push_back(count_collision_conflicts);
+		// heuristics.push_back(count_move_actions+h_value);
 		// heuristics.push_back(h_value);
-		heuristics.push_back(g_value + h_value);
+		// heuristics.push_back(g_value + h_value);
 		return heuristics;
 	}
 
@@ -2208,14 +2220,22 @@ public:
 		}
 
 		timePriorityQueue pq;
-		boost::unordered_map<SearchState, int, state_hash> mDistance;
+		boost::unordered_map<SearchState, int, state_hash> mGValue;
+		boost::unordered_map<SearchState, int, state_hash> mCountCollaborationConflicts;
+		boost::unordered_map<SearchState, int, state_hash> mCountCollisionConflicts;
+		boost::unordered_map<SearchState, int, state_hash> mCountMoveActions;
+		boost::unordered_map<SearchState, std::vector<int>, state_hash> mFValue;
 		boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
 
 		// SearchState start_state = SearchState(start,start_timestep,tasks_completed,0);
 
-		pq.insert(start_state,getHeuristics(agent_id, start_state, 0, start_state, current_makespan, mPrev, shortestPaths, consider_agents));
-		mDistance[start_state]=0;
-
+		mGValue[start_state]=0;
+		mCountCollaborationConflicts[start_state]=0;
+		mCountCollisionConflicts[start_state]=0;
+		mCountMoveActions[start_state]=0;
+		mFValue[start_state]=getHeuristics(agent_id, start_state, 0, current_makespan, 0, 0, 0);
+		pq.insert(start_state,mFValue[start_state]);
+		
 		int numSearches = 0;
 		// int maximum_timestep = 10000;
 
@@ -2235,6 +2255,12 @@ public:
 			int current_timestep = current_state.timestep;
 			int current_tasks_completed = current_state.tasks_completed;
 			bool current_in_delivery = current_state.in_delivery;
+
+			std::vector<int> current_fvalue = mFValue[current_state];
+			int current_gvalue = mGValue[current_state];
+			int current_count_collaboration_conflicts = mCountCollaborationConflicts[current_state];
+			int current_count_collision_conflicts = mCountCollisionConflicts[current_state];
+			int current_count_move_actions = mCountMoveActions[current_state];
 
 			// if(current_timestep>100)
 			// 	continue;
@@ -2265,7 +2291,7 @@ public:
 				if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
 				{
 					// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
-					costOut = mDistance[current_state];
+					costOut = current_gvalue;
 					goal_state = current_state;
 					break;
 				}
@@ -2277,7 +2303,7 @@ public:
 
 			else{
 				if(current_state==goal_state){
-					costOut = mDistance[current_state];
+					costOut = current_gvalue;
 					break;
 				}
 				if(current_timestep > collaboration_timestep || current_tasks_completed > goal_state.tasks_completed) {
@@ -2305,13 +2331,20 @@ public:
 					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
-						int new_cost = mDistance[current_state];
 						SearchState new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
-						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+						
+						int new_count_collaboration_conflicts = current_count_collaboration_conflicts + countCollaborationConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+						std::vector<int> new_cost = getHeuristics(agent_id, new_state, current_gvalue, current_makespan, new_count_collaboration_conflicts, current_count_collision_conflicts, current_count_move_actions);
+						
+						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 						{
-							mDistance[new_state]= new_cost;
+							mGValue[new_state]= current_gvalue;
+							mCountCollaborationConflicts[new_state]=new_count_collaboration_conflicts;
+							mCountCollisionConflicts[new_state]=current_count_collision_conflicts;
+							mCountMoveActions[new_state]=current_count_move_actions;
+							mFValue[new_state]= new_cost;
 							mPrev[new_state]=current_state;
-							pq.insert(new_state, getHeuristics(agent_id, new_state, new_cost, start_state, current_makespan, mPrev, shortestPaths, consider_agents));
+							pq.insert(new_state, new_cost);
 						}
 					}
 				}
@@ -2333,14 +2366,20 @@ public:
 					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
-						int new_cost = mDistance[current_state];
 						SearchState new_state= SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
 						
-						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+						int new_count_collaboration_conflicts = current_count_collaboration_conflicts + countCollaborationConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+						std::vector<int> new_cost = getHeuristics(agent_id, new_state, current_gvalue, current_makespan, new_count_collaboration_conflicts, current_count_collision_conflicts, current_count_move_actions);
+						
+						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 						{
-							mDistance[new_state]= new_cost;
+							mGValue[new_state]= current_gvalue;
+							mCountCollaborationConflicts[new_state]=new_count_collaboration_conflicts;
+							mCountCollisionConflicts[new_state]=current_count_collision_conflicts;
+							mCountMoveActions[new_state]=current_count_move_actions;
+							mFValue[new_state]= new_cost;
 							mPrev[new_state]=current_state;
-							pq.insert(new_state, getHeuristics(agent_id, new_state, new_cost, start_state, current_makespan, mPrev, shortestPaths, consider_agents));
+							pq.insert(new_state, new_cost);
 						}
 					}
 				}
@@ -2367,16 +2406,20 @@ public:
 
 				if(!col)
 				{
-					int new_cost = mDistance[current_state] + 1;
-
 					SearchState new_state = SearchState(current_vertex, current_timestep+1, current_tasks_completed, current_in_delivery);
 					
-					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
-					{
-						mDistance[new_state]= new_cost;
-						mPrev[new_state]=current_state;
-						pq.insert(new_state, getHeuristics(agent_id, new_state, new_cost, start_state, current_makespan, mPrev, shortestPaths, consider_agents));
+					int new_count_collision_conflicts = current_count_collision_conflicts + countCollisionConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+					std::vector<int> new_cost = getHeuristics(agent_id, new_state, current_gvalue+1, current_makespan, current_count_collaboration_conflicts, new_count_collision_conflicts, current_count_move_actions);
 						
+					if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
+					{
+						mGValue[new_state]= current_gvalue+1;
+						mCountCollaborationConflicts[new_state]=current_count_collaboration_conflicts;
+						mCountCollisionConflicts[new_state]=new_count_collision_conflicts;
+						mCountMoveActions[new_state]=current_count_move_actions;
+						mFValue[new_state]= new_cost;
+						mPrev[new_state]=current_state;
+						pq.insert(new_state, new_cost);						
 					}
 				}	
 			}
@@ -2412,15 +2455,20 @@ public:
 
 				if(!col)
 				{       
-					int new_cost = mDistance[current_state] + 1;
-
 					SearchState new_state = SearchState(successor, current_timestep+1, current_tasks_completed, current_in_delivery);
 					
-					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+					int new_count_collision_conflicts = current_count_collision_conflicts + countCollisionConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+					std::vector<int> new_cost = getHeuristics(agent_id, new_state, current_gvalue+1, current_makespan, current_count_collaboration_conflicts, new_count_collision_conflicts, current_count_move_actions+1);
+					
+					if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 					{
-						mDistance[new_state]= new_cost;
+						mGValue[new_state]= current_gvalue+1;
+						mCountCollaborationConflicts[new_state]=current_count_collaboration_conflicts;
+						mCountCollisionConflicts[new_state]=new_count_collision_conflicts;
+						mCountMoveActions[new_state]=current_count_move_actions+1;
+						mFValue[new_state]= new_cost;
 						mPrev[new_state]=current_state;
-						pq.insert(new_state, getHeuristics(agent_id, new_state, new_cost, start_state, current_makespan, mPrev, shortestPaths, consider_agents));
+						pq.insert(new_state, new_cost);
 					}
 				}
 			}
