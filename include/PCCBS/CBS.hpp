@@ -2065,7 +2065,7 @@ public:
 			SearchState goal = constraintState;
 			
 			std::vector<SearchState> pathSegment = computeShortestPathSegment(agent_id, collision_constraints, start, goal,
-				non_collaboration_constraints, segmentCost, startTimestep, constraintState.timestep, nonCollabMap, current_makespan, shortestPaths, consider_agents);
+				non_collaboration_constraints, segmentCost, startTimestep, constraintState.timestep, nonCollabMap, 0, shortestPaths, consider_agents);
 			costOut += segmentCost;
 			if (pathSegment.size()==0) return std::vector<SearchState>();
 
@@ -2279,7 +2279,7 @@ public:
 	std::vector<SearchState> computeShortestPathSegment(int &agent_id, std::vector<CollisionConstraint> &collision_constraints,
 		SearchState &start_state, SearchState &goal_state, std::vector<CollaborationConstraint> &non_collaboration_constraints, int& costOut, 
 		int start_timestep, int collaboration_timestep, boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap,
-		int &current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
+		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, std::vector<int> &consider_agents)
 	{
 		auto start1 = high_resolution_clock::now();
 
@@ -2304,11 +2304,11 @@ public:
 
 		// SearchState start_state = SearchState(start,start_timestep,tasks_completed,0);
 
-		mGValue[start_state]=0;
+		mGValue[start_state]=start_timestep;
 		mCountCollaborationConflicts[start_state]=0;
 		mCountCollisionConflicts[start_state]=0;
 		mCountMoveActions[start_state]=0;
-		mFValue[start_state]=getHeuristics(agent_id, start_state, 0, current_makespan, 0, 0, 0);
+		mFValue[start_state]=getHeuristics(agent_id, start_state, start_timestep, current_makespan, 0, 0, 0);
 		pq.insert(start_state,mFValue[start_state]);
 		
 		int numSearches = 0;
