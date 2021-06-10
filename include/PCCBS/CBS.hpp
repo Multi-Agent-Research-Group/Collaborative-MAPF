@@ -2241,7 +2241,7 @@ public:
 				{
 					if(paths[other_agent_id][j-1].timestep == paths[other_agent_id][j].timestep)
 						continue;
-					// if(paths[other_agent_id][j].timestep == new_state.timestep)
+					if(paths[other_agent_id][j].timestep == new_state.timestep)
 					{
 						SearchState prev_path_state = paths[other_agent_id][j-1];
 						SearchState path_state = paths[other_agent_id][j];
@@ -2382,9 +2382,9 @@ public:
 		auto start1 = high_resolution_clock::now();
 
 		int h_value=0;
-		if(mHValueMap.find(std::make_pair(agent_id,state)) != mHValueMap.end())
-			h_value = mHValueMap[std::make_pair(agent_id,state)];
-		else
+		// if(mHValueMap.find(std::make_pair(agent_id,state)) != mHValueMap.end())
+		// 	h_value = mHValueMap[std::make_pair(agent_id,state)];
+		// else
 		{
 			if(state.in_delivery == true)
 				h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
@@ -2402,13 +2402,22 @@ public:
 			mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
 
-		std::vector<int> heuristics(6,0);
-		heuristics[0] = std::max(0, g_value + h_value - current_makespan);
+		std::vector<int> heuristics(2,0);
+		heuristics[0] = g_value + h_value;
+		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
 		heuristics[1] = count_collaboration_conflicts;
-		heuristics[2] = count_collision_conflicts;
-		heuristics[3] = count_move_actions+h_value;
-		heuristics[4] = h_value;
-		heuristics[5] = g_value + h_value;
+		// heuristics[2] = count_collision_conflicts;
+		// heuristics[3] = count_move_actions+h_value;
+		// heuristics[4] = h_value;
+
+		// std::vector<int> heuristics(6,0);
+		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
+		// heuristics[1] = count_collaboration_conflicts;
+		// heuristics[2] = count_collision_conflicts;
+		// heuristics[3] = count_move_actions+h_value;
+		// heuristics[4] = h_value;
+		// heuristics[5] = g_value + h_value;
+		
 
 		auto stop1 = high_resolution_clock::now();
 		mHeuristicsTime += (stop1 - start1);
