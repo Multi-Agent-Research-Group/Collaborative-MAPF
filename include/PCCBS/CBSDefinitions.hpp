@@ -74,6 +74,8 @@ struct Element
 		for(int i=0; i<b.costs.size(); i++)
 			b_cost = std::max(b_cost,b.costs[i]);
 
+		// std::cout<<"Costs: "<<cost<<" "<<b_cost<<std::endl;
+
     	if(cost<b_cost)
 			return true;
 		else

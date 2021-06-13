@@ -73,7 +73,7 @@ struct state_hash
 	// unsigned i(0);
 	// Start with a hash value of 0    .
 	// std::size_t seed = 0;
-	std::vector<size_t> hash_elements;
+	// std::vector<size_t> hash_elements;
 	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
 	// hash_elements.push_back();
 	// hash_elements.push_back(k.timestep);
