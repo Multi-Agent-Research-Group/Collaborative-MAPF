@@ -63,6 +63,7 @@ public:
 	std::chrono::duration<double, std::micro> mCHTime;
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
+	std::chrono::duration<double, std::micro> mMapOperationsTime;
 
 	int mCollisionIterations;
 	int mCollaborationIterations;
@@ -164,6 +165,7 @@ public:
 		mCHTime = t2-t1;
 		mPlanningTime = t2-t1;
 		mPreprocessTime = t2-t1;
+		mMapOperationsTime = t2-t1;
 
 		mCollisionIterations = 0;
 		mCollaborationIterations = 0;
@@ -260,6 +262,7 @@ public:
 		std::cout<<"Collaboration iterations: "<<mCollaborationIterations<<std::endl;
 		std::cout<<"CSP Expansions: "<<mCSPExpansions<<std::endl;
 		std::cout<<"CSP Iterations: "<<mCSPIterations<<std::endl;
+		std::cout<<"Map/Queue Insertion / Deletion Time: "<<mMapOperationsTime.count()/1000000.0<<std::endl;
 	}
 
 
@@ -2067,11 +2070,13 @@ public:
 
 		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap;
 
+		
 		for(CollaborationConstraint &c: non_collaboration_constraints)
 		{
 			SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
 			nonCollabMap[std::make_pair(c.timestep, state)] = 1;
 		}
+		
 
 		std::vector <SearchState> wayPoints;
 		for( CollaborationConstraint &c: collaboration_constraints)
@@ -2096,6 +2101,8 @@ public:
 		}
 
 		std::sort(wayPoints.begin(), wayPoints.end(), compareCollaborationConstraints);
+		// auto stop1 = high_resolution_clock::now();
+		// mMapOperationsTime += (stop1 - start1); 
 
 		int segmentCost;
 		int startTimestep = 0;
@@ -2519,6 +2526,7 @@ public:
 		// std::cout<<"Makespan: "<<current_makespan<<std::endl;
 
 		timePriorityQueue pq;
+		// boost::unordered_map<SearchState, std::vector <int>, state_hash> mValues;
 		boost::unordered_map<SearchState, int, state_hash> mGValue;
 		boost::unordered_map<SearchState, int, state_hash> mCountCollaborationConflicts;
 		boost::unordered_map<SearchState, int, state_hash> mCountCollisionConflicts;
@@ -2528,11 +2536,12 @@ public:
 
 		// SearchState start_state = SearchState(start,start_timestep,tasks_completed,0);
 
-		mGValue[start_state]=start_timestep;
-		mCountCollaborationConflicts[start_state]=0;
-		mCountCollisionConflicts[start_state]=0;
-		mCountMoveActions[start_state]=0;
-		mFValue[start_state]=getHeuristics(agent_id, start_state, start_timestep, current_makespan, 0, 0, 0);
+		// mGValue[start_state]=start_timestep;
+		// mCountCollaborationConflicts[start_state]=0;
+		// mCountCollisionConflicts[start_state]=0;
+		// mCountMoveActions[start_state]=0;
+		// mFValue[start_state]=getHeuristics(agent_id, start_state, start_timestep, current_makespan, 0, 0, 0);
+		mFValue[start_state] = getHeuristics(agent_id, start_state, start_timestep, current_makespan, 0, 0, 0);
 		pq.insert(start_state,mFValue[start_state]);
 		
 		int numSearches = 0;
@@ -2549,17 +2558,22 @@ public:
 			mCSPExpansions++;
 			numSearches++;
 			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
+			auto yoma1 = high_resolution_clock::now();
 			SearchState current_state = pq.pop();
+			
 			Vertex current_vertex = current_state.vertex;
 			int current_timestep = current_state.timestep;
 			int current_tasks_completed = current_state.tasks_completed;
 			bool current_in_delivery = current_state.in_delivery;
 
 			std::vector<int> current_fvalue = mFValue[current_state];
-			int current_gvalue = mGValue[current_state];
-			int current_count_collaboration_conflicts = mCountCollaborationConflicts[current_state];
-			int current_count_collision_conflicts = mCountCollisionConflicts[current_state];
-			int current_count_move_actions = mCountMoveActions[current_state];
+			int current_gvalue = current_fvalue[5] - current_fvalue[4];
+			int current_count_collaboration_conflicts = current_fvalue[1];
+			int current_count_collision_conflicts = current_fvalue[2];
+			int current_count_move_actions = current_fvalue[3] - current_fvalue[4];
+			auto yoma2 = high_resolution_clock::now();
+			mMapOperationsTime += yoma2-yoma1;
+			
 
 			// std::cout<<"G Value: "<<current_gvalue<<std::endl;
 			// std::cout<<"F Value: "<<current_fvalue[0]<<" "<<current_fvalue[1]<<std::endl;
@@ -2642,13 +2656,12 @@ public:
 						
 						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 						{
-							mGValue[new_state]= current_gvalue;
-							mCountCollaborationConflicts[new_state]=new_count_collaboration_conflicts;
-							mCountCollisionConflicts[new_state]=current_count_collision_conflicts;
-							mCountMoveActions[new_state]=current_count_move_actions;
+							// auto yoma1 = high_resolution_clock::now();
 							mFValue[new_state]= new_cost;
 							mPrev[new_state]=current_state;
 							pq.insert(new_state, new_cost);
+							// auto yoma2 = high_resolution_clock::now();
+							// mMapOperationsTime += yoma2-yoma1;
 						}
 					}
 				}
@@ -2677,14 +2690,14 @@ public:
 						
 						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 						{
+							// auto yoma1 = high_resolution_clock::now();
 							// std::cout<<"Succ: "<<"G: "<<current_gvalue<<" F: "<<new_cost[0]<<" "<<new_cost[1]<<" "<<(current_tasks_completed+1)<<std::endl;
-							mGValue[new_state]= current_gvalue;
-							mCountCollaborationConflicts[new_state]=new_count_collaboration_conflicts;
-							mCountCollisionConflicts[new_state]=current_count_collision_conflicts;
-							mCountMoveActions[new_state]=current_count_move_actions;
+							auto yoma1 = high_resolution_clock::now();
 							mFValue[new_state]= new_cost;
 							mPrev[new_state]=current_state;
 							pq.insert(new_state, new_cost);
+							auto yoma2 = high_resolution_clock::now();
+							mMapOperationsTime += yoma2-yoma1;
 						}
 					}
 				}
@@ -2718,13 +2731,12 @@ public:
 						
 					if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 					{
-						mGValue[new_state]= current_gvalue+1;
-						mCountCollaborationConflicts[new_state]=current_count_collaboration_conflicts;
-						mCountCollisionConflicts[new_state]=new_count_collision_conflicts;
-						mCountMoveActions[new_state]=current_count_move_actions;
+						auto yoma1 = high_resolution_clock::now();
 						mFValue[new_state]= new_cost;
 						mPrev[new_state]=current_state;
-						pq.insert(new_state, new_cost);						
+						pq.insert(new_state, new_cost);
+						auto yoma2 = high_resolution_clock::now();
+						mMapOperationsTime += yoma2-yoma1;					
 					}
 				}	
 			}
@@ -2767,13 +2779,13 @@ public:
 					
 					if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
 					{
-						mGValue[new_state]= current_gvalue+1;
-						mCountCollaborationConflicts[new_state]=current_count_collaboration_conflicts;
-						mCountCollisionConflicts[new_state]=new_count_collision_conflicts;
-						mCountMoveActions[new_state]=current_count_move_actions+1;
+						// auto yoma1 = high_resolution_clock::now();
+						auto yoma1 = high_resolution_clock::now();
 						mFValue[new_state]= new_cost;
 						mPrev[new_state]=current_state;
 						pq.insert(new_state, new_cost);
+						auto yoma2 = high_resolution_clock::now();
+						mMapOperationsTime += yoma2-yoma1;
 					}
 				}
 			}
