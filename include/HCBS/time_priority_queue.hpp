@@ -18,27 +18,14 @@ class timePriorityQueue
 private:
 	struct element
 	{
-		double key1;
-		double key2;
-		double key3;
-		double key4;
+		std::vector<int> heuristics;
 		int value;
 		size_t timestep;
-		element(double _key1, double _key2, double _key3, double _key4, int _value, size_t _timestep): key1(_key1), key2(_key2), key3(_key3), key4(_key4), value(_value), timestep(_timestep) {} 
+		element(std::vector <int> _heuristics, int _value, size_t _timestep): 
+			heuristics(_heuristics), value(_value), timestep(_timestep) {} 
 		inline bool operator < (const element &b) const 
 		{
-			// if(key3 < b.key3) return true;
-			// return false;
-        	if(key1<b.key1)
-				return true;
-			else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
-				return true;
-			else if(std::abs(key1-b.key1)<EPS && std::abs(key2-b.key2)<EPS && key3<b.key3)
-				return true;
-			else if(std::abs(key1-b.key1)<EPS && std::abs(key2-b.key2)<EPS && std::abs(key3-b.key3)<EPS && key4<b.key4)
-				return true;
-			else
-				return false;	
+			return heuristics < b.heuristics;	
 		}
 	};
 	vector <element> PQ;
@@ -62,22 +49,27 @@ private:
 public:
 	timePriorityQueue()
 	{ 
-		element a(-1,-1,-1,0, 0, 0);
+		element a(std::vector <int> {0,0,0,0,0}, 0, 0);
 		PQ.push_back(a);
 	}
 	void reset()
 	{
 		PQ.clear();
-		element a(-1,-1,-1,0,0, 0);
+		element a(std::vector <int> {0,0,0,0,0}, 0, 0);
 		PQ.push_back(a);
 	}
 	int PQsize()
 	{
 		return PQ.size()-1;
 	}
-	pair<double,double> topKey()
+	std::pair<int,size_t> topKey()
 	{
-		return make_pair(PQ[1].key1,PQ[1].key2);
+		int temp_val=PQ[1].value;
+		size_t temp_tim = PQ[1].timestep;
+		PQ[1]=PQ[PQ.size()-1];
+		PQ.erase(PQ.end()-1);
+		min_heapify(1);
+		return std::make_pair(temp_val,temp_tim);
 	}
 	std::pair<int,size_t> pop()
 	{
@@ -88,12 +80,11 @@ public:
 		min_heapify(1);
 		return std::make_pair(temp_val,temp_tim);
 	}
-	void insert(int v, size_t t, double k1, double k2, double k3, double k4)
+	void insert(int v, size_t t, std::vector <int> heuristics)
 	{
 		// std::cout<<"Inserting : "<<v<<std::endl;
-		element a(k1,k2,k3,k4,v,t);
+		element a(heuristics, v, t);
 		PQ.push_back(a);
-		// printPQ();
 		int i=PQ.size()-1;
 		while((i/2)>0)
 		{
@@ -126,13 +117,13 @@ public:
 				return true;
 		return false;
 	}
-	void printPQ()
-	{
-		cout<<"Elements: "<<endl;
-		for(int i=1;i<PQ.size();i++)
-			cout<<"( Value: "<<PQ[i].value<<", Timestep: "<<PQ[i].timestep<<", Key1: "<<PQ[i].key1<<", Key2: "<<PQ[i].key2<<"), ";
-		cout<<endl;
-	}
+	// void printPQ()
+	// {
+	// 	cout<<"Elements: "<<endl;
+	// 	for(int i=1;i<PQ.size();i++)
+	// 		cout<<"( Value: "<<PQ[i].value<<", Timestep: "<<PQ[i].timestep<<", Key1: "<<PQ[i].key1<<", Key2: "<<PQ[i].key2<<"), ";
+	// 	cout<<endl;
+	// }
 };
 
 } // namespace HCBS
