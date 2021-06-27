@@ -301,13 +301,18 @@ int main(int argc, char *argv[])
 
 		random_shuffle(vertex_list.begin(), vertex_list.end());
 
+
+		int cur_vertex = 0;
+
 		// set starting points for each agent
+		random_shuffle(vertex_list.begin(), vertex_list.end());
 		std::vector<Vertex> agent_inits;
+		
 		for(int agent_id=0; agent_id<numAgents; agent_id++)
 		{
-			random_shuffle(vertex_list.begin(), vertex_list.end());
-			Vertex begin_vertex = vertex_list[0];
+			Vertex begin_vertex = vertex_list[cur_vertex];
 			agent_inits.push_back(begin_vertex);
+			cur_vertex++;
 		}
 
 		// set start and goal points for each task
@@ -316,11 +321,11 @@ int main(int argc, char *argv[])
 
 		for(int task_no = 0; task_no <numTasks; task_no++)
 		{
-			random_shuffle(vertex_list.begin(), vertex_list.end());
-			Vertex start_vertex = vertex_list[0];
-			Vertex goal_vertex = vertex_list[1];
+			Vertex start_vertex = vertex_list[cur_vertex];
+			Vertex goal_vertex = vertex_list[cur_vertex+1];
 			taskStarts.push_back(start_vertex);
 			taskGoals.push_back(goal_vertex);
+			cur_vertex+=2;
 		}
 
 		std::map <int, std::vector <int>> tasksToAgents;
