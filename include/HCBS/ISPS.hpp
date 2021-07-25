@@ -386,14 +386,14 @@ public:
 		return neighbors;
 	}
 
-	double countConflicts(int agent_id, Vertex &node, int timeStep){
-		double numConflicts = 0;
+	int countConflicts(int agent_id, Vertex &node, int timeStep){
+		int numConflicts = 0;
 		for(int i=0; i<mNumAgents; i++){
 			if(i==agent_id) continue;
 			meta_data *vertex = &get(mProp, i);
 			if(timeStep < vertex->start_time || timeStep > vertex->end_time || mComputedPaths[i].size()==0) continue;
 			int indexToCheck = timeStep-vertex->start_time;
-			// std::cerr << indexToCheck << std::endl;
+
 			if(indexToCheck >= mComputedPaths[i].size()) indexToCheck = mComputedPaths[i].size()-1;
 			Vertex check = mComputedPaths[i][indexToCheck];
 			if ((int)(check) == (int)(node)) numConflicts += 1;
@@ -416,25 +416,26 @@ public:
  		return false;
 	}
 
+	int getIntegerCost(double g){
+		return (int)(1.00001*g/mUnitEdgeLength);
+	}
 	std::vector<Vertex> computeShortestPath(Graph &graph, Vertex &start, Vertex &goal, 
 		std::vector<Constraint> &constraints, int initial_timestep, int final_timestep, int agent_id, int slack)
 	{
 		double costOut;
 		timePriorityQueue pq;
-		boost::unordered_map<std::pair<Vertex, int>, double, pair_hash> mDistance;
+		boost::unordered_map<std::pair<Vertex, int>, std::vector <int>, pair_hash> mDistance;
 		boost::unordered_map<std::pair<Vertex, int> , std::pair<Vertex, int>, pair_hash > mPrev;
 		boost::unordered_map<int , Vertex> nodeMap;
+		// boost::unordered_map<int , std::vector <double>> heuristicValues;
 
-		double slackHeuristic = std::max(0.0, initial_timestep*mUnitEdgeLength+graph[start].heuristic-(slack+final_timestep)*mUnitEdgeLength);
-		pq.insert(graph[start].vertex_index,initial_timestep,
-			slackHeuristic, countConflicts(agent_id, start, initial_timestep),
-			graph[start].heuristic,graph[start].heuristic);
-
-
+		int slackHeuristic = std::max(0, initial_timestep+getIntegerCost(graph[start].heuristic)-(slack+final_timestep));
+		std::vector <int> heuristics = {slackHeuristic, 0, getIntegerCost(graph[start].heuristic), getIntegerCost(graph[start].heuristic), getIntegerCost(graph[start].heuristic)};
+		pq.insert(graph[start].vertex_index,initial_timestep, heuristics);
 		nodeMap[graph[start].vertex_index]=start;
+		mDistance[std::make_pair(start,initial_timestep)]=heuristics;
 
 		VertexIter vi, viend;
-		mDistance[std::make_pair(start,initial_timestep)]=0;
 
 		int numSearches = 0;
 		int maximum_timestep = 10000;
@@ -444,15 +445,8 @@ public:
 		int max_C_timestep = 0;
 		for(int i=0; i<constraints.size(); i++)
 		{
-			// if(constraints[i].constraint_type==1)
-			// 	std::cerr<<"Vertex constraint: "<<constraints[i].v<<" "<<constraints[i].t<<std::endl;
-			// else
-			// 	std::cerr<<"Edge constraint: "<<constraints[i].e<<" "<<constraints[i].t<<std::endl;
 			max_C_timestep = std::max(max_C_timestep,(int)constraints[i].t);
 		}
-
-		// std::cerr << "INIT: " << initial_timestep <<" ConstraintT: "<<max_C_timestep << " NODE st. : " << start << std::endl;
-
 
 		while(pq.PQsize()!=0)
 		{
@@ -460,18 +454,25 @@ public:
 			std::pair<int,int> top_element = pq.pop();
 			int index = top_element.first;
 			int timeStep = top_element.second;
-			// if(timeStep > final_timestep)
-			// 	continue;
+
+			std::vector<int> currentHeuristics = mDistance[std::make_pair(index, timeStep)];
+
+			int currentSlackHeuristic = currentHeuristics[0];
+			int currentPathConflicts = currentHeuristics[1];
+			int currentMoveCount = currentHeuristics[2]-currentHeuristics[3];
+			int currentGValue = currentHeuristics[4]-currentHeuristics[3];
+			int currentHValue = currentHeuristics[3];
+
 			if(index == graph[goal].vertex_index && timeStep >= max_C_timestep)
 			{
 				goal_timestep = timeStep;
-				costOut = mDistance[std::make_pair(goal,goal_timestep)];
+				costOut = currentGValue*mUnitEdgeLength;
 				break;
 			}
+
 			Vertex curr_node = nodeMap[index];
 			std::vector<Vertex> neighbors = getNeighbors(graph,curr_node);
 			neighbors.push_back(curr_node);
-			// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
 
 			for (auto successor : neighbors) 
 			{
@@ -482,8 +483,6 @@ public:
 					{
 						if( c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1)
 						{
-							// std::cout<<"Constraint Encountered! "<<std::endl;
-							// std::cin.get();
 							col =true;
 							break;
 						}
@@ -491,21 +490,20 @@ public:
 
 					if(!col)
 					{
-						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
-						
+						int newSlackHeuristic = std::max(0, (timeStep+1)+getIntegerCost(graph[successor].heuristic)-(slack+final_timestep));
+						int newPathConflicts = currentPathConflicts + countConflicts(agent_id, successor, (timeStep+1));
+						int newMoveCount = currentMoveCount;
+						int newHValue = getIntegerCost(graph[successor].heuristic); 
+						int newFValue = (timeStep+1)+newHValue;
+
+						std::vector <int> newHeuristics = {newSlackHeuristic, newPathConflicts,
+							newMoveCount + newHValue, newHValue, newFValue};
+
 						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || 
-							new_cost < mDistance[std::make_pair(successor,timeStep+1)])
+							newHeuristics < mDistance[std::make_pair(successor,timeStep+1)])
 						{
-							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
-							double priority;
-							// std::cout<<"FOUND FREE EDGE!!"<<std::endl;
-
-							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack+final_timestep)*mUnitEdgeLength);
-							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timeStep+1,
-								slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
-								priority,graph[successor].heuristic);
-
+							mDistance[std::make_pair(successor,timeStep+1)]= newHeuristics;
+							pq.insert(graph[successor].vertex_index,timeStep+1,newHeuristics);
 							if(nodeMap.count(graph[successor].vertex_index)==0)
 								nodeMap[graph[successor].vertex_index]=successor;
 							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
@@ -515,20 +513,11 @@ public:
 				else
 				{
 					Edge uv_edge = boost::edge(curr_node, successor, graph).first;
-					// std::cerr << uv_edge << " " << timeStep << std::endl;
 					bool col = false;
 					for( Constraint c: constraints)
 					{
-						// if(c.constraint_type == 2){
-						// 	std::cerr << uv_edge << " " << timeStep << std::endl;
-						// 	std::cerr << c.e << " " << c.t << std::endl;
-						// 	std::cerr << (int)(c.e == uv_edge) << std::endl;
-						// 	std::cerr << isEqualEdge(graph, c.e, uv_edge) << std::endl;
-						// }
 						if( (c.constraint_type == 1 && successor == c.v && c.t == timeStep + 1) || (c.constraint_type == 2 && c.e==uv_edge && c.t == timeStep + 1) )
 						{
-							// std::cout<<"Constraint Encountered! "<<std::endl;
-							// std::cin.get();
 							col =true;
 							break;
 						}
@@ -536,18 +525,20 @@ public:
 
 					if(!col)
 					{                   
-						double new_cost = mDistance[std::make_pair(curr_node,timeStep)] + mUnitEdgeLength;
-						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || new_cost < mDistance[std::make_pair(successor,timeStep+1)])
+						int newSlackHeuristic = std::max(0, (timeStep+1)+getIntegerCost(graph[successor].heuristic)-(slack+final_timestep));
+						int newPathConflicts = currentPathConflicts + countConflicts(agent_id, successor, (timeStep+1));
+						int newMoveCount = currentMoveCount+1;
+						int newHValue = getIntegerCost(graph[successor].heuristic); 
+						int newFValue = (timeStep+1)+newHValue;
+
+						std::vector <int> newHeuristics = {newSlackHeuristic, newPathConflicts,
+							newMoveCount + newHValue, newHValue, newFValue};
+
+						if(mDistance.count(std::make_pair(successor,timeStep+1))==0 || 
+							newHeuristics < mDistance[std::make_pair(successor,timeStep+1)])
 						{
-							mDistance[std::make_pair(successor,timeStep+1)]= new_cost;
-							double priority;
-
-							double slackHeuristic = std::max(0.0, (timeStep+1)*mUnitEdgeLength+graph[successor].heuristic-(slack+final_timestep)*mUnitEdgeLength);
-							priority = new_cost + graph[successor].heuristic;
-							pq.insert(graph[successor].vertex_index,timeStep+1
-								,slackHeuristic, countConflicts(agent_id, successor, (timeStep+1)),
-								priority,graph[successor].heuristic);
-
+							mDistance[std::make_pair(successor,timeStep+1)]= newHeuristics;
+							pq.insert(graph[successor].vertex_index,timeStep+1,newHeuristics);
 							if(nodeMap.count(graph[successor].vertex_index)==0)
 								nodeMap[graph[successor].vertex_index]=successor;
 							mPrev[std::make_pair(successor,timeStep+1)]=std::make_pair(curr_node,timeStep);
@@ -579,13 +570,6 @@ public:
 		finalPath.push_back(start);
 		std::reverse(finalPath.begin(), finalPath.end());
 
-		// std::cerr << "INITIAL " << initial_timestep << std::endl;
-		// for(auto node:finalPath)
-		// {
-		// 	std::cerr << node << " ";
-		// }
-		// std::cerr << std::endl;
-		// std::cin.get();
 		return finalPath;
 	}
 
