@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_4.txt"), "Path to PC Graph Metadata File")
 			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
 			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
+			("image,i", po::value<std::string>()->default_value("videos_hcbs/"), "Path to Storing Images")
 	;
 
 	// Read arguments
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
 
 
 	// std::cout << "hello\n"; std::cin.get();
-	PCSolver p(G, max_iter, num_agents, num_robots, graph_file_name, obstacle_file_name);
+	PCSolver p(G, max_iter, num_agents, num_robots, graph_file_name, obstacle_file_name, vm["image"].as<std::string>());
 	auto start = high_resolution_clock::now();
 	p.solve();
 	// std::cerr<<"solved!";

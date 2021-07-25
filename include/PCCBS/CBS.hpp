@@ -39,7 +39,8 @@ using namespace std::chrono;
 #include "PCCBS/PCDefinitions.hpp"
 
 
-#define INF std::numeric_limits<double>::infinity()
+// #define INF std::numeric_limits<double>::infinity()
+#define INF std::numeric_limits<int>::max()
 
 #define PRINT if (cerr_disabled) {} else std::cerr
 #define DEBUG if (cerr_disabled) {} else 
@@ -54,18 +55,38 @@ class CBS
 
 public:
 
+	// std::chrono::duration<double, std::micro> mCSPTime;
+	// std::chrono::duration<double, std::micro> mGNTime;
+	// std::chrono::duration<double, std::micro> mQOTime;
+	// std::chrono::duration<double, std::micro> mCCTime;
+	// std::chrono::duration<double, std::micro> mPlanningTime;
+	// std::chrono::duration<double, std::micro> mPreprocessTime;
+
 	std::chrono::duration<double, std::micro> mCSPTime;
+	std::chrono::duration<double, std::micro> mHeuristicsTime;
+	std::chrono::duration<double, std::micro> mCollabCTime;
+	std::chrono::duration<double, std::micro> mCollisionCTime;
 	std::chrono::duration<double, std::micro> mGNTime;
 	std::chrono::duration<double, std::micro> mQOTime;
 	std::chrono::duration<double, std::micro> mCCTime;
+	std::chrono::duration<double, std::micro> mCHTime;
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
+	std::chrono::duration<double, std::micro> mMapOperationsTime;
+
 	std::string mImagePath;
 	std::vector<int> mTaskStartTimestep;
+	std::vector<int> mTaskEndTimestep;
+
+	boost::unordered_map <std::pair <int, SearchState>, double, time_state_hash> mHValueMap;
 
 	high_resolution_clock::time_point mSolveStartTime;
 
 	int mCBSIterations;
+	int mCollisionIterations;
+	int mCollaborationIterations;
+	int mCSPExpansions;
+	int mCSPIterations;
 
 	/// Environment
 	cv::Mat mImage;
@@ -95,11 +116,13 @@ public:
 	double mUnitEdgeLength = 0.1;
 
 	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, 
-		Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep, std::string imagePath)
+		Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep, 
+		std::vector<int> taskEndTimestep, std::string imagePath)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mTaskStartTimestep(taskStartTimestep)
+		, mTaskEndTimestep(taskEndTimestep)
 		, mImagePath(imagePath)
 	{
 
@@ -150,7 +173,23 @@ public:
 		mQOTime = t2-t1;
 		mCCTime = t2-t1;
 		mPlanningTime = t2-t1;
+		mPreprocessTime = t2-t1;;
+		mCSPTime = t2-t1;
+		mHeuristicsTime = t2-t1;
+		mCollabCTime = t2-t1;
+		mCollisionCTime = t2-t1;
+		mGNTime = t2-t1;
+		mQOTime = t2-t1;
+		mCCTime = t2-t1;
+		mCHTime = t2-t1;
+		mPlanningTime = t2-t1;
 		mPreprocessTime = t2-t1;
+		mMapOperationsTime = t2-t1;
+
+		mCollisionIterations = 0;
+		mCollaborationIterations = 0;
+		mCSPExpansions = 0;
+		mCSPIterations = 0;
 
 		PRINT<<"K";
 
@@ -226,6 +265,46 @@ public:
 		preprocess_graph(mGraphs[0]);
 	}
 
+	int getStateHash(Eigen::VectorXd state)
+	{
+		return int(1.001/mUnitEdgeLength)*int((state[0]+0.001)/mUnitEdgeLength) + int((state[1]+0.001)/mUnitEdgeLength);
+	}
+
+	bool isOverFlowState(SearchState &state, SearchState &goal_state)
+	{
+		if(state.timestep > goal_state.timestep)
+			return true;
+		if(state.tasks_completed > goal_state.tasks_completed) 
+			return true;
+		if(state.tasks_completed == goal_state.tasks_completed && state.in_delivery == true && goal_state.in_delivery == false)
+			return true;
+		return false;
+	}
+
+	void printState(bool child, SearchState &s, std::vector<double> &f_value)
+	{
+		return;
+		if(!child)
+		{
+			std::cout<<"CV: "<<s.vertex<<" CT: "<<s.timestep<<" CTC: "<<s.tasks_completed
+				<<" CID: "<<s.in_delivery<<std::endl;
+			std::cout<<"G Value: "<<f_value[5] - f_value[4]<<std::endl;
+			std::cout<<"H Value: "<<f_value[4]<<std::endl;
+			std::cout<<"f Value: "<<f_value[5]<<std::endl;
+			std::cout<<"F Value: "<<f_value[0]<<" "<<f_value[1]<<" "<<f_value[2]<<" "<<
+				f_value[3]<<" "<<f_value[4]<<" "<<f_value[5]<<" "<<std::endl<<std::endl;
+		}
+		else
+		{
+			std::cout<<"     -- CV: "<<s.vertex<<" CT: "<<s.timestep<<" CTC: "<<s.tasks_completed
+				<<" CID: "<<s.in_delivery<<std::endl;
+			std::cout<<"     -- G Value: "<<f_value[5] - f_value[4]<<std::endl;
+			std::cout<<"     -- H Value: "<<f_value[4]<<std::endl;
+			std::cout<<"     -- f Value: "<<f_value[5]<<std::endl;
+			std::cout<<"     -- F Value: "<<f_value[0]<<" "<<f_value[1]<<" "<<f_value[2]<<" "<<
+				f_value[3]<<" "<<f_value[4]<<" "<<f_value[5]<<" "<<std::endl<<std::endl;
+		}
+	}
 	void printStats()
 	{
 		std::cout<<mPlanningTime.count()/1000000.0<<" "<<mCBSIterations<<std::endl;
@@ -237,22 +316,22 @@ public:
 	}
 
 
-	std::vector< std::vector<SearchState> > computeDecoupledPaths(std::vector<std::vector<CollisionConstraint>> collision_constraints, 
-		std::vector<std::vector<CollaborationConstraint>> collaboration_constraints, std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints, 
-		std::vector<double> &costs)
-	{
-		std::vector<std::vector<SearchState> > shortestPaths;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
-			double ind_cost;
-			std::vector <SearchState> path = computeShortestPath(agent_id, collision_constraints[agent_id], collaboration_constraints[agent_id], 
-				non_collaboration_constraints[agent_id], ind_cost);
-			shortestPaths.push_back(path);
-			costs.push_back(ind_cost);
-		}
+	// std::vector< std::vector<SearchState> > computeDecoupledPaths(std::vector<std::vector<CollisionConstraint>> collision_constraints, 
+	// 	std::vector<std::vector<CollaborationConstraint>> collaboration_constraints, std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints, 
+	// 	std::vector<double> &costs)
+	// {
+	// 	std::vector<std::vector<SearchState> > shortestPaths;
+	// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+	// 	{
+	// 		double ind_cost;
+	// 		std::vector <SearchState> path = computeShortestPath(agent_id, collision_constraints[agent_id], collaboration_constraints[agent_id], 
+	// 			non_collaboration_constraints[agent_id], ind_cost);
+	// 		shortestPaths.push_back(path);
+	// 		costs.push_back(ind_cost);
+	// 	}
 
-		return shortestPaths;
-	}
+	// 	return shortestPaths;
+	// }
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -554,27 +633,47 @@ public:
 		std::vector<std::vector<CollisionConstraint>> collision_constraints(mNumAgents, std::vector<CollisionConstraint>());
 		std::vector<std::vector<CollaborationConstraint>> collaboration_constraints(mNumAgents, std::vector<CollaborationConstraint>());
 		std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints(mNumAgents, std::vector<CollaborationConstraint>());
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		// {
+		// 	for(int i=0; i<mTasksList.size(); i++)
+		// 	{
+		// 		for(int j=0; j<mTasksList[i].size(); j++)
+		// 		{
+		// 			int task_id = mTasksList[i][j].first;
+		// 			int task_start_time = mTaskStartTimestep[task_id];
+		// 			Vertex pickup_vertex = mTasksList[i][j].second.first;
+		// 			for(int timestep=0; timestep<task_start_time; timestep++)
+		// 			{
+		// 				CollaborationConstraint c = 
+		// 					CollaborationConstraint(pickup_vertex, task_id, true,timestep);
+		// 				non_collaboration_constraints[agent_id].push_back(c);
+		// 			}
+		// 		}
+		// 	}
+		// }
+		for(int i=0; i<mTasksList.size(); i++)
 		{
-			for(int i=0; i<mTasksList.size(); i++)
+			for(int j=0; j<mTasksList[i].size(); j++)
 			{
-				for(int j=0; j<mTasksList[i].size(); j++)
+				int task_id = mTasksList[i][j].first;
+				int task_start_time = mTaskStartTimestep[task_id];
+				Vertex pickup_vertex = mTasksList[i][j].second.first;
+				for(int timestep=0; timestep<task_start_time; timestep++)
 				{
-					int task_id = mTasksList[i][j].first;
-					int task_start_time = mTaskStartTimestep[task_id];
-					Vertex pickup_vertex = mTasksList[i][j].second.first;
-					for(int timestep=0; timestep<task_start_time; timestep++)
-					{
-						CollaborationConstraint c = 
-							CollaborationConstraint(pickup_vertex, task_id, true,timestep);
-						non_collaboration_constraints[agent_id].push_back(c);
-					}
+					CollaborationConstraint c = 
+						CollaborationConstraint(pickup_vertex, task_id, true,timestep);
+					non_collaboration_constraints[i].push_back(c);
 				}
+				// std::cerr<<"Task start time: "<<task_start_time<<std::endl;
 			}
 		}
 		std::vector<double> start_costs;
-		std::vector< std::vector<SearchState> > start_shortestPaths = computeDecoupledPaths(collision_constraints, collaboration_constraints, non_collaboration_constraints, start_costs);
+		std::vector< std::vector<SearchState> > start_shortestPaths = 
+		computeDecoupledPaths(collision_constraints, collaboration_constraints, 
+			non_collaboration_constraints, start_costs);
 
+		// std::cerr << "Decoupled Paths found" << std::endl;
+		// std::cin.get();
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
@@ -620,7 +719,7 @@ public:
 			double total_cost = 0;
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost = std::max(total_cost,p.costs[i]);
-
+			int current_makespan = int((total_cost+0.0001)/mUnitEdgeLength);
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -670,10 +769,18 @@ public:
 
 			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, constraint_c))
 			{
+				std::vector<int> consider_agents;
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+					if(std::find(collaborating_agent_ids.begin(),collaborating_agent_ids.end(), agent_id) 
+						== collaborating_agent_ids.end())
+						consider_agents.push_back(agent_id);
 				{
-					std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = p.collaboration_constraints;
+					std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = 
+									p.collaboration_constraints;
 					std::vector< double> costs_c = p.costs;
 					std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
+
+					
 
 					bool all_paths_exist = true;
 					for(int i=0; i<collaborating_agent_ids.size(); i++)
@@ -683,7 +790,8 @@ public:
 						for( CollaborationConstraint &c: p.non_collaboration_constraints[collaborating_agent_ids[i]])
 						{
 							if( constraint_c.v == c.v && constraint_c.task_id == c.task_id
-								&& constraint_c.is_pickup == c.is_pickup==true && constraint_c.timestep == c.timestep)
+								&& constraint_c.is_pickup == c.is_pickup==true && 
+								constraint_c.timestep == c.timestep)
 							{
 								// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
 								allowed = false;
@@ -697,8 +805,15 @@ public:
 						}	
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
-						shortestPaths_c[collaborating_agent_ids[i]] = computeShortestPath(collaborating_agent_ids[i], p.collision_constraints[collaborating_agent_ids[i]], 
-								increase_constraints_c[collaborating_agent_ids[i]], p.non_collaboration_constraints[collaborating_agent_ids[i]], cost_c);
+						shortestPaths_c[collaborating_agent_ids[i]] = 
+								computeShortestPath(collaborating_agent_ids[i], 
+									p.collision_constraints[collaborating_agent_ids[i]], 
+									increase_constraints_c[collaborating_agent_ids[i]], 
+									p.non_collaboration_constraints[collaborating_agent_ids[i]], 
+									cost_c,
+									current_makespan, 
+									p.shortestPaths,
+									consider_agents);
 						costs_c[collaborating_agent_ids[i]] = cost_c;
 						if(cost_c == INF)
 						{
@@ -715,7 +830,8 @@ public:
 					}
 				}
 				{
-					std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = p.non_collaboration_constraints;
+					std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = 
+					p.non_collaboration_constraints;
 
 					std::vector< double> costs_c = p.costs;
 					std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
@@ -743,8 +859,15 @@ public:
 						}
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
-						shortestPaths_c[collaborating_agent_ids[i]] = computeShortestPath(collaborating_agent_ids[i], p.collision_constraints[collaborating_agent_ids[i]], 
-								p.collaboration_constraints[collaborating_agent_ids[i]], increase_constraints_c[collaborating_agent_ids[i]], cost_c);
+						shortestPaths_c[collaborating_agent_ids[i]] = 
+								computeShortestPath(collaborating_agent_ids[i], 
+									p.collision_constraints[collaborating_agent_ids[i]], 
+									p.collaboration_constraints[collaborating_agent_ids[i]], 
+									increase_constraints_c[collaborating_agent_ids[i]], 
+									cost_c,
+									current_makespan, 
+									p.shortestPaths,
+									consider_agents);
 						costs_c[collaborating_agent_ids[i]] = cost_c;
 						if(cost_c == INF)
 						{
@@ -799,9 +922,14 @@ public:
 
 				// std::cout<<"In CollaborationConstraint!"<<std::endl;
 
-				std::vector<std::vector<CollisionConstraint>> increase_constraints_agent_id_1 = p.collision_constraints;
+				std::vector<std::vector<CollisionConstraint>> increase_constraints_agent_id_1 = 
+						p.collision_constraints;
 				std::vector< double> costs_agent_id_1 = p.costs;
 				std::vector< std::vector<SearchState> > shortestPaths_agent_id_1 = p.shortestPaths;
+				std::vector<int> consider_agents;
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+					if(std::find(agent_id_1.begin(),agent_id_1.end(), agent_id) == agent_id_1.end())
+						consider_agents.push_back(agent_id);
 
 				bool all_paths_exist = true;
 
@@ -809,8 +937,15 @@ public:
 				{
 					increase_constraints_agent_id_1[agent_id_1[i]].push_back(constraint_1);
 					double cost_agent_id_1;
-					shortestPaths_agent_id_1[agent_id_1[i]] = computeShortestPath(agent_id_1[i], increase_constraints_agent_id_1[agent_id_1[i]], 
-						p.collaboration_constraints[agent_id_1[i]], p.non_collaboration_constraints[agent_id_1[i]], cost_agent_id_1);
+					shortestPaths_agent_id_1[agent_id_1[i]] = 
+							computeShortestPath(agent_id_1[i], 
+								increase_constraints_agent_id_1[agent_id_1[i]], 
+								p.collaboration_constraints[agent_id_1[i]], 
+								p.non_collaboration_constraints[agent_id_1[i]], 
+								cost_agent_id_1,
+								current_makespan, 
+								p.shortestPaths,
+								consider_agents);
 					costs_agent_id_1[agent_id_1[i]] = cost_agent_id_1;
 
 					if(cost_agent_id_1 == INF)
@@ -838,14 +973,27 @@ public:
 				std::vector< double> costs_agent_id_2 = p.costs;
 				std::vector< std::vector<SearchState> > shortestPaths_agent_id_2 = p.shortestPaths;
 
+				consider_agents.clear();
+				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+					if(std::find(agent_id_2.begin(),agent_id_2.end(), agent_id) == agent_id_2.end())
+						consider_agents.push_back(agent_id);
+
 				all_paths_exist = true;
 
 				for(int i=0; i<agent_id_2.size(); i++)
 				{
 					increase_constraints_agent_id_2[agent_id_2[i]].push_back(constraint_2);
 					double cost_agent_id_2;
-					shortestPaths_agent_id_2[agent_id_2[i]] = computeShortestPath(agent_id_2[i], increase_constraints_agent_id_2[agent_id_2[i]], 
-						p.collaboration_constraints[agent_id_2[i]], p.non_collaboration_constraints[agent_id_2[i]], cost_agent_id_2);
+					shortestPaths_agent_id_2[agent_id_2[i]] = 
+							computeShortestPath(agent_id_2[i], 
+								increase_constraints_agent_id_2[agent_id_2[i]], 
+								p.collaboration_constraints[agent_id_2[i]], 
+								p.non_collaboration_constraints[agent_id_2[i]], 
+								cost_agent_id_2,
+								current_makespan, 
+								p.shortestPaths,
+								consider_agents);
+
 					costs_agent_id_2[agent_id_2[i]] = cost_agent_id_2;
 					
 					if(cost_agent_id_2 == INF)
@@ -1074,6 +1222,1139 @@ public:
 
 		// std::cout<<"neighbors size: "<<neighbors.size()<<std::endl;
 		return neighbors;
+	}
+
+	std::vector< std::vector<SearchState> > computeDecoupledPaths(std::vector<std::vector<CollisionConstraint>> 
+		collision_constraints, std::vector<std::vector<CollaborationConstraint>> collaboration_constraints, 
+		std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints, 
+		std::vector<double> &costs)
+	{
+		std::vector<std::vector<SearchState> > shortestPaths;
+		std::vector<int> consider_agents;
+		int current_makespan = 0;
+		int initial_makespan = 0;
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			double ind_cost;
+			std::vector <SearchState> path = 
+					computeShortestPath(agent_id, 
+						collision_constraints[agent_id], 
+						collaboration_constraints[agent_id], 
+						non_collaboration_constraints[agent_id], 
+						ind_cost, 
+						initial_makespan,
+						shortestPaths, 
+						consider_agents);
+			shortestPaths.push_back(path);
+			costs.push_back(ind_cost);
+			consider_agents.push_back(agent_id);
+			if(path.size()>0)
+				current_makespan = std::max(current_makespan,path[path.size()-1].timestep);
+		}
+
+		return shortestPaths;
+	}
+
+	double getHeuristic(int &agent_id, SearchState &state)
+	{
+		// return 0;
+		double heuristic=0;
+		if(state.in_delivery == true)
+			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
+		else
+		{
+			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
+		}
+		for(int i=state.tasks_completed+1; i<mTasksList[agent_id].size(); i++)
+		{
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
+			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
+		}
+		return heuristic;
+	}
+
+	std::vector<double> getHeuristics(int &agent_id, SearchState &state, SearchState &goal_state, 
+		double g_value, double current_makespan,  
+		double count_collaboration_conflicts, 
+		double count_collision_conflicts, 
+		double count_move_actions)
+	{
+		auto start1 = high_resolution_clock::now();
+
+		double h_value=0;
+		// if(mHValueMap.find(std::make_pair(agent_id,state)) != mHValueMap.end())
+		// 	h_value = mHValueMap[std::make_pair(agent_id,state)];
+		// else
+		{
+			if(goal_state == SearchState())
+			{
+				if(state.tasks_completed < mTasksList[agent_id].size())
+				{
+					if(state.in_delivery == true)
+						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
+					else
+					{
+						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
+					}
+					// std::cout<<state.tasks_completed+1<<" "<<mTasksList[agent_id].size()<<std::endl;
+					for(int i=state.tasks_completed+1; i<mTasksList[agent_id].size(); i++)
+					{
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
+					}
+				}
+			}
+			else
+			{
+				if(state.tasks_completed == goal_state.tasks_completed)
+				{
+					if(goal_state.in_delivery)
+					{
+						if(mTasksList[agent_id][state.tasks_completed].second.second != goal_state.vertex)
+						{
+							std::cout<<"WTF1!";
+							std::cin.get();
+						}
+						if(state.in_delivery == true)
+							h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
+						else
+						{
+							h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+							h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
+						}
+					}
+					else
+					{
+						if(mTasksList[agent_id][state.tasks_completed].second.first != goal_state.vertex)
+						{
+							std::cout<<"WTF2!";
+							std::cin.get();
+						}
+						if(state.in_delivery == true)
+						{
+							std::cout<<"WTF3!";
+							std::cin.get();
+						}
+						else
+							h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+					}
+				}
+				else if(state.tasks_completed < goal_state.tasks_completed)
+				{
+					// h_value += (mTasksList[agent_id].size() - state.tasks_completed)*1000;
+					if(state.in_delivery == true)
+						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
+					else
+					{
+						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
+					}
+					// std::cout<<state.tasks_completed+1<<" "<<mTasksList[agent_id].size()<<std::endl;
+					int i=state.tasks_completed+1;
+					for(; i<goal_state.tasks_completed; i++)
+					{
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
+					}
+					if(goal_state.in_delivery)
+					{
+						if(mTasksList[agent_id][i].second.second != goal_state.vertex)
+						{
+							std::cout<<"WTF4!";
+							std::cin.get();
+						}
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second, mTasksList[agent_id][i].second.first)];
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
+					}
+					else
+					{
+						if(mTasksList[agent_id][i].second.first != goal_state.vertex)
+						{
+							std::cout<<"WTF5!";
+							std::cin.get();
+						}
+						h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second, mTasksList[agent_id][i].second.first)];
+					}
+				}
+			}
+			mHValueMap[std::make_pair(agent_id,state)] = h_value;
+		}
+
+		// std::cout<<g_value<<" "<<h_value<<std::endl;
+		// std::vector<int> heuristics(1,0);
+		// heuristics[0] = g_value + h_value;
+		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
+		// heuristics[1] = count_collaboration_conflicts;
+		// heuristics[2] = count_collision_conflicts;
+		// heuristics[3] = count_move_actions+h_value;
+		// heuristics[4] = h_value;
+
+		std::vector<double> heuristics(6,0);
+		heuristics[0] = g_value + h_value;
+		heuristics[1] = count_collaboration_conflicts+count_collision_conflicts;
+		heuristics[2] = count_collision_conflicts;
+		heuristics[3] = count_move_actions+h_value;
+		heuristics[4] = h_value;
+		heuristics[5] = g_value + h_value;
+
+		// std::vector<int> heuristics(6,0);
+		// std::cout<<" In getHeuristics g - "<<g_value<<" h - "<<h_value<<" cm - "<<current_makespan<<std::endl;
+		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
+		// heuristics[1] = count_collaboration_conflicts;
+		// heuristics[2] = count_collision_conflicts;
+		// heuristics[3] = count_move_actions+h_value;
+		// heuristics[4] = h_value;
+		// heuristics[5] = g_value + h_value;
+		
+
+		auto stop1 = high_resolution_clock::now();
+		mHeuristicsTime += (stop1 - start1);
+		return heuristics;
+	}
+
+	std::vector<SearchState> computeShortestPath(int &agent_id, 
+		std::vector<CollisionConstraint> &collision_constraints,
+		std::vector<CollaborationConstraint> &collaboration_constraints, 
+		std::vector<CollaborationConstraint> &non_collaboration_constraints, 
+		double& costOut,
+		int &current_makespan, 
+		std::vector<std::vector<SearchState> > &shortestPaths, 
+		std::vector<int> &consider_agents)
+	{
+		std::cout << current_makespan << std::endl; 
+		// std::cout<<"\n --------> CSP call! -- Agent ID: "<<agent_id<<"\n\n";
+		costOut = 0;
+		std::vector<SearchState> path;
+		SearchState start = SearchState(mStartVertex[agent_id], 0, 0, 0);
+
+		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap;
+
+		
+		for(CollaborationConstraint &c: non_collaboration_constraints)
+		{
+			SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
+			nonCollabMap[std::make_pair(c.timestep, state)] = 1;
+		}
+		
+
+		std::vector <SearchState> wayPoints;
+		for( CollaborationConstraint &c: collaboration_constraints)
+		{
+			int collaboration_tasks_completed=-1;
+			for(int i=0; i<mTasksList[agent_id].size(); i++)
+				if(c.task_id == mTasksList[agent_id][i].first)
+					collaboration_tasks_completed = i;
+			if (collaboration_tasks_completed==-1) {
+				std::cout << "-1 tasks" << std::endl;
+				std::cin.get();
+			}
+
+			if(c.is_pickup)
+			{
+				if(mTaskStartTimestep[c.task_id] > c.timestep)
+				{
+					return std::vector<SearchState>();
+				}
+			}
+			else
+			{
+				if(mTaskEndTimestep[c.task_id] > c.timestep)
+				{
+					return std::vector<SearchState>();
+				}
+			}
+
+			SearchState state;
+			if(c.is_pickup == true)
+				state = SearchState(c.v,c.timestep,collaboration_tasks_completed,false); // in Delivery false
+			else
+				state = SearchState(c.v,c.timestep,collaboration_tasks_completed,true);
+
+			wayPoints.push_back(state);
+		}
+
+		std::sort(wayPoints.begin(), wayPoints.end(), compareCollaborationConstraints);
+		// auto stop1 = high_resolution_clock::now();
+		// mMapOperationsTime += (stop1 - start1); 
+
+		int segmentCost;
+		int startTimestep = 0;
+		int tasks_completed = 0;
+
+		for(auto constraintState: wayPoints){
+			SearchState goal = constraintState;
+			
+			std::vector<SearchState> pathSegment = 
+				computeShortestPathSegment(agent_id, 
+					collision_constraints, start, goal,
+					non_collaboration_constraints, segmentCost, 
+					startTimestep, constraintState.timestep, 
+					nonCollabMap, constraintState.timestep, 
+					shortestPaths, consider_agents);
+			costOut += segmentCost;
+			if (pathSegment.size()==0) return std::vector<SearchState>();
+
+			if (goal.in_delivery == true) 
+				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+			else
+				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,true);
+			
+			startTimestep = constraintState.timestep;
+			for (auto s:pathSegment)
+				path.push_back(s);
+		}
+
+		SearchState goal = SearchState();
+		std::vector<SearchState> pathSegment = 
+			computeShortestPathSegment(agent_id, 
+				collision_constraints, start, goal,
+				non_collaboration_constraints, segmentCost, 
+				startTimestep, -1, 
+				nonCollabMap, current_makespan, 
+				shortestPaths, consider_agents);
+
+		costOut += segmentCost;
+		if (pathSegment.size()==0) return std::vector<SearchState>();
+
+		for (auto s:pathSegment)
+			path.push_back(s);
+		// costOut = costOut*mUnitEdgeLength;
+		return path;
+	}
+	std::vector<SearchState> computeShortestPathSegment(int &agent_id, 
+		std::vector<CollisionConstraint> &collision_constraints,
+		SearchState start_state, SearchState goal_state, 
+		std::vector<CollaborationConstraint> &non_collaboration_constraints, int& costOut, 
+		int start_timestep, int collaboration_timestep, 
+		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap,
+		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, 
+		std::vector<int> &consider_agents)
+	{
+		// old_computeShortestPathSegment(agent_id,collision_constraints,
+		// 	start_state,goal_state,non_collaboration_constraints,costOut, 
+		// 	start_timestep,collaboration_timestep,nonCollabMap,
+		// 	current_makespan,shortestPaths,consider_agents);
+
+		mHValueMap.clear();
+
+		// std::cout<<"Non Collab Constraints: "<<non_collaboration_constraints.size()<<std::endl;
+		// std::cout<<"Collision Constraints: "<<collision_constraints.size()<<std::endl;
+
+		auto start3 = high_resolution_clock::now();
+
+		std::vector<boost::unordered_map<std::pair<int,int>, bool >> mVertexCollisionPathsMap;
+		std::vector<boost::unordered_map<std::pair<int,std::pair<int,int>>, bool >> mEdgeCollisionPathsMap;
+		for(int i=0; i<consider_agents.size(); i++)
+		{
+			int other_agent_id = consider_agents[i];
+			boost::unordered_map<std::pair<int,int>, bool > vertex_collision_path_map;
+			boost::unordered_map<std::pair<int,std::pair<int,int>>, bool > edge_collision_path_map;
+			for(int j=1; j<shortestPaths[other_agent_id].size(); j++)
+			{
+				if(shortestPaths[other_agent_id][j-1].timestep == shortestPaths[other_agent_id][j].timestep)
+					continue;
+
+				SearchState prev_path_state = shortestPaths[other_agent_id][j-1];
+				SearchState path_state = shortestPaths[other_agent_id][j];
+
+				bool vertex_safe_j = false;	
+				if(path_state.in_delivery == false)
+				{
+					if(path_state.tasks_completed == 0)
+						vertex_safe_j = (mStartVertex[other_agent_id] == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+					else
+						vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+				}
+				else
+					vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.second == path_state.vertex);
+							
+				vertex_collision_path_map[std::make_pair(path_state.timestep, getStateHash(mGraphs[other_agent_id][path_state.vertex].state))]
+					= vertex_safe_j;
+
+				bool edge_safe_j = false;
+				if(path_state.in_delivery == false)
+				{
+					if(path_state.tasks_completed == 0)
+						edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mStartVertex[other_agent_id] == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+					else
+						edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex)));
+				}
+				else
+					edge_safe_j = ( (path_state.vertex == prev_path_state.vertex)
+							&& ((mTasksList[other_agent_id][path_state.tasks_completed].second.first == prev_path_state.vertex) 
+								|| (mTasksList[other_agent_id][path_state.tasks_completed].second.second == prev_path_state.vertex)));
+							
+							
+
+				edge_collision_path_map[std::make_pair(path_state.timestep, std::make_pair(getStateHash(mGraphs[other_agent_id][prev_path_state.vertex].state),getStateHash(mGraphs[other_agent_id][path_state.vertex].state)))]
+					= edge_safe_j;
+			}
+			mVertexCollisionPathsMap.push_back(vertex_collision_path_map);
+			mEdgeCollisionPathsMap.push_back(edge_collision_path_map);
+		}
+
+		auto stop3 = high_resolution_clock::now();
+		mCHTime += (stop3 - start3);
+
+		mCSPIterations++;
+		auto start1 = high_resolution_clock::now();
+
+		int min_goal_timestep = 0;
+		bool lastSegment = false;
+
+		if(collaboration_timestep==-1){
+			lastSegment = true;
+			for( CollisionConstraint &c: collision_constraints)
+			{
+				min_goal_timestep = std::max(min_goal_timestep, c.timestep);
+			}
+		}
+
+		// std::cout<<"Min goal timestep: "<<min_goal_timestep<<std::endl;
+		// std::cout<<"Makespan available: "<<current_makespan<<std::endl;
+
+		timePriorityQueue pq;
+		// boost::unordered_map<SearchState, std::vector <int>, state_hash> mValues;
+		boost::unordered_map<SearchState, std::vector<double>, state_hash> mFValue;
+		boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
+		double true_makespan = current_makespan*mUnitEdgeLength;
+		double g_v = start_timestep*mUnitEdgeLength;
+		mFValue[start_state] = getHeuristics(agent_id, start_state, goal_state,
+		 g_v, true_makespan, 
+		 0, 0, 0);
+		pq.insert(start_state,mFValue[start_state]);
+		
+		int numSearches = 0;
+		// int maximum_timestep = 10000;
+
+		int goal_timestep = -1;
+
+		// SearchState goal_state = SearchState();
+
+		costOut = INF;
+
+		while(pq.PQsize()!=0)
+		{
+			mCSPExpansions++;
+			numSearches++;
+			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
+			auto yoma1 = high_resolution_clock::now();
+			SearchState current_state = pq.pop();
+			
+			Vertex current_vertex = current_state.vertex;
+			int current_timestep = current_state.timestep;
+			int current_tasks_completed = current_state.tasks_completed;
+			bool current_in_delivery = current_state.in_delivery;
+
+			std::vector<double> current_fvalue = mFValue[current_state];
+			double current_gvalue = current_fvalue[5] - current_fvalue[4];
+			double current_count_collaboration_conflicts = current_fvalue[1];
+			double current_count_collision_conflicts = current_fvalue[2];
+			double current_count_move_actions = current_fvalue[3] - current_fvalue[4];
+			auto yoma2 = high_resolution_clock::now();
+			mMapOperationsTime += yoma2-yoma1;
+			
+			printState(false,current_state,current_fvalue);
+			// std::cin.get();
+
+			// if(current_timestep>100)
+			// 	continue;
+
+			auto stop = high_resolution_clock::now();
+			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+
+			if (timespent.count() > 1000000000)
+			{
+				auto solve_stop = high_resolution_clock::now();
+				mPlanningTime = (solve_stop - mSolveStartTime);
+				costOut == INF;
+				auto stop1 = high_resolution_clock::now();
+				mCSPTime += (stop1 - start1);
+				return std::vector<SearchState>();
+			}
+
+			if(current_tasks_completed > mTasksList[agent_id].size())
+			{
+				std::cout<<"Bruh.";
+				std::cin.get();
+			}
+
+			// if(numSearches%10000 == 0)
+			// {
+			// 	std::cout<<"numSearches: "<<numSearches<<std::endl;
+			// 	std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
+			// <<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
+			// 	std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
+			// }
+
+			
+			if(lastSegment)
+			{
+				if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
+				{
+					// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
+					costOut = current_gvalue;
+					goal_state = current_state;
+					break;
+				}
+				if(current_tasks_completed == mTasksList[agent_id].size())
+					continue;
+			}
+
+			else
+			{
+				if(current_state==goal_state)
+				{
+					costOut = current_gvalue;
+					break;
+				}
+				if(isOverFlowState(current_state,goal_state))
+					continue;
+				// if(current_fvalue[5] > collaboration_timestep)
+				// 	continue;
+			}
+			
+			if(mSpecialPosition[agent_id].count(current_vertex)!= 0)
+			{
+				if(!current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.first == current_vertex) //pickup point
+				{
+					bool allowed = true;
+					// for( CollaborationConstraint &c: non_collaboration_constraints)
+					// {
+					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+					// 		&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+					// 	{
+					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+					// 		allowed = false;
+					// 		break;
+					// 	}
+					// }
+					SearchState key_state = SearchState(current_vertex, current_timestep, mTasksList[agent_id][current_tasks_completed].first, true);
+					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
+					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					if(allowed)
+					{
+						SearchState new_state = SearchState(current_vertex, current_timestep, 
+							current_tasks_completed, true);
+						if(lastSegment || !isOverFlowState(new_state,goal_state))
+						{
+							double new_count_collaboration_conflicts = 
+								current_count_collaboration_conflicts + 0;
+								// countCollaborationConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+							std::vector<double> new_cost = getHeuristics(agent_id, new_state, 
+								goal_state, current_gvalue, true_makespan, 
+								new_count_collaboration_conflicts, current_count_collision_conflicts, 
+								current_count_move_actions);
+							
+							if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
+							{
+								auto yoma11 = high_resolution_clock::now();
+								mFValue[new_state]= new_cost;
+								mPrev[new_state]=current_state;
+								pq.insert(new_state, new_cost);
+								auto yoma12 = high_resolution_clock::now();
+								mMapOperationsTime += yoma12-yoma11;
+
+								printState(true,new_state,new_cost);
+							}
+						}
+					}
+					// else
+					// 	std::cout<<"----------------------------------non-collab!\n";
+				}
+				if(current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.second == current_vertex) //delivery point
+				{
+					bool allowed = true;
+					// for( CollaborationConstraint &c: non_collaboration_constraints)
+					// {
+					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+					// 		&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+					// 	{
+					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+					// 		allowed = false;
+					// 		break;
+					// 	}
+					// }
+					SearchState key_state = SearchState(current_vertex, current_timestep, 
+						mTasksList[agent_id][current_tasks_completed].first, false);
+					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
+					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					if(allowed)
+					{
+						SearchState new_state= SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
+						if(lastSegment || !isOverFlowState(new_state,goal_state))
+						{
+							double new_count_collaboration_conflicts = 
+								current_count_collaboration_conflicts + 0;
+								// countCollaborationConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents);
+							std::vector<double> new_cost = getHeuristics(agent_id, new_state, 
+								goal_state, current_gvalue, true_makespan, 
+								new_count_collaboration_conflicts, current_count_collision_conflicts, 
+								current_count_move_actions);
+							
+							if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
+							{
+								// auto yoma1 = high_resolution_clock::now();
+								// std::cout<<"Succ: "<<"G: "<<current_gvalue<<" F: "<<new_cost[0]<<" "<<new_cost[1]<<" "<<(current_tasks_completed+1)<<std::endl;
+								auto yoma1 = high_resolution_clock::now();
+								mFValue[new_state]= new_cost;
+								mPrev[new_state]=current_state;
+								pq.insert(new_state, new_cost);
+								auto yoma2 = high_resolution_clock::now();
+								mMapOperationsTime += yoma2-yoma1;
+
+								printState(true,new_state,new_cost);
+							}
+						}
+					}
+					// else
+					// 	std::cout<<"----------------------------------non-collab!\n";
+				}
+			}
+
+			
+
+			{
+				auto start2 = high_resolution_clock::now();
+				bool col = false;
+				for( CollisionConstraint &c: collision_constraints)
+				{
+					if( c.constraint_type == 1 && current_vertex == c.v 
+						&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+					 	&& c.timestep == current_timestep + 1)
+					{
+						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+						col =true;
+						break;
+					}
+				}
+				auto stop2 = high_resolution_clock::now();
+				mCCTime += (stop2 - start2);
+
+				if(!col)
+				{
+					SearchState new_state = SearchState(current_vertex, current_timestep+1, current_tasks_completed, current_in_delivery);
+					if(lastSegment || !isOverFlowState(new_state,goal_state))
+					{
+						double new_count_collision_conflicts = 
+							current_count_collision_conflicts + 0;
+							// countCollisionConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents,mVertexCollisionPathsMap,mEdgeCollisionPathsMap);
+						std::vector<double> new_cost = getHeuristics(agent_id, new_state, 
+							goal_state, current_gvalue+mUnitEdgeLength, true_makespan, 
+							current_count_collaboration_conflicts, 
+							new_count_collision_conflicts, current_count_move_actions);
+							
+						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
+						{
+							auto yoma1 = high_resolution_clock::now();
+							mFValue[new_state]= new_cost;
+							mPrev[new_state]=current_state;
+							pq.insert(new_state, new_cost);
+							auto yoma2 = high_resolution_clock::now();
+							mMapOperationsTime += yoma2-yoma1;	
+
+							printState(true,new_state,new_cost);
+						}				
+					}
+				}	
+			}
+
+			
+
+			std::vector<Vertex> neighbors = getNeighbors(mGraphs[agent_id],current_vertex);
+			
+			// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
+
+			for (auto &successor : neighbors) 
+			{
+				Edge uv_edge = boost::edge(current_vertex, successor, mGraphs[agent_id]).first;
+
+				auto start2 = high_resolution_clock::now();
+				bool col = false;
+				for( CollisionConstraint c: collision_constraints)
+				{
+					if( (c.constraint_type == 1 && successor == c.v 
+						&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+					 	&& c.timestep == current_timestep + 1) 
+						|| (c.constraint_type == 2 && uv_edge == c.e 
+							&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+					 		&& c.timestep == current_timestep + 1) )
+					{
+						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+						col =true;
+						break;
+					}
+				}
+				auto stop2 = high_resolution_clock::now();
+				mCCTime += (stop2 - start2);
+
+				if(!col)
+				{       
+					SearchState new_state = SearchState(successor, current_timestep+1, current_tasks_completed, current_in_delivery);
+					if(lastSegment || !isOverFlowState(new_state,goal_state))
+					{
+						double new_count_collision_conflicts = 
+							current_count_collision_conflicts + 0;
+							// countCollisionConflicts(agent_id,current_state,new_state,shortestPaths,consider_agents,mVertexCollisionPathsMap,mEdgeCollisionPathsMap);
+						std::vector<double> new_cost = getHeuristics(agent_id, 
+							new_state, goal_state, current_gvalue+mUnitEdgeLength, 
+							true_makespan, current_count_collaboration_conflicts, 
+							new_count_collision_conflicts, current_count_move_actions+mUnitEdgeLength);
+						
+						if(mFValue.count(new_state)==0 || new_cost < mFValue[new_state])
+						{
+							// auto yoma1 = high_resolution_clock::now();
+							auto yoma1 = high_resolution_clock::now();
+							mFValue[new_state]= new_cost;
+							mPrev[new_state]=current_state;
+							pq.insert(new_state, new_cost);
+							auto yoma2 = high_resolution_clock::now();
+							mMapOperationsTime += yoma2-yoma1;
+
+							printState(true,new_state,new_cost);
+						}
+					}
+				}
+			}
+		}
+
+		// std::cin.get();
+
+		if(costOut == INF)
+		{
+			// PRINT<<"no path!"<<std::endl;
+			// std::cout<<"NO path found!"<<std::endl;
+			// std::cout<<"goal_timestep: "<<costOut<<std::endl;
+			// std::cout<<"CSP Iterations: "<<mCSPIterations<<std::endl;
+			// std::cout<<"CSP Expansions: "<<mCSPExpansions<<std::endl;
+			// std::cin.get();
+			auto stop1 = high_resolution_clock::now();
+			mCSPTime += (stop1 - start1);
+			return std::vector<SearchState>();
+		}
+
+		// std::cout<<"path found!"<<std::endl;
+		// std::cout<<"goal_timestep: "<<costOut<<std::endl;
+		// std::cout<<"CSP Iterations: "<<mCSPIterations<<std::endl;
+		// std::cout<<"CSP Expansions: "<<mCSPExpansions<<std::endl;
+
+		// if(costOut>current_makespan)
+		// std::cin.get();
+		// std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
+		std::vector<SearchState> finalPath;
+		SearchState node = goal_state;
+
+		// std::cout<<"timesteps: ";
+		while(!(node == start_state))
+		{
+			// std::cin.get();
+			// std::cout<<"INF LOOP LOL!";
+			// std::cout<<goal_timestep<<" ";
+			finalPath.push_back(node);
+			node=mPrev[node];
+		}
+		// std::cout<<std::endl;
+		finalPath.push_back(start_state);
+		std::reverse(finalPath.begin(), finalPath.end());
+
+		// std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
+
+		// std::cout<<"Path: ";
+		// for(int i=0; i<finalPath.size(); i++)
+		// 	std::cout<<" ("<<int( (graph[finalPath[i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (graph[finalPath[i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<finalPath[i].timestep<<" "<<finalPath[i].tasks_completed<<" "<<finalPath[i].in_delivery<<std::endl;
+		// std::cout<<std::endl;
+
+		auto stop1 = high_resolution_clock::now();
+		mCSPTime += (stop1 - start1);
+
+		return finalPath;
+	}
+	// std::vector<SearchState> computeShortestPath(int &agent_id, 
+	// 	std::vector<CollisionConstraint> &collision_constraints,
+	// 	std::vector<CollaborationConstraint> &collaboration_constraints, 
+	// 	std::vector<CollaborationConstraint> &non_collaboration_constraints, 
+	// 	double& costOut,
+	// 	int &current_makespan, 
+	// 	std::vector<std::vector<SearchState> > &shortestPaths, 
+	// 	std::vector<int> &consider_agents)
+	// {
+	// 	auto start1 = high_resolution_clock::now();
+
+	// 	costOut = 0;
+	// 	int min_goal_timestep = 0;
+
+	// 	for( CollisionConstraint &c: collision_constraints)
+	// 	{
+	// 		min_goal_timestep = std::max(min_goal_timestep, c.timestep);
+	// 	}
+
+	// 	Vertex start = mStartVertex[agent_id];
+
+	// 	std::unordered_map<int, SearchState> collabMap;
+	// 	for( CollaborationConstraint &c: collaboration_constraints)
+	// 	{
+	// 		SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
+	// 		collabMap[c.timestep] = state;
+	// 	}
+
+	// 	timePriorityQueue pq;
+	// 	boost::unordered_map<SearchState, double, state_hash> mDistance;
+	// 	boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
+
+	// 	boost::unordered_map<SearchState, std::vector<int>, state_hash> mFValue;
+	// 	SearchState start_state = SearchState(start,0,0,0);
+
+	// 	mFValue[start_state] = std::vector <int> {(int)((getHeuristic(agent_id, start_state)+0.00001)/mUnitEdgeLength)};
+		
+	// 	pq.insert(start_state,mFValue[start_state]);
+	// 	mDistance[start_state]=0;
+
+	// 	int numSearches = 0;
+	// 	int maximum_timestep = 10000;
+
+	// 	int goal_timestep = -1;
+
+	// 	SearchState goal_state = SearchState();
+
+	// 	costOut = INF;
+
+	// 	while(pq.PQsize()!=0)
+	// 	{
+			
+	// 		numSearches++;
+	// 		// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
+	// 		SearchState current_state = pq.pop();
+	// 		Vertex current_vertex = current_state.vertex;
+	// 		int current_timestep = current_state.timestep;
+	// 		int current_tasks_completed = current_state.tasks_completed;
+	// 		bool current_in_delivery = current_state.in_delivery;
+	// 		std::vector<int> current_fvalue = mFValue[current_state];
+
+	// 		// if(current_timestep>100)
+	// 		// 	continue;
+
+	// 		auto stop = high_resolution_clock::now();
+	// 		std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
+
+	// 		if (timespent.count() > 30000000)
+	// 		{
+	// 			auto solve_stop = high_resolution_clock::now();
+	// 			mPlanningTime = (solve_stop - mSolveStartTime);
+	// 			costOut == INF;
+	// 			auto stop1 = high_resolution_clock::now();
+	// 			mCSPTime += (stop1 - start1);
+	// 			return std::vector<SearchState>();
+	// 		}
+
+	// 		// if(numSearches%10000 == 0)
+	// 		// {
+	// 		// 	std::cout<<"numSearches: "<<numSearches<<std::endl;
+	// 		// 	std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
+	// 		// <<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
+	// 		// 	std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
+	// 		// }
+
+			
+
+	// 		if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
+	// 		{
+	// 			// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
+	// 			costOut = mDistance[current_state];
+	// 			goal_state = current_state;
+	// 			break;
+	// 		}
+
+	// 		if(current_tasks_completed == mTasksList[agent_id].size())
+	// 		{
+	// 			continue;
+	// 		}
+			
+	// 		if(collaboration_constraints.size() && collabMap.count(current_timestep) != 0)
+	// 		{
+	// 			SearchState collaboration_state = collabMap[current_timestep];
+	// 			Vertex collaboration_vertex = collaboration_state.vertex;
+	// 			int tid = collaboration_state.tasks_completed;
+	// 			bool is_pickup = collaboration_state.in_delivery;
+
+	// 			int collaboration_tasks_completed;
+	// 			for(int i=0; i<mTasksList.size(); i++)
+	// 				if(tid == mTasksList[agent_id][i].first)
+	// 					collaboration_tasks_completed = i;
+
+	// 			if(current_vertex == collaboration_vertex && current_tasks_completed == collaboration_tasks_completed
+	// 				&& is_pickup!=current_in_delivery)
+	// 			{
+	// 				SearchState new_state;
+	// 				if(is_pickup)
+	// 					new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
+	// 				else
+	// 					new_state = SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
+	// 				mDistance[new_state]= mDistance[current_state];
+	// 				mPrev[new_state]=current_state;
+
+	// 				current_state = new_state;
+	// 				Vertex current_vertex = current_state.vertex;
+	// 				int current_timestep = current_state.timestep;
+	// 				int current_tasks_completed = current_state.tasks_completed;
+	// 				bool current_in_delivery = current_state.in_delivery;
+
+	// 				if(current_tasks_completed == mTasksList[agent_id].size() && 
+	// 					current_timestep>= min_goal_timestep)
+	// 				{
+	// 					// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
+	// 					costOut = mDistance[current_state];
+	// 					goal_state = current_state;
+	// 					break;
+	// 				}
+
+	// 				if(current_tasks_completed == mTasksList[agent_id].size())
+	// 				{
+	// 					continue;
+	// 				}
+	// 			}
+	// 			else
+	// 				continue; 
+	// 		}
+			
+	// 		if(mSpecialPosition[agent_id].count(current_vertex)!= 0)
+	// 		{
+	// 			if(!current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.first == current_vertex) //pickup point
+	// 			{
+	// 				bool allowed = true;
+	// 				for( CollaborationConstraint &c: non_collaboration_constraints)
+	// 				{
+	// 					if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+	// 						&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+	// 					{
+	// 						// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+	// 						allowed = false;
+	// 						break;
+	// 					}
+	// 				}
+	// 				if(allowed)
+	// 				{
+	// 					double new_cost = current_fvalue[0]*mUnitEdgeLength;
+	// 					SearchState new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
+	// 					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+	// 					{
+	// 						mDistance[new_state]= new_cost;
+	// 						double priority = new_cost + getHeuristic(agent_id, new_state);
+	// 						mFValue[new_state] = std::vector <int> {(int)((priority+0.00001)/mUnitEdgeLength)};
+	// 						pq.insert(new_state,mFValue[new_state]);
+	// 						mPrev[new_state]=current_state;
+	// 					}
+	// 				}
+	// 			}
+	// 			if(current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.second == current_vertex) //delivery point
+	// 			{
+	// 				bool allowed = true;
+	// 				for( CollaborationConstraint &c: non_collaboration_constraints)
+	// 				{
+	// 					if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+	// 						&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+	// 					{
+	// 						// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+	// 						allowed = false;
+	// 						break;
+	// 					}
+	// 				}
+	// 				if(allowed)
+	// 				{
+	// 					double new_cost = current_fvalue[0]*mUnitEdgeLength;
+	// 					SearchState new_state= SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
+						
+	// 					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+	// 					{
+	// 						mDistance[new_state]= new_cost;
+	// 						double priority = new_cost + getHeuristic(agent_id, new_state);
+	// 						mFValue[new_state] = std::vector <int> {(int)((priority+0.00001)/mUnitEdgeLength)};
+	// 						pq.insert(new_state,mFValue[new_state]);
+	// 						mPrev[new_state]=current_state;
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+
+			
+
+	// 		{
+	// 			auto start2 = high_resolution_clock::now();
+	// 			bool col = false;
+	// 			for( CollisionConstraint &c: collision_constraints)
+	// 			{
+	// 				if( c.constraint_type == 1 && current_vertex == c.v 
+	// 					&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+	// 				 	&& c.timestep == current_timestep + 1)
+	// 				{
+	// 					// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+	// 					col =true;
+	// 					break;
+	// 				}
+	// 			}
+	// 			auto stop2 = high_resolution_clock::now();
+	// 			mCCTime += (stop2 - start2);
+
+	// 			if(!col)
+	// 			{
+	// 				double new_cost = current_fvalue[0]*mUnitEdgeLength + mUnitEdgeLength;
+
+	// 				SearchState new_state = SearchState(current_vertex, current_timestep+1, current_tasks_completed, current_in_delivery);
+					
+	// 				if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+	// 				{
+	// 					mDistance[new_state]= new_cost;
+	// 					double priority = new_cost + getHeuristic(agent_id, new_state);
+	// 					mFValue[new_state] = std::vector <int> {(int)((priority+0.00001)/mUnitEdgeLength)};
+	// 					pq.insert(new_state,mFValue[new_state]);
+	// 					mPrev[new_state]=current_state;
+	// 				}
+	// 			}	
+	// 		}
+
+			
+
+	// 		std::vector<Vertex> neighbors = getNeighbors(mGraphs[agent_id],current_vertex);
+			
+	// 		// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
+
+	// 		for (auto &successor : neighbors) 
+	// 		{
+	// 			Edge uv_edge = boost::edge(current_vertex, successor, mGraphs[agent_id]).first;
+
+	// 			auto start2 = high_resolution_clock::now();
+	// 			bool col = false;
+	// 			for( CollisionConstraint c: collision_constraints)
+	// 			{
+	// 				if( (c.constraint_type == 1 && successor == c.v 
+	// 					&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+	// 				 	&& c.timestep == current_timestep + 1) 
+	// 					|| (c.constraint_type == 2 && uv_edge == c.e 
+	// 						&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
+	// 				 		&& c.timestep == current_timestep + 1) )
+	// 				{
+	// 					// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+	// 					col =true;
+	// 					break;
+	// 				}
+	// 			}
+	// 			auto stop2 = high_resolution_clock::now();
+	// 			mCCTime += (stop2 - start2);
+
+	// 			if(!col)
+	// 			{       
+	// 				double new_cost = current_fvalue[0]*mUnitEdgeLength + mUnitEdgeLength;
+
+	// 				SearchState new_state = SearchState(successor, current_timestep+1, current_tasks_completed, current_in_delivery);
+					
+	// 				if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
+	// 				{
+	// 					mDistance[new_state]= new_cost;
+	// 					double priority = new_cost + getHeuristic(agent_id, new_state);
+	// 					mFValue[new_state] = std::vector <int> {(int)((priority+0.00001)/mUnitEdgeLength)};
+	// 					pq.insert(new_state,mFValue[new_state]);
+	// 					mPrev[new_state]=current_state;
+	// 				}
+	// 			}
+	// 		}
+
+			
+	// 	}
+
+	// 	if(costOut == INF)
+	// 	{
+	// 		// PRINT<<"no path!"<<std::endl;
+	// 		auto stop1 = high_resolution_clock::now();
+	// 		mCSPTime += (stop1 - start1);
+	// 		return std::vector<SearchState>();
+	// 	}
+
+	// 	// std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
+	// 	std::vector<SearchState> finalPath;
+	// 	SearchState node = goal_state;
+
+	// 	// std::cout<<"timesteps: ";
+	// 	while(!(node == start_state))
+	// 	{
+	// 		// std::cin.get();
+	// 		// std::cout<<"INF LOOP LOL!";
+	// 		// std::cout<<goal_timestep<<" ";
+	// 		finalPath.push_back(node);
+	// 		node=mPrev[node];
+	// 	}
+	// 	// std::cout<<std::endl;
+	// 	finalPath.push_back(start_state);
+	// 	std::reverse(finalPath.begin(), finalPath.end());
+
+	// 	// std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
+
+	// 	// std::cout<<"Path: ";
+	// 	// for(int i=0; i<finalPath.size(); i++)
+	// 	// 	std::cout<<" ("<<int( (graph[finalPath[i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (graph[finalPath[i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<finalPath[i].timestep<<" "<<finalPath[i].tasks_completed<<" "<<finalPath[i].in_delivery<<std::endl;
+	// 	// std::cout<<std::endl;
+
+	// 	auto stop1 = high_resolution_clock::now();
+	// 	mCSPTime += (stop1 - start1);
+
+	// 	return finalPath;
+	// }
+
+	void preprocess_graph(Graph &g)
+	{
+		auto start1 = high_resolution_clock::now();
+		int V = boost::num_vertices(g);
+
+		VertexIter vi_1, viend_1;
+		VertexIter vi_2, viend_2;
+		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+		{
+			Vertex vertex_1 = *vi_1;
+			Vertex vertex_2 = *vi_2;
+			if(vertex_1==vertex_2)
+				mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=0;
+			else
+			{
+				Edge uv;
+				bool edgeExists;
+				boost::tie(uv, edgeExists) = edge(vertex_1, vertex_2, g);
+				if(edgeExists)
+					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=mUnitEdgeLength;
+				else
+					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=INF;
+			}
+		}
+
+		VertexIter vi_3, viend_3;
+		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+		for (boost::tie(vi_3, viend_3) = vertices(g); vi_3 != viend_3; ++vi_3) 
+		{
+			Vertex vertex_1 = *vi_1;
+			Vertex vertex_2 = *vi_2;
+			Vertex vertex_3 = *vi_3;
+			if (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] + 0.00001 > (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)])
+				&& (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] != INF
+				&& mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)] != INF))
+				mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] = mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)];
+		}
+
+		// std::cout<<"All pairs shortest paths: "<<std::endl;
+		// for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+		// for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+		// {
+		// 	Vertex vertex_1 = *vi_1;
+		// 	Vertex vertex_2 = *vi_2;
+		// 	std::cout<<vertex_1<<" "<<vertex_2<<" "<<mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]<<std::endl;
+		// }
+		// std::cin.get();
+		auto stop1 = high_resolution_clock::now();
+		mPreprocessTime += (stop1 - start1);
 	}
 
 	void displayPath(std::vector<Eigen::VectorXd> path)
@@ -1969,410 +3250,6 @@ public:
 		cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
 		cv::imshow("Graph Visualization", image);
 		cv::waitKey(0);
-	}
-
-	double getHeuristic(int &agent_id, SearchState &state)
-	{
-		// return 0;
-		double heuristic=0;
-		if(state.in_delivery == true)
-			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
-		else
-		{
-			heuristic += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
-			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
-		}
-		for(int i=state.tasks_completed+1; i<mTasksList[agent_id].size(); i++)
-		{
-			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
-			heuristic += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
-		}
-		return heuristic;
-	}
-
-	std::vector<SearchState> computeShortestPath(int &agent_id, std::vector<CollisionConstraint> &collision_constraints,
-		std::vector<CollaborationConstraint> &collaboration_constraints, std::vector<CollaborationConstraint> &non_collaboration_constraints, double& costOut)
-	{
-		// std::cout<<"Tasks assigned: "<<std::endl;
-		// for(int i=0; i<mTasksList[agent_id].size(); i++)
-		// 	std::cout<<mTasksList[agent_id][i].first<<" - ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[0]+0.001)/mUnitEdgeLength)<<", "
-		// 		<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.first].state[1]+0.001)/mUnitEdgeLength)<<")"
-		// 		<<" "<<" ("<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[0]+0.001)/mUnitEdgeLength)<<", "
-		// 			<<int( (mGraphs[agent_id][mTasksList[agent_id][i].second.second].state[1]+0.001)/mUnitEdgeLength)<<") "<<std::endl;
-		// std::cout<<std::endl;
-
-		// std::cout<<"Start position: ("<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[0]+0.001)/mUnitEdgeLength)<<", "
-		// 	<<int( (mGraphs[agent_id][mStartVertex[agent_id]].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
-
-		// std::cout<<"Special Positions: ";
-		// for(auto &node: mSpecialPosition[agent_id])
-		// {
-		// 	std::cout<<" ("<<int( (mGraphs[agent_id][node.first].state[0]+0.001)/mUnitEdgeLength)<<", "
-		// 	<<int( (mGraphs[agent_id][node.first].state[1]+0.001)/mUnitEdgeLength)<<") ";
-		// }
-		// std::cin.get();
-		// Graph graph = mGraphs[agent_id];
-
-		auto start1 = high_resolution_clock::now();
-
-		int min_goal_timestep = 0;
-
-		for( CollisionConstraint &c: collision_constraints)
-		{
-			min_goal_timestep = std::max(min_goal_timestep, c.timestep);
-		}
-
-		Vertex start = mStartVertex[agent_id];
-
-		std::unordered_map<int, SearchState> collabMap;
-		for( CollaborationConstraint &c: collaboration_constraints)
-		{
-			SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
-			collabMap[c.timestep] = state;
-		}
-
-		timePriorityQueue pq;
-		boost::unordered_map<SearchState, double, state_hash> mDistance;
-		boost::unordered_map<SearchState , SearchState, state_hash > mPrev;
-
-		SearchState start_state = SearchState(start,0,0,0);
-		pq.insert(start_state,getHeuristic(agent_id, start_state),0.0);
-		mDistance[start_state]=0;
-
-		int numSearches = 0;
-		int maximum_timestep = 10000;
-
-		int goal_timestep = -1;
-
-		SearchState goal_state = SearchState();
-
-		costOut = INF;
-
-		while(pq.PQsize()!=0)
-		{
-			
-			numSearches++;
-			// std::cout<<"Queue pop no: "<<numSearches<<std::endl;
-			SearchState current_state = pq.pop();
-			Vertex current_vertex = current_state.vertex;
-			int current_timestep = current_state.timestep;
-			int current_tasks_completed = current_state.tasks_completed;
-			bool current_in_delivery = current_state.in_delivery;
-
-			// if(current_timestep>100)
-			// 	continue;
-
-			auto stop = high_resolution_clock::now();
-			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
-
-			if (timespent.count() > 30000000)
-			{
-				auto solve_stop = high_resolution_clock::now();
-				mPlanningTime = (solve_stop - mSolveStartTime);
-				costOut == INF;
-				auto stop1 = high_resolution_clock::now();
-				mCSPTime += (stop1 - start1);
-				return std::vector<SearchState>();
-			}
-
-			// if(numSearches%10000 == 0)
-			// {
-			// 	std::cout<<"numSearches: "<<numSearches<<std::endl;
-			// 	std::cout<<" ("<<int( (mGraphs[agent_id][current_vertex].state[0]+0.001)/mUnitEdgeLength)<<", "
-			// <<int( (mGraphs[agent_id][current_vertex].state[1]+0.001)/mUnitEdgeLength)<<")"<<std::endl;
-			// 	std::cout<<current_timestep<<" "<<current_tasks_completed<<" "<<current_in_delivery<<std::endl;
-			// }
-
-			
-
-			if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
-			{
-				// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
-				costOut = mDistance[current_state];
-				goal_state = current_state;
-				break;
-			}
-
-			if(current_tasks_completed == mTasksList[agent_id].size())
-			{
-				continue;
-			}
-			
-			if(collaboration_constraints.size() && collabMap.count(current_timestep) != 0)
-			{
-				SearchState collaboration_state = collabMap[current_timestep];
-				Vertex collaboration_vertex = collaboration_state.vertex;
-				int tid = collaboration_state.tasks_completed;
-				bool is_pickup = collaboration_state.in_delivery;
-
-				int collaboration_tasks_completed;
-				for(int i=0; i<mTasksList.size(); i++)
-					if(tid == mTasksList[agent_id][i].first)
-						collaboration_tasks_completed = i;
-
-				if(current_vertex == collaboration_vertex && current_tasks_completed == collaboration_tasks_completed
-					&& is_pickup!=current_in_delivery)
-				{
-					SearchState new_state;
-					if(is_pickup)
-						new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
-					else
-						new_state = SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
-					mDistance[new_state]= mDistance[current_state];
-					mPrev[new_state]=current_state;
-
-					current_state = new_state;
-					Vertex current_vertex = current_state.vertex;
-					int current_timestep = current_state.timestep;
-					int current_tasks_completed = current_state.tasks_completed;
-					bool current_in_delivery = current_state.in_delivery;
-
-					if(current_tasks_completed == mTasksList[agent_id].size() && current_timestep>= min_goal_timestep)
-					{
-						// std::cout<<"Timestep goal was found: "<<final_timestep<<std::endl;
-						costOut = mDistance[current_state];
-						goal_state = current_state;
-						break;
-					}
-
-					if(current_tasks_completed == mTasksList[agent_id].size())
-					{
-						continue;
-					}
-				}
-				else
-					continue; 
-			}
-			
-			if(mSpecialPosition[agent_id].count(current_vertex)!= 0)
-			{
-				if(!current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.first == current_vertex) //pickup point
-				{
-					bool allowed = true;
-					for( CollaborationConstraint &c: non_collaboration_constraints)
-					{
-						if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-							&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-						{
-							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-							allowed = false;
-							break;
-						}
-					}
-					if(allowed)
-					{
-						double new_cost = mDistance[current_state];
-						SearchState new_state = SearchState(current_vertex, current_timestep, current_tasks_completed, true);
-						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
-						{
-							mDistance[new_state]= new_cost;
-							double priority = new_cost + getHeuristic(agent_id, new_state);
-							pq.insert(new_state,priority,0.0);
-							mPrev[new_state]=current_state;
-						}
-					}
-				}
-				if(current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.second == current_vertex) //delivery point
-				{
-					bool allowed = true;
-					for( CollaborationConstraint &c: non_collaboration_constraints)
-					{
-						if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-							&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-						{
-							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-							allowed = false;
-							break;
-						}
-					}
-					if(allowed)
-					{
-						double new_cost = mDistance[current_state];
-						SearchState new_state= SearchState(current_vertex, current_timestep, current_tasks_completed+1, false);
-						
-						if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
-						{
-							mDistance[new_state]= new_cost;
-							double priority = new_cost + getHeuristic(agent_id, new_state);
-							pq.insert(new_state,priority,0.0);
-							mPrev[new_state]=current_state;
-						}
-					}
-				}
-			}
-
-			
-
-			{
-				auto start2 = high_resolution_clock::now();
-				bool col = false;
-				for( CollisionConstraint &c: collision_constraints)
-				{
-					if( c.constraint_type == 1 && current_vertex == c.v 
-						&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1)
-					{
-						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-						col =true;
-						break;
-					}
-				}
-				auto stop2 = high_resolution_clock::now();
-				mCCTime += (stop2 - start2);
-
-				if(!col)
-				{
-					double new_cost = mDistance[current_state] + mUnitEdgeLength;
-
-					SearchState new_state = SearchState(current_vertex, current_timestep+1, current_tasks_completed, current_in_delivery);
-					
-					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
-					{
-						mDistance[new_state]= new_cost;
-						double priority = new_cost + getHeuristic(agent_id, new_state);
-						pq.insert(new_state,priority,0.0);
-						mPrev[new_state]=current_state;
-					}
-				}	
-			}
-
-			
-
-			std::vector<Vertex> neighbors = getNeighbors(mGraphs[agent_id],current_vertex);
-			
-			// std::cout<<"No. of neighbors :"<<neighbors.size()<<std::endl;
-
-			for (auto &successor : neighbors) 
-			{
-				Edge uv_edge = boost::edge(current_vertex, successor, mGraphs[agent_id]).first;
-
-				auto start2 = high_resolution_clock::now();
-				bool col = false;
-				for( CollisionConstraint c: collision_constraints)
-				{
-					if( (c.constraint_type == 1 && successor == c.v 
-						&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1) 
-						|| (c.constraint_type == 2 && uv_edge == c.e 
-							&& current_tasks_completed == c.tasks_completed && current_in_delivery == c.in_delivery
-					 		&& c.timestep == current_timestep + 1) )
-					{
-						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-						col =true;
-						break;
-					}
-				}
-				auto stop2 = high_resolution_clock::now();
-				mCCTime += (stop2 - start2);
-
-				if(!col)
-				{       
-					double new_cost = mDistance[current_state] + mUnitEdgeLength;
-
-					SearchState new_state = SearchState(successor, current_timestep+1, current_tasks_completed, current_in_delivery);
-					
-					if(mDistance.count(new_state)==0 || new_cost < mDistance[new_state])
-					{
-						mDistance[new_state]= new_cost;
-						double priority = new_cost + getHeuristic(agent_id, new_state);
-						pq.insert(new_state,priority,0.0);
-						mPrev[new_state]=current_state;
-					}
-				}
-			}
-
-			
-		}
-
-		if(costOut == INF)
-		{
-			// PRINT<<"no path!"<<std::endl;
-			auto stop1 = high_resolution_clock::now();
-			mCSPTime += (stop1 - start1);
-			return std::vector<SearchState>();
-		}
-
-		// std::cout<<"Goal Time: "<<goal_timestep<<std::endl;
-		std::vector<SearchState> finalPath;
-		SearchState node = goal_state;
-
-		// std::cout<<"timesteps: ";
-		while(!(node == start_state))
-		{
-			// std::cin.get();
-			// std::cout<<"INF LOOP LOL!";
-			// std::cout<<goal_timestep<<" ";
-			finalPath.push_back(node);
-			node=mPrev[node];
-		}
-		// std::cout<<std::endl;
-		finalPath.push_back(start_state);
-		std::reverse(finalPath.begin(), finalPath.end());
-
-		// std::cout<<"ST: "<<initial_timestep<<" GT: "<<final_timestep<<std::endl;
-
-		// std::cout<<"Path: ";
-		// for(int i=0; i<finalPath.size(); i++)
-		// 	std::cout<<" ("<<int( (graph[finalPath[i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (graph[finalPath[i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<finalPath[i].timestep<<" "<<finalPath[i].tasks_completed<<" "<<finalPath[i].in_delivery<<std::endl;
-		// std::cout<<std::endl;
-
-		auto stop1 = high_resolution_clock::now();
-		mCSPTime += (stop1 - start1);
-
-		return finalPath;
-	}
-
-	void preprocess_graph(Graph &g)
-	{
-		auto start1 = high_resolution_clock::now();
-		int V = boost::num_vertices(g);
-
-		VertexIter vi_1, viend_1;
-		VertexIter vi_2, viend_2;
-		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
-		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
-		{
-			Vertex vertex_1 = *vi_1;
-			Vertex vertex_2 = *vi_2;
-			if(vertex_1==vertex_2)
-				mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=0;
-			else
-			{
-				Edge uv;
-				bool edgeExists;
-				boost::tie(uv, edgeExists) = edge(vertex_1, vertex_2, g);
-				if(edgeExists)
-					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=mUnitEdgeLength;
-				else
-					mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]=INF;
-			}
-		}
-
-		VertexIter vi_3, viend_3;
-		for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
-		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
-		for (boost::tie(vi_3, viend_3) = vertices(g); vi_3 != viend_3; ++vi_3) 
-		{
-			Vertex vertex_1 = *vi_1;
-			Vertex vertex_2 = *vi_2;
-			Vertex vertex_3 = *vi_3;
-			if (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] + 0.00001 > (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)])
-				&& (mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] != INF
-				&& mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)] != INF))
-				mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_3)] = mAllPairsShortestPathMap[std::make_pair(vertex_2,vertex_1)] + mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)];
-		}
-
-		// std::cout<<"All pairs shortest paths: "<<std::endl;
-		// for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
-		// for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
-		// {
-		// 	Vertex vertex_1 = *vi_1;
-		// 	Vertex vertex_2 = *vi_2;
-		// 	std::cout<<vertex_1<<" "<<vertex_2<<" "<<mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]<<std::endl;
-		// }
-		// std::cin.get();
-		auto stop1 = high_resolution_clock::now();
-		mPreprocessTime += (stop1 - start1);
 	}
 
 };
