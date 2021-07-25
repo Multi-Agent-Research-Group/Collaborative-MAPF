@@ -720,6 +720,13 @@ public:
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost = std::max(total_cost,p.costs[i]);
 			int current_makespan = int((total_cost+0.0001)/mUnitEdgeLength);
+			// std::cout << "CBS PQ makespan = " << total_cost << std::endl;
+
+			int maximum_timestep=0;
+			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
+			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -1047,9 +1054,9 @@ public:
 
 			std::vector<std::vector<Eigen::VectorXd>> collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 
-			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
+			p.shortestPaths;
 			int current_timestep = 0;
-			int maximum_timestep = 0;
+			maximum_timestep = 0;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
 			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
@@ -1113,10 +1120,10 @@ public:
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
-			std::cout<<"Press [ENTER] to display path: ";
-			std::cin.get();
-			displayPath(path_configs);
-			printStats();
+			// std::cout<<"Press [ENTER] to display path: ";
+			// std::cin.get();
+			// displayPath(path_configs);
+			// printStats();
 			return collision_free_path;
 		}
 
@@ -1423,7 +1430,7 @@ public:
 		std::vector<std::vector<SearchState> > &shortestPaths, 
 		std::vector<int> &consider_agents)
 	{
-		std::cout << current_makespan << std::endl; 
+		// std::cout << current_makespan << std::endl; 
 		// std::cout<<"\n --------> CSP call! -- Agent ID: "<<agent_id<<"\n\n";
 		costOut = 0;
 		std::vector<SearchState> path;
@@ -1497,9 +1504,9 @@ public:
 			if (pathSegment.size()==0) return std::vector<SearchState>();
 
 			if (goal.in_delivery == true) 
-				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,false);
 			else
-				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,true);
+				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
 			
 			startTimestep = constraintState.timestep;
 			for (auto s:pathSegment)
@@ -1563,14 +1570,17 @@ public:
 				if(path_state.in_delivery == false)
 				{
 					if(path_state.tasks_completed == 0)
-						vertex_safe_j = (mStartVertex[other_agent_id] == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+						vertex_safe_j = (mStartVertex[other_agent_id] == path_state.vertex || 
+							mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
 					else
-						vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
+						vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed-1].second.second == path_state.vertex ||
+						 mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex);
 				}
 				else
 					vertex_safe_j = (mTasksList[other_agent_id][path_state.tasks_completed].second.first == path_state.vertex || mTasksList[other_agent_id][path_state.tasks_completed].second.second == path_state.vertex);
 							
-				vertex_collision_path_map[std::make_pair(path_state.timestep, getStateHash(mGraphs[other_agent_id][path_state.vertex].state))]
+				vertex_collision_path_map[std::make_pair(path_state.timestep, 
+					getStateHash(mGraphs[other_agent_id][path_state.vertex].state))]
 					= vertex_safe_j;
 
 				bool edge_safe_j = false;
@@ -1592,7 +1602,9 @@ public:
 							
 							
 
-				edge_collision_path_map[std::make_pair(path_state.timestep, std::make_pair(getStateHash(mGraphs[other_agent_id][prev_path_state.vertex].state),getStateHash(mGraphs[other_agent_id][path_state.vertex].state)))]
+				edge_collision_path_map[std::make_pair(path_state.timestep, 
+					std::make_pair(getStateHash(mGraphs[other_agent_id][prev_path_state.vertex].state),
+						getStateHash(mGraphs[other_agent_id][path_state.vertex].state)))]
 					= edge_safe_j;
 			}
 			mVertexCollisionPathsMap.push_back(vertex_collision_path_map);
