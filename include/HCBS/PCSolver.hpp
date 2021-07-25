@@ -56,6 +56,7 @@ public:
 
 	std::chrono::duration<double, std::micro> mPreprocessTime ;
 	std::chrono::duration<double, std::micro> mPlanningTime;
+	std::string mImagePath;
 
 	high_resolution_clock::time_point mSolveStartTime;
 
@@ -81,10 +82,12 @@ public:
 
 	double mUnitEdgeLength = 0.1;
 
-	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, std::string graph_file, std::string obstacle_file)
+	PCSolver(PrecedenceConstraintGraph &G, int maxIter, int numAgents, int numRobots, 
+		std::string graph_file, std::string obstacle_file, std::string imagePath)
 		: mMaxIter(maxIter)
 		, mNumAgents(numAgents)
 		, mNumRobots(numRobots)
+		, mImagePath(imagePath)
 	{
 		mPCGraph = G;
 		topological_sort(G, std::back_inserter(mTopologicalOrder));
@@ -347,7 +350,7 @@ public:
 
 		mPCGraph_T = G_T;
 		CBS planner(mNumAgents,mNumRobots,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
-			mStartVertex, mGoalVertex);
+			mStartVertex, mGoalVertex, mImagePath);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
 		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
 		
@@ -493,10 +496,10 @@ public:
 		
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = mNumRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = mNumRobots;
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 

@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_6.txt"), "Path to PC Graph Metadata File")
 			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
 			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
-			("image,i", po::value<std::string>()->default_value("videos/problem1_"), "Path to Storing Images")
+			("image,i", po::value<std::string>()->default_value("videos/"), "Path to Storing Images")
 	;
 
 	// Read arguments
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 	property_map<PrecedenceConstraintGraph, meta_data_t>::type data = get(meta_data_t(), G);
 
 	std::vector<int> start_times;
+	std::vector<int> end_times;
 		
 	for(int i=0; i<num_agents; i++){
 		//Read Start Point
@@ -110,6 +111,7 @@ int main(int argc, char *argv[])
 		int start_time, goal_time;
 		cin>>start_time >>goal_time;
 		start_times.push_back(start_time);
+		end_times.push_back(goal_time);
 		//Read Task Id
 		int task_id; cin >> task_id;
 
@@ -127,7 +129,8 @@ int main(int argc, char *argv[])
 	
 	// Setup planner
 	// std::cerr<<"setup!";
-	CBS planner(G,image,num_robots,graph_files,init_config,start_times, vm["image"].as<std::string>());
+	CBS planner(G,image,num_robots,graph_files,init_config,
+		start_times, end_times, vm["image"].as<std::string>());
 
 	auto start = high_resolution_clock::now();
 	// std::cerr<<"calling solve!";

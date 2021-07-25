@@ -66,6 +66,7 @@ public:
 
 	/// Path to the roadmap files.
 	std::vector<std::string> mRoadmapFileNames;
+	std::string mImagePath;
 
 	/// Source vertex.
 	std::vector<Eigen::VectorXd> mStartConfig;
@@ -87,7 +88,8 @@ public:
 	double mUnitEdgeLength = 0.1;
 
 	CBS(int numAgents, int numRobots, std::vector<std::string> roadmapFileNames, std::vector<Eigen::VectorXd> startConfig, std::vector<Eigen::VectorXd> goalConfig, 
-		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, std::vector<Vertex> goalVertex)
+		std::vector<int> startTimesteps, std::vector<int> goalTimesteps, std::vector<Vertex> startVertex, 
+		std::vector<Vertex> goalVertex, std::string imagePath)
 		: mNumAgents(numAgents)
 		, mNumRobots(numRobots)
 		, mRoadmapFileNames(roadmapFileNames)
@@ -96,7 +98,9 @@ public:
 		, mStartConfig(startConfig)
 		, mGoalConfig(goalConfig)
 		, mStartVertex(startVertex)
-		, mGoalVertex(goalVertex){}
+		, mGoalVertex(goalVertex)
+		, mImagePath(imagePath)
+		{}
 
 	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
 	{
@@ -724,7 +728,7 @@ public:
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
-			ss << "./src/HCBS/data/viz/new_images/";
+			ss << "./src/CMAPF/data/viz/new_images/";
 			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
@@ -831,7 +835,6 @@ public:
 		}
 
 		
-
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
 			Eigen::VectorXd u = path[i];
@@ -864,6 +867,8 @@ public:
 		bool firstTime = true;
 
 		cv::Mat new_image;
+		int num_image = 0;
+
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
 			
@@ -1236,9 +1241,19 @@ public:
 
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
-				cv::waitKey(100);
+				cv::waitKey(10);
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
 				if(firstTime)
 				{
+					for (int num = 0; num<10; num++){
+						std::string path = mImagePath+std::to_string(num_image)+".jpg";
+						cv::imwrite(path, new_image);
+						num_image += 1;
+					}
 					sleep(5);
 					firstTime = false;
 				}
@@ -1572,9 +1587,14 @@ public:
 
 				}
 				
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
-				cv::waitKey(100);
+				cv::waitKey(10);
 			}
 		}
 		cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
