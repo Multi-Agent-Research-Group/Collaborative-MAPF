@@ -1,4 +1,5 @@
 
+
 /* Authors: Rajat Kumar Jenamani */
 
 #ifndef _CBS_HPP
@@ -59,7 +60,7 @@ public:
 	std::chrono::duration<double, std::micro> mCCTime;
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
-
+	std::string mImagePath;
 	std::vector<int> mTaskStartTimestep;
 
 	high_resolution_clock::time_point mSolveStartTime;
@@ -93,11 +94,13 @@ public:
 
 	double mUnitEdgeLength = 0.1;
 
-	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep)
+	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, 
+		Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep, std::string imagePath)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
 		, mTaskStartTimestep(taskStartTimestep)
+		, mImagePath(imagePath)
 	{
 
 		int numTasks = boost::num_vertices(_pcg);
@@ -962,10 +965,10 @@ public:
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
-			// std::cout<<"Press [ENTER] to display path: ";
-			// std::cin.get();
-			// displayPath(path_configs);
-			// printStats();
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
+			printStats();
 			return collision_free_path;
 		}
 
@@ -1088,7 +1091,7 @@ public:
 		for(int i=0; i<number_images.size(); i++)
 		{
 			std::stringstream ss;
-			ss << "./src/PCCBS/data/viz/new_images/";
+			ss << "/home/kushal/ros_ws/src/CMAPF/data/viz/new_images/";
 			ss << i+1;
 			ss << ".png";
 			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
@@ -1233,6 +1236,7 @@ public:
 		bool firstTime = true;
 
 		cv::Mat new_image;
+		int num_image = 0;
 		for (int i = 0; i < pathSize - 1; ++i)
 		{
 			
@@ -1261,7 +1265,6 @@ public:
 			}
 
 			
-		
 			for (unsigned int i = 0; i < max_nStates-1; i++)
 			{
 				
@@ -1606,8 +1609,19 @@ public:
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
 				cv::waitKey(100);
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
+				
 				if(firstTime)
 				{
+					for (int num = 0; num<10; num++){
+						std::string path = mImagePath+std::to_string(num_image)+".jpg";
+						cv::imwrite(path, new_image);
+						num_image += 1;
+					}
 					sleep(5);
 					firstTime = false;
 				}
@@ -1944,7 +1958,13 @@ public:
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
 				cv::waitKey(100);
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
 			}
+			
 		}
 		cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
 		cv::imshow("Graph Visualization", image);
@@ -2360,4 +2380,4 @@ public:
 
 } // namespace PCCBS
 
-#endif 
+#endif
