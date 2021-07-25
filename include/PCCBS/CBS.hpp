@@ -720,13 +720,14 @@ public:
 			for(int i=0; i<p.costs.size(); i++)
 				total_cost = std::max(total_cost,p.costs[i]);
 			int current_makespan = int((total_cost+0.0001)/mUnitEdgeLength);
-			// std::cout << "CBS PQ makespan = " << total_cost << std::endl;
+			std::cout << "CBS PQ makespan = " << total_cost << std::endl;
 
 			int maximum_timestep=0;
 			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
-			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			current_makespan=maximum_timestep+1;
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -1386,7 +1387,7 @@ public:
 					}
 				}
 			}
-			mHValueMap[std::make_pair(agent_id,state)] = h_value;
+			// mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
 
 		// std::cout<<g_value<<" "<<h_value<<std::endl;
@@ -1397,7 +1398,7 @@ public:
 		// heuristics[2] = count_collision_conflicts;
 		// heuristics[3] = count_move_actions+h_value;
 		// heuristics[4] = h_value;
-
+		// std::cout << "Hval = " << h_value << std::endl;
 		std::vector<double> heuristics(6,0);
 		heuristics[0] = g_value + h_value;
 		heuristics[1] = count_collaboration_conflicts+count_collision_conflicts;
@@ -1486,7 +1487,7 @@ public:
 		// auto stop1 = high_resolution_clock::now();
 		// mMapOperationsTime += (stop1 - start1); 
 
-		int segmentCost;
+		double segmentCost;
 		int startTimestep = 0;
 		int tasks_completed = 0;
 
@@ -1501,10 +1502,13 @@ public:
 					nonCollabMap, constraintState.timestep, 
 					shortestPaths, consider_agents);
 			costOut += segmentCost;
-			if (pathSegment.size()==0) return std::vector<SearchState>();
+			if (pathSegment.size()==0) {
+				costOut = INF;
+				return std::vector<SearchState>();
+			}
 
 			if (goal.in_delivery == true) 
-				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,false);
+				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
 			else
 				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
 			
@@ -1523,17 +1527,21 @@ public:
 				shortestPaths, consider_agents);
 
 		costOut += segmentCost;
-		if (pathSegment.size()==0) return std::vector<SearchState>();
+		if (pathSegment.size()==0) {
+			costOut = INF;
+			return std::vector<SearchState>();
+		}
 
 		for (auto s:pathSegment)
 			path.push_back(s);
+		std::cout << "CSP all out = " << costOut << std::endl;
 		// costOut = costOut*mUnitEdgeLength;
 		return path;
 	}
 	std::vector<SearchState> computeShortestPathSegment(int &agent_id, 
 		std::vector<CollisionConstraint> &collision_constraints,
 		SearchState start_state, SearchState goal_state, 
-		std::vector<CollaborationConstraint> &non_collaboration_constraints, int& costOut, 
+		std::vector<CollaborationConstraint> &non_collaboration_constraints, double& costOut, 
 		int start_timestep, int collaboration_timestep, 
 		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap,
 		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, 
@@ -1641,7 +1649,8 @@ public:
 		 g_v, true_makespan, 
 		 0, 0, 0);
 		pq.insert(start_state,mFValue[start_state]);
-		
+		// std::cout << mFValue[start_state][5] -mFValue[start_state][4]  << std::endl;
+		// std::cin.get();
 		int numSearches = 0;
 		// int maximum_timestep = 10000;
 
@@ -1685,7 +1694,7 @@ public:
 			{
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
-				costOut == INF;
+				costOut = INF;
 				auto stop1 = high_resolution_clock::now();
 				mCSPTime += (stop1 - start1);
 				return std::vector<SearchState>();
