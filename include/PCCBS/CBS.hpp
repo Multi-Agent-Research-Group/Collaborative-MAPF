@@ -727,7 +727,7 @@ public:
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
 			std::cout<<"MT: "<<maximum_timestep<<std::endl;
-			current_makespan=maximum_timestep+1;
+			current_makespan=maximum_timestep;
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -1121,10 +1121,10 @@ public:
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
 
-			// std::cout<<"Press [ENTER] to display path: ";
-			// std::cin.get();
-			// displayPath(path_configs);
-			// printStats();
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
+			printStats();
 			return collision_free_path;
 		}
 
@@ -1390,7 +1390,8 @@ public:
 			// mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
 
-		// std::cout<<g_value<<" "<<h_value<<std::endl;
+		std::cout<<"G_val = " << g_value<<" H_val = "<<h_value<<std::endl;
+		// std::cin.get();
 		// std::vector<int> heuristics(1,0);
 		// heuristics[0] = g_value + h_value;
 		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
@@ -1401,11 +1402,11 @@ public:
 		// std::cout << "Hval = " << h_value << std::endl;
 		std::vector<double> heuristics(6,0);
 		heuristics[0] = g_value + h_value;
-		heuristics[1] = count_collaboration_conflicts+count_collision_conflicts;
-		heuristics[2] = count_collision_conflicts;
-		heuristics[3] = count_move_actions+h_value;
+		heuristics[1] = h_value;//count_collaboration_conflicts+count_collision_conflicts;
+		heuristics[2] = h_value;//count_collision_conflicts;
+		heuristics[3] = h_value;
 		heuristics[4] = h_value;
-		heuristics[5] = g_value + h_value;
+		heuristics[5] = h_value;
 
 		// std::vector<int> heuristics(6,0);
 		// std::cout<<" In getHeuristics g - "<<g_value<<" h - "<<h_value<<" cm - "<<current_makespan<<std::endl;
@@ -1512,7 +1513,16 @@ public:
 			else
 				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
 			
-			startTimestep = constraintState.timestep;
+			int altTimestep = constraintState.timestep;
+			startTimestep = pathSegment.at(pathSegment.size()-1).timestep;
+			if(startTimestep!=altTimestep){
+				costOut = INF;
+				
+				std::cout << altTimestep << startTimestep << std::endl;
+				std::cin.get();
+				return std::vector<SearchState>();
+			}
+
 			for (auto s:pathSegment)
 				path.push_back(s);
 		}
@@ -1526,15 +1536,18 @@ public:
 				nonCollabMap, current_makespan, 
 				shortestPaths, consider_agents);
 
-		costOut += segmentCost;
+		
 		if (pathSegment.size()==0) {
 			costOut = INF;
 			return std::vector<SearchState>();
 		}
+		costOut = pathSegment.at(pathSegment.size()-1).timestep*mUnitEdgeLength;
 
 		for (auto s:pathSegment)
 			path.push_back(s);
 		std::cout << "CSP all out = " << costOut << std::endl;
+		std::cout << "Max Timestep = " << path.at(path.size()-1).timestep << std::endl;
+		costOut = path.at(path.size()-1).timestep*mUnitEdgeLength;
 		// costOut = costOut*mUnitEdgeLength;
 		return path;
 	}
@@ -1635,7 +1648,8 @@ public:
 				min_goal_timestep = std::max(min_goal_timestep, c.timestep);
 			}
 		}
-
+		// std::cout << "Min goal timestep = " << min_goal_timestep << std::endl;
+		// std::cin.get();
 		// std::cout<<"Min goal timestep: "<<min_goal_timestep<<std::endl;
 		// std::cout<<"Makespan available: "<<current_makespan<<std::endl;
 
@@ -1699,6 +1713,9 @@ public:
 				mCSPTime += (stop1 - start1);
 				return std::vector<SearchState>();
 			}
+			// if(collaboration_timestep!=-1 && current_timestep>collaboration_timestep){
+			// 	continue;
+			// }
 
 			if(current_tasks_completed > mTasksList[agent_id].size())
 			{
@@ -2910,7 +2927,7 @@ public:
 
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
-				cv::waitKey(100);
+				cv::waitKey(10);
 				for (int num = 0; num<1; num++){
 					std::string path = mImagePath+std::to_string(num_image)+".jpg";
 					cv::imwrite(path, new_image);
@@ -3259,7 +3276,7 @@ public:
 				
 				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
 				cv::imshow("Agents", new_image);
-				cv::waitKey(100);
+				cv::waitKey(10);
 				for (int num = 0; num<1; num++){
 					std::string path = mImagePath+std::to_string(num_image)+".jpg";
 					cv::imwrite(path, new_image);

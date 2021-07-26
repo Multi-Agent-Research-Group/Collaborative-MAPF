@@ -139,11 +139,14 @@ private:
 				std::cerr<<"ERROR: Key sizes are not equal!";
 				std::cin.get();
 			}
-			for(int i=0; i<keys.size(); i++)
-				if(keys[i] < b.keys[i])
+			for(int i=0; i<keys.size(); i++){
+			// for(int i=0; i<1; i++){
+				if(std::abs(keys[i] - b.keys[i]) < -0.01)
 					return true;
-				else if(keys[i] > b.keys[i])
+				else if(std::abs(keys[i] - b.keys[i]) > 0.01)
 					return false;
+			}
+			return true;
 			return s.vertex < b.s.vertex;
 
 			// if(key1<b.key1)
