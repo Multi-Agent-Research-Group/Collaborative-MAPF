@@ -1389,7 +1389,7 @@ public:
 			}
 			// mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
-
+		// h_value = getHeuristic(agent_id, state);
 		std::cout<<"G_val = " << g_value<<" H_val = "<<h_value<<std::endl;
 		// std::cin.get();
 		// std::vector<int> heuristics(1,0);

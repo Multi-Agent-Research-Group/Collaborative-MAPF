@@ -141,12 +141,12 @@ private:
 			}
 			for(int i=0; i<keys.size(); i++){
 			// for(int i=0; i<1; i++){
-				if(std::abs(keys[i] - b.keys[i]) < -0.01)
+				if((keys[i] - b.keys[i]) < -0.00001)
 					return true;
-				else if(std::abs(keys[i] - b.keys[i]) > 0.01)
+				else if((keys[i] - b.keys[i]) > 0.00001)
 					return false;
 			}
-			return true;
+			// return true;
 			return s.vertex < b.s.vertex;
 
 			// if(key1<b.key1)
