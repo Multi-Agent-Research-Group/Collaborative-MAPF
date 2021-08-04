@@ -141,9 +141,9 @@ private:
 			}
 			for(int i=0; i<keys.size(); i++){
 			// for(int i=0; i<1; i++){
-				if((keys[i] - b.keys[i]) < -0.00001)
+				if((keys[i] - b.keys[i]) < -0.01)
 					return true;
-				else if((keys[i] - b.keys[i]) > 0.00001)
+				else if((keys[i] - b.keys[i]) > 0.01)
 					return false;
 			}
 			// return true;
