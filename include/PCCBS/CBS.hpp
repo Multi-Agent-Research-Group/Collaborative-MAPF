@@ -505,88 +505,6 @@ public:
 		return false;
 	}
 
-	// bool checkCollaborationConflicts(std::vector<int> task_ids, std::vector<int> agent_ids, 
-	// 	std::vector<std::vector<SearchState>> &paths,
-	// 	std::vector<int> &collaborating_agent_ids, CollaborationConstraint &constraint_c)
-	// {
-	// 	int count_conflicts=0;
-	// 	bool selected_constraint = false;
-
-	// 	for(int t=0; t<task_ids.size(); t++)
-	// 	{
-	// 		int tid = task_ids[t];
-	// 		Vertex pickup_vertex;
-	// 		std::set<int> pickup_timesteps;
-	// 		Vertex delivery_vertex;
-	// 		std::set<int> delivery_timesteps;
-
-	// 		std::vector<int> current_task_agent_ids;
-	// 		for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-	// 		{
-	// 			int agent_id = mTasksToAgentsList[tid][k].first;
-	// 			int agent_index = -1;
-	// 			for(int a=0; a<agent_ids.size(); a++)
-	// 				if(agent_id == agent_ids[a])
-	// 				{
-	// 					agent_index = a;
-	// 					break;
-	// 				}
-	// 			if(agent_index!=-1)
-	// 			{
-	// 				current_task_agent_ids.push_back(agent_id);
-	// 				int task_index = mTasksToAgentsList[tid][k].second;
-	// 				pickup_vertex = mTasksList[agent_id][task_index].second.first;
-	// 				delivery_vertex = mTasksList[agent_id][task_index].second.second;
-	// 				for(int i=1; i<paths[agent_index].size(); i++)
-	// 				{	
-	// 					if(paths[agent_index][i].tasks_completed == task_index && paths[agent_index][i].in_delivery == true
-	// 						&& paths[agent_index][i-1].in_delivery == false)
-	// 						pickup_timesteps.insert(paths[agent_index][i].timestep);
-	// 					if(paths[agent_index][i].tasks_completed == task_index+1 && paths[agent_index][i].in_delivery == false
-	// 						&& paths[agent_index][i-1].in_delivery == true)
-	// 						delivery_timesteps.insert(paths[agent_index][i].timestep);
-	// 				}
-	// 			}
-	// 		}
-	// 		// std::cout<<"Task ID: "<<tid<<" ";
-	// 		// std::cout<<"Agent IDs: ";
-	// 		// for(int a=0; a<current_task_agent_ids.size(); a++)
-	// 		// 	std::cout<<current_task_agent_ids[a]<<" ";
-	// 		// std::cout<<"Pickup Timesteps: ";
-	// 		// for(auto &okie: pickup_timesteps)
-	// 		// 	std::cout<<okie<<" ";
-	// 		// std::cout<<"Delivery Timesteps: ";
-	// 		// for(auto &okie: delivery_timesteps)
-	// 		// 	std::cout<<okie<<" ";
-	// 		// stdCollaborationConfl::cout<<"\n";
-	// 		if(pickup_timesteps.size()>1)
-	// 		{
-	// 			count_conflicts++;
-	// 			if(!selected_constraint)
-	// 			{
-	// 				selected_constraint = true;
-	// 				collaborating_agent_ids = current_task_agent_ids;
-	// 				int collaboration_timestep = *pickup_timesteps.begin();
-	// 				constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
-	// 			}
-	// 			return true;
-	// 		}
-	// 		if(delivery_timesteps.size()>1)
-	// 		{
-	// 			count_conflicts++;
-	// 			if(!selected_constraint)
-	// 			{
-	// 				selected_constraint = true;
-	// 				collaborating_agent_ids = current_task_agent_ids;
-	// 				int collaboration_timestep = *delivery_timesteps.begin();
-	// 				constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
-	// 			}
-	// 			return true;
-	// 		}
-	// 	}
-	// 	return count_conflicts;
-	// }
-
 	bool getCollisionConstraints(std::vector<std::vector<SearchState>> &paths, std::vector<int> &agent_id_1, CollisionConstraint &constraint_1, std::vector<int> &agent_id_2, CollisionConstraint &constraint_2)
 	{
 		int current_timestep = 0;
@@ -805,6 +723,97 @@ public:
 		return false;
 	}
 
+	void printVertex(Vertex v){
+		std::cout<<" - ("<<
+			int( (mGraphs[0][v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraphs[0][v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
+	}
+
+	void printEdge(Edge &a){
+		Vertex s = source(a, mGraphs[0]);
+ 		Vertex t = target(a, mGraphs[0]);
+ 		std::cout << "Source Vertex: ";
+ 		printVertex(s);
+ 		std::cout << "Target Vertex: ";
+ 		printVertex(t);
+	}
+
+	void printNode(Element p){
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++){
+			std::cout <<"Path for agent: "<<agent_id << " " << std::endl;
+			for(int i=0; i<p.shortestPaths[agent_id].size(); i++){
+				std::cout<<" - ("<<
+	int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<
+	int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<
+	p.shortestPaths[agent_id][i].timestep <<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<
+	p.shortestPaths[agent_id][i].in_delivery<<"\t";
+			}
+			std::cout << std::endl;
+		}
+	}
+
+	void printCollabConflict(CollaborationConstraint c, std::vector <int> collaborating_agent_ids){
+		std::cout << "Agents involved in conflict: ";
+		for(auto agent: collaborating_agent_ids){
+			std::cout << agent << " ";
+		}
+		std::cout << std::endl;
+		std::cout << "Task ID: " << c.task_id << std::endl;
+		std::cout << "Timestep: "<< c.timestep << std::endl;
+		std::cout << "Is Pickup?: "<< (int)c.is_pickup << std::endl;
+		std::cout << "Position: ";
+		std::cout<<" - ("<<
+			int( (mGraphs[0][c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraphs[0][c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
+	}
+
+
+	void printColConflict(std::vector <int> agent_id_1, CollisionConstraint c1, 
+		std::vector <int> agent_id_2, CollisionConstraint c2){
+
+		std::cout << "Agents involved in set 1: ";
+		for(auto agent: agent_id_1){
+			std::cout << agent << " ";
+		}
+		std::cout << std::endl;
+
+		std::cout << "Agents involved in set 2: ";
+		for(auto agent: agent_id_2){
+			std::cout << agent << " ";
+		}
+		std::cout << std::endl;
+
+		std::cout << "First constraint: \n";
+		if(c1.constraint_type == 1){
+			std::cout << "Vertex constraint\n";
+			std::cout << "Position: ";
+			printVertex(c1.v);
+		}
+		else{
+			std::cout << "Edge constraint\n";
+			std::cout << "Position: \n";
+			printEdge(c1.e);
+		}
+		std::cout << "Tasks Completed: " << c1.tasks_completed << std::endl;
+		std::cout << "Timestep: "<< c1.timestep << std::endl;
+		std::cout << "In Delivery?: "<< (int)c1.in_delivery << std::endl;
+
+		std::cout << "Second constraint: \n";
+		if(c2.constraint_type == 1){
+			std::cout << "Vertex constraint\n";
+			std::cout << "Position: ";
+			printVertex(c2.v);
+		}
+		else{
+			std::cout << "Edge constraint\n";
+			std::cout << "Position: \n";
+			printEdge(c2.e);
+		}
+		std::cout << "Tasks Completed: " << c2.tasks_completed << std::endl;
+		std::cout << "Timestep: "<< c2.timestep << std::endl;
+		std::cout << "In Delivery?: "<< (int)c2.in_delivery << std::endl;
+	}
+
 	std::vector<std::vector<Eigen::VectorXd>> solve()
 	{
 		mCBSIterations = 0;
@@ -892,13 +901,13 @@ public:
 
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 30000000)
-			{
-				auto solve_stop = high_resolution_clock::now();
-				mPlanningTime = (solve_stop - mSolveStartTime);
-				std::cout<<0<<" ";
-				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
-			}
+			// if (timespent.count() > 30000000)
+			// {
+			// 	auto solve_stop = high_resolution_clock::now();
+			// 	mPlanningTime = (solve_stop - mSolveStartTime);
+			// 	std::cout<<0<<" ";
+			// 	return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+			// }
 			
 
 			// 
@@ -913,9 +922,12 @@ public:
 			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
-			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			std::cout<<"MT: "<<maximum_timestep<<std::endl;
 			total_cost = maximum_timestep;
 			current_makespan=maximum_timestep;
+
+			std::cout << "---------------SELECTED NODE-------------------" << std::endl;
+			printNode(p);
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -949,14 +961,16 @@ public:
 
 					PRINT<<"Path: "<<std::endl;
 					for(int i=0; i<p.shortestPaths[agent_id].size(); i++)
-						PRINT<<p.shortestPaths[agent_id][i].vertex<<" - ("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<p.shortestPaths[agent_id][i].timestep
+						PRINT<<p.shortestPaths[agent_id][i].vertex<<"("<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<int( (mGraphs[agent_id][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<p.shortestPaths[agent_id][i].timestep
 							<<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<p.shortestPaths[agent_id][i].in_delivery<<std::endl;
 					PRINT<<std::endl;
+
+					
 				}
 				DEBUG std::cin.get();
 				// break;
 			}
-
+			std::cin.get();
 			// if(numSearches == 5000)
 			// 	break;
 
@@ -965,6 +979,10 @@ public:
 
 			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, constraint_c))
 			{
+				std::cout << "-----Colab Conflict Found-----------" << std::endl;
+				printCollabConflict(constraint_c, collaborating_agent_ids);
+				std::cin.get();
+
 				std::vector<int> consider_agents;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 					if(std::find(collaborating_agent_ids.begin(),collaborating_agent_ids.end(), agent_id) 
@@ -1023,6 +1041,10 @@ public:
 						// std::cout<<"inserting left!"<<std::endl;
 						PQ.insert(costs_c, p.collision_constraints, increase_constraints_c,
 								p.non_collaboration_constraints, shortestPaths_c);
+						std::cout << "Expanded Node" << std::endl;
+						Element a(costs_c, p.collision_constraints, increase_constraints_c,
+								p.non_collaboration_constraints, shortestPaths_c);
+						printNode(a);
 					}
 				}
 				{
@@ -1076,6 +1098,10 @@ public:
 					{
 						PQ.insert(costs_c, p.collision_constraints, p.collaboration_constraints,
 								increase_constraints_c, shortestPaths_c);
+						std::cout << "Expanded Node" << std::endl;
+						Element a(costs_c, p.collision_constraints, p.collaboration_constraints,
+								increase_constraints_c, shortestPaths_c);
+						printNode(a);
 					}
 
 				}
@@ -1097,6 +1123,9 @@ public:
 			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
 			{
 				//agent_id_1
+				std::cout << "-----Colision Conflict Found-----------" << std::endl;
+				printColConflict(agent_id_1, constraint_1, agent_id_2, constraint_2);
+				std::cin.get();
 
 				PRINT<<"Collision Conflict found between:\n { ";
 				for(int i=0; i<agent_id_1.size();i++)
@@ -1159,7 +1188,11 @@ public:
 						p.non_collaboration_constraints, shortestPaths_agent_id_1);
 					auto stop1 = high_resolution_clock::now();
 					mQOTime += (stop1 - start1);
-				}
+					std::cout << "Expanded Node" << std::endl;
+					Element a(costs_agent_id_1,increase_constraints_agent_id_1, p.collaboration_constraints, 
+						p.non_collaboration_constraints, shortestPaths_agent_id_1);
+					printNode(a);
+			}
 
 				// 
 				
@@ -1208,6 +1241,11 @@ public:
 						p.non_collaboration_constraints, shortestPaths_agent_id_2);
 					auto stop2 = high_resolution_clock::now();
 					mQOTime += (stop2 - start2);
+
+					std::cout << "Expanded Node" << std::endl;
+					Element a(costs_agent_id_2,increase_constraints_agent_id_2, p.collaboration_constraints, 
+						p.non_collaboration_constraints, shortestPaths_agent_id_2);
+					printNode(a);
 				}
 
 				continue;
@@ -1608,6 +1646,7 @@ public:
 			double h2 = getHeuristic(agent_id, goal_state);
 			h_value -= h2;
 		}
+		h_value = 0;
 		// std::cout<<"G_val = " << g_value<<" H_val = "<<h_value<<std::endl;
 		// std::cin.get();
 		// std::vector<int> heuristics(1,0);
