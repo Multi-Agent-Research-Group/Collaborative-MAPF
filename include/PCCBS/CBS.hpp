@@ -514,6 +514,8 @@ public:
 	bool getCollaborationConstraints(std::vector<std::vector<SearchState>> &paths,
 		std::vector<int> &collaborating_agent_ids, CollaborationConstraint &constraint_c)
 	{
+		int chosen_timestep = 1000;
+		bool is_pickup = false;
 		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
 		{
 			Vertex pickup_vertex;
@@ -538,21 +540,32 @@ public:
 			}
 			if(pickup_timesteps.size()>1)
 			{
-				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
 				int collaboration_timestep = *pickup_timesteps.begin();
-				constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
-				return true;
+				if(collaboration_timestep < chosen_timestep){
+					is_pickup = true;
+					collaborating_agent_ids.clear();
+					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
+						collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
+					chosen_timestep = collaboration_timestep;
+					constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
+				}
+				
+				// return true;
 			}
 			if(delivery_timesteps.size()>1)
 			{
-				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
 				int collaboration_timestep = *delivery_timesteps.begin();
-				constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
-				return true;
+				if(collaboration_timestep < chosen_timestep){
+					collaborating_agent_ids.clear();
+					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
+						collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
+					chosen_timestep = collaboration_timestep;
+					constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
+				}
+				// return true;
 			}
 		}
+		if(chosen_timestep != 1000) return true;
 		return false;
 	}
 
@@ -1686,32 +1699,15 @@ public:
 					}
 				}
 			}
-			// mHValueMap[std::make_pair(agent_id,state)] = h_value;
+			mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
-		// std::cout << "Hval = " << h_value << std::endl;
-		// std::cout << "Gval = " << g_value << std::endl;
-		// std::cout<<" In getHeuristics g - "<<g_value<<" h - "<<h_value<<" cm - "<<current_makespan<<std::endl;
 		std::vector<double> heuristics(6,g_value);
 		heuristics[0] = std::max(0.0, g_value + h_value - current_makespan);
 		heuristics[1] = count_collaboration_conflicts;
 		heuristics[2] = count_collision_conflicts;
 		heuristics[3] = count_move_actions+h_value;
 		heuristics[4] = h_value;
-		heuristics[5] = g_value+h_value;//count_collaboration_conflicts+count_collision_conflicts;
-		// heuristics[2] = h_value;//count_collision_conflicts;
-		// heuristics[3] = h_value;
-		// heuristics[4] = h_value;
-		// heuristics[5] = h_value;
-
-		// std::vector<int> heuristics(6,0);
-		// std::cout<<" In getHeuristics g - "<<g_value<<" h - "<<h_value<<" cm - "<<current_makespan<<std::endl;
-		// heuristics[0] = std::max(0, g_value + h_value - current_makespan);
-		// heuristics[1] = count_collaboration_conflicts;
-		// heuristics[2] = count_collision_conflicts;
-		// heuristics[3] = count_move_actions+h_value;
-		// heuristics[4] = h_value;
-		// heuristics[5] = g_value + h_value;
-		
+		heuristics[5] = g_value+h_value;		
 
 		auto stop1 = high_resolution_clock::now();
 		mHeuristicsTime += (stop1 - start1);
