@@ -487,22 +487,6 @@ public:
 					}
 			auto stop1 = high_resolution_clock::now();
 			mCollabCTime += (stop1 - start1);
-			// if(delivery_timesteps.size()>1)
-			// {
-			// 	std::cout<<"Delivery Task ID: "<<delivery_taskid<<" Timesteps: ";
-			// 	for(auto&d: delivery_timesteps)
-			// 		std::cout<<d<<" ";
-			// 	std::cout<<std::endl;
-			// }
-			// if(delivery_timesteps.size()==1)
-			// 	return 0;
-			// else
-			// {
-			// 	if(state.timestep > *delivery_timesteps.begin())
-			// 		return 0;
-			// 	else
-			// 		return 1;
-			// }
 			return delivery_timesteps.size() - 1;
 		}
 		else // pickup state
@@ -1707,8 +1691,10 @@ public:
 		// std::cout << "Hval = " << h_value << std::endl;
 		// std::cout << "Gval = " << g_value << std::endl;
 		// std::cout<<" In getHeuristics g - "<<g_value<<" h - "<<h_value<<" cm - "<<current_makespan<<std::endl;
-		std::vector<double> heuristics(6,0);
+		std::vector<double> heuristics(6,g_value);
 		heuristics[0] = std::max(0.0, g_value + h_value - current_makespan);
+		heuristics[1] = count_collaboration_conflicts;
+		heuristics[2] = count_collision_conflicts;
 		heuristics[3] = count_move_actions+h_value;
 		heuristics[4] = h_value;
 		heuristics[5] = g_value+h_value;//count_collaboration_conflicts+count_collision_conflicts;
