@@ -214,6 +214,7 @@ public:
 		PQ[1]=PQ[PQ.size()-1];
 		PQ.erase(PQ.end()-1);
 		min_heapify(1);
+		// std::cout << PQ[1].keys[0] << std::endl;
 		return s;
 	}
 	void insert(SearchState s, std::vector<double> k)
