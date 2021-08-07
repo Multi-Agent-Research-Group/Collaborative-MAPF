@@ -512,8 +512,19 @@ public:
 	}
 
 	bool getCollaborationConstraints(std::vector<std::vector<SearchState>> &paths,
-		std::vector<int> &collaborating_agent_ids, CollaborationConstraint &constraint_c)
+		std::vector<int> &collaborating_agent_ids, CollaborationConstraint &constraint_c,
+		std::vector<std::vector<CollaborationConstraint>> &non_collaboration_constraints)
 	{
+		std::vector <boost::unordered_map <SearchState, int, state_hash> > nonCollabMap(mNumAgents);
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			for(CollaborationConstraint &c: non_collaboration_constraints[agent_id])
+			{
+				SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
+				nonCollabMap[agent_id][state] = 1;
+			}
+		}
+
 		int chosen_timestep = 1000;
 		bool is_pickup = false;
 		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
@@ -541,8 +552,21 @@ public:
 			if(pickup_timesteps.size()>1)
 			{
 				int collaboration_timestep = *pickup_timesteps.begin();
+				while(true){
+					SearchState state = SearchState(pickup_vertex,collaboration_timestep,tid,true);
+					bool flag = false;
+					for(int k=0; k<mTasksToAgentsList[tid].size(); k++){
+						int agent_id = mTasksToAgentsList[tid][k].first;
+						if(nonCollabMap[agent_id].find(state) != nonCollabMap[agent_id].end()){
+							collaboration_timestep += 1;
+							flag = true;
+							break;
+						}
+					}
+					if(!flag) break;
+				}
+				
 				if(collaboration_timestep < chosen_timestep){
-					is_pickup = true;
 					collaborating_agent_ids.clear();
 					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
 						collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
@@ -555,6 +579,19 @@ public:
 			if(delivery_timesteps.size()>1)
 			{
 				int collaboration_timestep = *delivery_timesteps.begin();
+				while(true){
+					SearchState state = SearchState(delivery_vertex,collaboration_timestep,tid,false);
+					bool flag = false;
+					for(int k=0; k<mTasksToAgentsList[tid].size(); k++){
+						int agent_id = mTasksToAgentsList[tid][k].first;
+						if(nonCollabMap[agent_id].find(state) != nonCollabMap[agent_id].end()){
+							collaboration_timestep += 1;
+							flag = true;
+							break;
+						}
+					}
+					if(!flag) break;
+				}
 				if(collaboration_timestep < chosen_timestep){
 					collaborating_agent_ids.clear();
 					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
@@ -1139,7 +1176,8 @@ public:
 			std::vector<int> collaborating_agent_ids;
 			CollaborationConstraint constraint_c;
 
-			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, constraint_c))
+			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, 
+				constraint_c, p.non_collaboration_constraints))
 			{
 				// std::cout << "-----Colab Conflict Found-----------" << std::endl;
 				// printCollabConflict(constraint_c, collaborating_agent_ids);
@@ -1730,6 +1768,7 @@ public:
 				if(c.task_id == mTasksList[agent_id][i].first)
 					collaboration_tasks_completed = i;
 			if (collaboration_tasks_completed==-1) {
+				std::cout << c.task_id << std::endl;
 				std::cout << "-1 tasks" << std::endl;
 				std::cin.get();
 			}
