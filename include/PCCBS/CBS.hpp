@@ -787,9 +787,12 @@ public:
 								for(int k=0; k<mNumAgents; k++)
 									if(target_task_ids[k] == target_task_ids[j])
 										agent_id_2.push_back(k);
+								
 
-							constraint_1 = CollisionConstraint(target_vertices[i], target_tasks_completed[i], target_in_delivery[i], current_timestep+1);
-							constraint_2 = CollisionConstraint(target_vertices[j], target_tasks_completed[j], target_in_delivery[j], current_timestep+1);
+							constraint_1 = CollisionConstraint(target_vertices[i], target_tasks_completed[i], 
+								target_in_delivery[i], current_timestep+1);
+							constraint_2 = CollisionConstraint(target_vertices[j], target_tasks_completed[j], 
+								target_in_delivery[j], current_timestep+1);
 
 							return true;
 						}
@@ -1053,13 +1056,13 @@ public:
 
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			// if (timespent.count() > 30000000)
-			// {
-			// 	auto solve_stop = high_resolution_clock::now();
-			// 	mPlanningTime = (solve_stop - mSolveStartTime);
-			// 	std::cout<<0<<" ";
-			// 	return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
-			// }
+			if (timespent.count() > 300000000)
+			{
+				auto solve_stop = high_resolution_clock::now();
+				mPlanningTime = (solve_stop - mSolveStartTime);
+				std::cout<<0<<" ";
+				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+			}
 			
 
 			// 
