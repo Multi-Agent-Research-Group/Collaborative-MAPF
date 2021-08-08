@@ -559,6 +559,7 @@ public:
 						int agent_id = mTasksToAgentsList[tid][k].first;
 						if(nonCollabMap[agent_id].find(state) != nonCollabMap[agent_id].end()){
 							collaboration_timestep += 1;
+							// std::cout << "hiii\n";
 							flag = true;
 							break;
 						}
@@ -2092,20 +2093,20 @@ public:
 				if(!current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.first == current_vertex) //pickup point
 				{
 					bool allowed = true;
-					for( CollaborationConstraint &c: non_collaboration_constraints)
-					{
-						if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-							&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-						{
-							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-							allowed = false;
-							break;
-						}
-					}
+					// for( CollaborationConstraint &c: non_collaboration_constraints)
+					// {
+					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+					// 		&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+					// 	{
+					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+					// 		allowed = false;
+					// 		break;
+					// 	}
+					// }
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, true);
 					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
-					// if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
 						SearchState new_state = SearchState(current_vertex, current_timestep, 
@@ -2139,20 +2140,20 @@ public:
 				if(current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.second == current_vertex) //delivery point
 				{
 					bool allowed = true;
-					for( CollaborationConstraint &c: non_collaboration_constraints)
-					{
-						if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-							&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-						{
-							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-							allowed = false;
-							break;
-						}
-					}
+					// for( CollaborationConstraint &c: non_collaboration_constraints)
+					// {
+					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
+					// 		&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
+					// 	{
+					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+					// 		allowed = false;
+					// 		break;
+					// 	}
+					// }
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, false);
 					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
-					// if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
 						SearchState new_state= SearchState(current_vertex, current_timestep, 
@@ -2196,11 +2197,11 @@ public:
 				for( CollisionConstraint &c: collision_constraints)
 				{
 					int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					if( c.constraint_type == 1 && current_vertex == c.v 
-						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1)
 					// if( c.constraint_type == 1 && current_vertex == c.v 
+					// 	&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					//  	&& c.timestep == current_timestep + 1)
+					if( c.constraint_type == 1 && current_vertex == c.v 
+					 	&& c.timestep == current_timestep + 1)
 					{
 						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
 						col =true;
@@ -2253,17 +2254,17 @@ public:
 				bool col = false;
 				for( CollisionConstraint c: collision_constraints)
 				{
-					int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					if( (c.constraint_type == 1 && successor == c.v 
-						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1) 
-						|| (c.constraint_type == 2 && uv_edge == c.e 
-							&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 		&& c.timestep == current_timestep + 1) )
+					// int task_id = mTasksList[agent_id][current_tasks_completed].first;
 					// if( (c.constraint_type == 1 && successor == c.v 
+					// 	&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					//  	&& c.timestep == current_timestep + 1) 
-					//  	|| (c.constraint_type == 2 && uv_edge == c.e 
+					// 	|| (c.constraint_type == 2 && uv_edge == c.e 
+					// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					//  		&& c.timestep == current_timestep + 1) )
+					if( (c.constraint_type == 1 && successor == c.v 
+					 	&& c.timestep == current_timestep + 1) 
+					 	|| (c.constraint_type == 2 && uv_edge == c.e 
+					 		&& c.timestep == current_timestep + 1) )
 					{
 						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
 						col =true;
