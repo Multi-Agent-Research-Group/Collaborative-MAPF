@@ -2197,11 +2197,11 @@ public:
 				for( CollisionConstraint &c: collision_constraints)
 				{
 					int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					// if( c.constraint_type == 1 && current_vertex == c.v 
-					// 	&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					//  	&& c.timestep == current_timestep + 1)
 					if( c.constraint_type == 1 && current_vertex == c.v 
+						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					 	&& c.timestep == current_timestep + 1)
+					// if( c.constraint_type == 1 && current_vertex == c.v 
+					//  	&& c.timestep == current_timestep + 1)
 					{
 						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
 						col =true;
@@ -2254,17 +2254,17 @@ public:
 				bool col = false;
 				for( CollisionConstraint c: collision_constraints)
 				{
-					// int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					// if( (c.constraint_type == 1 && successor == c.v 
-					// 	&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					//  	&& c.timestep == current_timestep + 1) 
-					// 	|| (c.constraint_type == 2 && uv_edge == c.e 
-					// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					//  		&& c.timestep == current_timestep + 1) )
+					int task_id = mTasksList[agent_id][current_tasks_completed].first;
 					if( (c.constraint_type == 1 && successor == c.v 
+						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					 	&& c.timestep == current_timestep + 1) 
-					 	|| (c.constraint_type == 2 && uv_edge == c.e 
+						|| (c.constraint_type == 2 && uv_edge == c.e 
+							&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
 					 		&& c.timestep == current_timestep + 1) )
+					// if( (c.constraint_type == 1 && successor == c.v 
+					//  	&& c.timestep == current_timestep + 1) 
+					//  	|| (c.constraint_type == 2 && uv_edge == c.e 
+					//  		&& c.timestep == current_timestep + 1) )
 					{
 						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
 						col =true;
