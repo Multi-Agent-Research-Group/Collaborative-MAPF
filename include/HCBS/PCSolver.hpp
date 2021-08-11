@@ -496,10 +496,10 @@ public:
 		
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		// std::cout<<"Press [ENTER] to display path: \n";
-		// std::cin.get();
-		// planner.mNumAgents = mNumRobots;
-		// planner.displayPath(path_configs);
+		std::cout<<"Press [ENTER] to display path: \n";
+		std::cin.get();
+		planner.mNumAgents = mNumRobots;
+		planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
