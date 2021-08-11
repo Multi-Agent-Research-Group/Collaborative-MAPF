@@ -46,6 +46,8 @@ bool cerr_disabled = true;
 #define PRINT if (cerr_disabled) {} else std::cerr
 #define DEBUG if (cerr_disabled) {} else 
 
+bool debug_disabled = true;
+#define print if (debug_disabled) {} else std::cerr
 
 namespace PCCBS {
 
@@ -212,8 +214,12 @@ public:
 		for(int i=0; i<_tasks_list.size(); i++)
 		{
 			std::vector<std::pair<int,std::pair<Vertex,Vertex>>> agent_tasks_list;
-			for(int j=0; j<_tasks_list[i].size(); j++)
+			// std::cout << "Agent id = " << i << std::endl;
+			for(int j=0; j<_tasks_list[i].size(); j++){
+				// std::cout << "Tasks Assigned = " << _tasks_list[i][j].first << " ";
 				agent_tasks_list.push_back(std::make_pair(_tasks_list[i][j].first,std::make_pair(0,0)));
+			}
+			// std::cout << std::endl;
 			mTasksList.push_back(agent_tasks_list);
 		}
 
@@ -513,8 +519,12 @@ public:
 
 	bool getCollaborationConstraints(std::vector<std::vector<SearchState>> &paths,
 		std::vector<int> &collaborating_agent_ids, CollaborationConstraint &constraint_c,
-		std::vector<std::vector<CollaborationConstraint>> &non_collaboration_constraints)
+		std::vector<std::vector<CollaborationConstraint>> &non_collaboration_constraints,
+		Element p, int current_makespan)
 	{
+		std::vector <std::vector <int>> candidate_collaborating_agent_ids;
+		std::vector <CollaborationConstraint> candidate_constraints;
+
 		std::vector <boost::unordered_map <SearchState, int, state_hash> > nonCollabMap(mNumAgents);
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
@@ -525,7 +535,6 @@ public:
 			}
 		}
 
-		int chosen_timestep = 1000;
 		bool is_pickup = false;
 		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
 		{
@@ -558,8 +567,8 @@ public:
 					for(int k=0; k<mTasksToAgentsList[tid].size(); k++){
 						int agent_id = mTasksToAgentsList[tid][k].first;
 						if(nonCollabMap[agent_id].find(state) != nonCollabMap[agent_id].end()){
+							std::cout << "hi" << std::endl;
 							collaboration_timestep += 1;
-							// std::cout << "hiii\n";
 							flag = true;
 							break;
 						}
@@ -567,14 +576,13 @@ public:
 					if(!flag) break;
 				}
 				
-				if(collaboration_timestep < chosen_timestep){
-					collaborating_agent_ids.clear();
-					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-						collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-					chosen_timestep = collaboration_timestep;
-					constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
-				}
-				
+				collaborating_agent_ids.clear();
+				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
+					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
+				constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
+
+				candidate_constraints.push_back(constraint_c);
+				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
 				// return true;
 			}
 			if(delivery_timesteps.size()>1)
@@ -586,6 +594,7 @@ public:
 					for(int k=0; k<mTasksToAgentsList[tid].size(); k++){
 						int agent_id = mTasksToAgentsList[tid][k].first;
 						if(nonCollabMap[agent_id].find(state) != nonCollabMap[agent_id].end()){
+							std::cout << "hi\n";
 							collaboration_timestep += 1;
 							flag = true;
 							break;
@@ -593,18 +602,142 @@ public:
 					}
 					if(!flag) break;
 				}
-				if(collaboration_timestep < chosen_timestep){
-					collaborating_agent_ids.clear();
-					for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-						collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-					chosen_timestep = collaboration_timestep;
-					constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
-				}
+				collaborating_agent_ids.clear();
+				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
+					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
+				constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
+
+				candidate_constraints.push_back(constraint_c);
+				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
+
 				// return true;
 			}
 		}
-		if(chosen_timestep != 1000) return true;
-		return false;
+		
+		if(candidate_collaborating_agent_ids.size()==0) return false;
+		// return true;
+
+		double new_cost = -1;
+		for(int i=0; i<candidate_constraints.size(); i++){
+			// std::cerr << "Constraint Num = " << i << std::endl;
+			// printCollabConflict(candidate_constraints[i], candidate_collaborating_agent_ids[i]);
+			// std::cout << std::endl;
+			double current_cost = INF;
+			std::vector<int> consider_agents;
+
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(std::find(candidate_collaborating_agent_ids[i].begin(),
+					candidate_collaborating_agent_ids[i].end(), agent_id) 
+					== candidate_collaborating_agent_ids[i].end())
+					consider_agents.push_back(agent_id);
+
+
+			{
+				std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = 
+								p.collaboration_constraints;
+				std::vector< double> costs_c = p.costs;
+				std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
+
+				double collab_cost = current_makespan*mUnitEdgeLength;
+				for(int j=0; j<candidate_collaborating_agent_ids[i].size(); j++)
+				{
+					// make sure that collab and not collab do not share a constraint
+					bool allowed = true;
+					for( CollaborationConstraint &c: 
+						p.non_collaboration_constraints[candidate_collaborating_agent_ids[i][j]])
+					{
+						if( candidate_constraints[i].v == c.v && candidate_constraints[i].task_id == c.task_id
+							&& candidate_constraints[i].is_pickup == c.is_pickup==true && 
+							candidate_constraints[i].timestep == c.timestep)
+						{
+							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+							allowed = false;
+							break;
+						}
+					}
+					if(allowed){
+						increase_constraints_c[candidate_collaborating_agent_ids[i][j]].push_back(candidate_constraints[i]);
+						double cost_c;
+						shortestPaths_c[candidate_collaborating_agent_ids[i][j]] = 
+								computeShortestPath(candidate_collaborating_agent_ids[i][j], 
+									p.collision_constraints[candidate_collaborating_agent_ids[i][j]], 
+									increase_constraints_c[candidate_collaborating_agent_ids[i][j]], 
+									p.non_collaboration_constraints[candidate_collaborating_agent_ids[i][j]], 
+									cost_c,
+									current_makespan, 
+									p.shortestPaths,
+									consider_agents);
+						collab_cost = std::max(collab_cost, cost_c);
+					}
+					else{
+						collab_cost = INF;
+						// break;
+					}		
+				}
+				current_cost = std::min(current_cost, collab_cost);
+			}
+
+			// std::cerr << "Constraint Num = " << i << std::endl;
+
+
+			{
+				std::vector<std::vector<CollaborationConstraint>> increase_constraints_c = 
+				p.non_collaboration_constraints;
+
+				std::vector< double> costs_c = p.costs;
+				std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
+
+				double collab_cost = current_makespan*mUnitEdgeLength;
+
+				for(int j=0; j<candidate_collaborating_agent_ids[i].size(); j++)
+				{
+					// make sure that collab and not collab do not share a constraint
+					bool allowed = true;
+					for( CollaborationConstraint &c: p.collaboration_constraints[candidate_collaborating_agent_ids[i][j]])
+					{
+						if( candidate_constraints[i].v == c.v && candidate_constraints[i].task_id == c.task_id
+							&& candidate_constraints[i].is_pickup == c.is_pickup==true && 
+							candidate_constraints[i].timestep == c.timestep)
+						{
+							// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
+							allowed = false;
+							break;
+						}
+					}
+					if(allowed){
+						increase_constraints_c[candidate_collaborating_agent_ids[i][j]].push_back(candidate_constraints[i]);
+						double cost_c;
+						shortestPaths_c[candidate_collaborating_agent_ids[i][j]] = 
+								computeShortestPath(candidate_collaborating_agent_ids[i][j], 
+									p.collision_constraints[candidate_collaborating_agent_ids[i][j]], 
+									p.collaboration_constraints[candidate_collaborating_agent_ids[i][j]], 
+									increase_constraints_c[candidate_collaborating_agent_ids[i][j]], 
+									cost_c,
+									current_makespan, 
+									p.shortestPaths,
+									consider_agents);
+						collab_cost = std::max(collab_cost, cost_c);
+					}
+					else{
+						collab_cost = INF;
+						// break;
+					}	
+				}
+				// std::cerr << "Constraint Num = " << i << std::endl;
+				current_cost = std::min(current_cost, collab_cost);
+			}
+
+			if(current_cost > new_cost){
+				new_cost = current_cost;
+				constraint_c = candidate_constraints[i];
+				collaborating_agent_ids = candidate_collaborating_agent_ids[i];
+				
+			}
+		}
+		// printCollabConflict(constraint_c, collaborating_agent_ids);
+		// std::cerr << "Collaboration Conflict = " << current_makespan << " " << new_cost << std::endl;
+		// std::cin.get();
+		return true;
 	}
 
 	int countCollisionConflicts(int &agent_id, SearchState &state, SearchState &new_state, std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents,
@@ -686,7 +819,10 @@ public:
 		return count_conflicts;
 	}
 
-	bool getCollisionConstraints(std::vector<std::vector<SearchState>> &paths, std::vector<int> &agent_id_1, CollisionConstraint &constraint_1, std::vector<int> &agent_id_2, CollisionConstraint &constraint_2)
+	bool getCollisionConstraints(std::vector<std::vector<SearchState>> &paths, 
+		std::vector<int> &agent_id_1, CollisionConstraint &constraint_1, 
+		std::vector<int> &agent_id_2, CollisionConstraint &constraint_2,
+		Element p, int current_makespan)
 	{
 		int current_timestep = 0;
 		int maximum_timestep = 0;
@@ -694,6 +830,11 @@ public:
 			maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
 		// std::cout<<"MT: "<<maximum_timestep<<std::endl;
 
+		std::vector <std::vector <int>> candidate_collaborating_agent_ids_1;
+		std::vector <CollisionConstraint> candidate_constraints_1;
+
+		std::vector <std::vector <int>> candidate_collaborating_agent_ids_2;
+		std::vector <CollisionConstraint> candidate_constraints_2;
 
 		std::vector<int> current_path_id(mNumAgents, 0);
 		while(current_timestep < maximum_timestep)
@@ -762,17 +903,6 @@ public:
 				}
 			}
 
-			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			// {
-			// 	std::cout<<"SV: "<<source_vertices[agent_id]<<" "<<" TV: "<<target_vertices[agent_id]<<std::endl;
-			// 	// std::cout<<source_task_ids[agent_id]
-			// }
-
-			// for(int i=0; i<agent_ids.size(); i++)
-			//  std::cout<<agent_ids[i]<<" ";
-			// std::cout<<std::endl;
-			// std::cin.get();
-
 			PRINT<<"CT: "<<current_timestep<<std::endl;
 			for(int i=0; i<mNumAgents; i++)
 			for(int j=i+1; j<mNumAgents; j++)
@@ -806,8 +936,15 @@ public:
 						
 						if(safe_i == false || safe_j == false)
 						{
+							if(target_tasks_completed[i] >= mTasksList[i].size()) 
+								target_tasks_completed[i] = mTasksList[i].size()-1;
+
+							if(target_tasks_completed[j] >= mTasksList[j].size()) 
+								target_tasks_completed[j] = mTasksList[j].size()-1;
+
 							int tid_i = mTasksList[i][target_tasks_completed[i]].first;
 							int tid_j = mTasksList[j][target_tasks_completed[j]].first;
+							// std::cout << "TASK IDS = " << tid_i << " " << tid_j << std::endl;
 							PRINT<<"vertex conflict!"<<std::endl;
 							// std::cout << "TARGET TASK ID i = " << target_task_ids[i] << std::endl;
 							if(target_task_ids[i]==-1){
@@ -834,7 +971,13 @@ public:
 							constraint_2 = CollisionConstraint(target_vertices[j], tid_j, 
 								target_in_delivery[j], current_timestep+1);
 
-							return true;
+							candidate_collaborating_agent_ids_1.push_back(agent_id_1);
+							candidate_collaborating_agent_ids_2.push_back(agent_id_2);
+
+							candidate_constraints_1.push_back(constraint_1);
+							candidate_constraints_2.push_back(constraint_2);
+
+							// return true;
 						}
 					}
 				}
@@ -899,6 +1042,12 @@ public:
 									if(source_task_ids[k] == source_task_ids[j])
 										agent_id_2.push_back(k);
 
+							if(target_tasks_completed[i] >= mTasksList[i].size()) 
+								target_tasks_completed[i] = mTasksList[i].size()-1;
+
+							if(target_tasks_completed[j] >= mTasksList[j].size()) 
+								target_tasks_completed[j] = mTasksList[j].size()-1;
+
 							int tid_i = mTasksList[i][target_tasks_completed[i]].first;
 							int tid_j = mTasksList[j][target_tasks_completed[j]].first;
 
@@ -910,7 +1059,12 @@ public:
 							constraint_2 = CollisionConstraint(edge_2, tid_j, 
 								target_in_delivery[j], current_timestep+1);
 
-							return true;
+							candidate_collaborating_agent_ids_1.push_back(agent_id_1);
+							candidate_collaborating_agent_ids_2.push_back(agent_id_2);
+
+							candidate_constraints_1.push_back(constraint_1);
+							candidate_constraints_2.push_back(constraint_2);
+							// return true;
 						}
 					}
 				}
@@ -918,7 +1072,85 @@ public:
 			
 			current_timestep++;
 		}
-		return false;
+		if(candidate_collaborating_agent_ids_1.size()==0) return false;
+
+		double new_cost = -1;
+		for(int i=0; i<candidate_constraints_1.size(); i++){
+
+			std::vector<std::vector<CollisionConstraint>> increase_constraints_agent_id_1 = 
+						p.collision_constraints;
+			std::vector< double> costs_agent_id_1 = p.costs;
+			std::vector< std::vector<SearchState> > shortestPaths_agent_id_1 = p.shortestPaths;
+
+			std::vector<int> consider_agents;
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(std::find(candidate_collaborating_agent_ids_1[i].begin(),
+					candidate_collaborating_agent_ids_1[i].end(), agent_id) 
+					== candidate_collaborating_agent_ids_1[i].end())
+					consider_agents.push_back(agent_id);
+
+			double conflict_cost_1 = current_makespan*mUnitEdgeLength;
+			double conflict_cost_2 = current_makespan*mUnitEdgeLength;
+
+			for(int j=0; j<candidate_collaborating_agent_ids_1[i].size(); j++)
+			{
+				increase_constraints_agent_id_1[candidate_collaborating_agent_ids_1[i][j]].push_back(candidate_constraints_1[i]);
+				double cost_agent_id_1;
+				shortestPaths_agent_id_1[candidate_collaborating_agent_ids_1[i][j]] = 
+						computeShortestPath(candidate_collaborating_agent_ids_1[i][j], 
+							increase_constraints_agent_id_1[candidate_collaborating_agent_ids_1[i][j]], 
+							p.collaboration_constraints[candidate_collaborating_agent_ids_1[i][j]], 
+							p.non_collaboration_constraints[candidate_collaborating_agent_ids_1[i][j]], 
+							cost_agent_id_1,
+							current_makespan, 
+							p.shortestPaths,
+							consider_agents);
+				conflict_cost_1 = std::max(conflict_cost_1, cost_agent_id_1);
+				if(cost_agent_id_1 == INF) break;
+			}
+
+			std::vector<std::vector<CollisionConstraint>> increase_constraints_agent_id_2 = p.collision_constraints;
+			std::vector< double> costs_agent_id_2 = p.costs;
+			std::vector< std::vector<SearchState> > shortestPaths_agent_id_2 = p.shortestPaths;
+
+			consider_agents.clear();
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+				if(std::find(candidate_collaborating_agent_ids_2[i].begin(),
+					candidate_collaborating_agent_ids_2[i].end(), agent_id) 
+					== candidate_collaborating_agent_ids_2[i].end())
+					consider_agents.push_back(agent_id);
+
+			for(int j=0; j<candidate_collaborating_agent_ids_2[i].size(); j++)
+			{
+				increase_constraints_agent_id_2[candidate_collaborating_agent_ids_2[i][j]].push_back(candidate_constraints_2[i]);
+				double cost_agent_id_2;
+				shortestPaths_agent_id_2[candidate_collaborating_agent_ids_2[i][j]] = 
+						computeShortestPath(candidate_collaborating_agent_ids_2[i][j], 
+							increase_constraints_agent_id_2[candidate_collaborating_agent_ids_2[i][j]], 
+							p.collaboration_constraints[candidate_collaborating_agent_ids_2[i][j]], 
+							p.non_collaboration_constraints[candidate_collaborating_agent_ids_2[i][j]], 
+							cost_agent_id_2,
+							current_makespan, 
+							p.shortestPaths,
+							consider_agents);
+				conflict_cost_2 = std::max(conflict_cost_2, cost_agent_id_2);
+				if(cost_agent_id_2 == INF) break;
+			}
+			
+			double current_cost = std::min(conflict_cost_1, conflict_cost_2);
+
+			if(current_cost > new_cost){
+				new_cost = current_cost;
+				constraint_1 = candidate_constraints_1[i];
+				constraint_2 = candidate_constraints_2[i];
+				agent_id_1 = candidate_collaborating_agent_ids_1[i];
+				agent_id_2 = candidate_collaborating_agent_ids_2[i];
+			}
+		}
+		// printCollabConflict(constraint_c, collaborating_agent_ids);
+		// std::cerr << "Collision Conflict = " << current_makespan << " " << new_cost << std::endl;
+		// std::cin.get();
+		return true;
 	}
 
 	void printVertex(Vertex v){
@@ -1101,12 +1333,14 @@ public:
 
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 300000000)
-			{
-				auto solve_stop = high_resolution_clock::now();
-				mPlanningTime = (solve_stop - mSolveStartTime);
-				std::cout<<0<<" ";
-				return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+			if(debug_disabled){
+				if (timespent.count() > 300000000)
+				{
+					auto solve_stop = high_resolution_clock::now();
+					mPlanningTime = (solve_stop - mSolveStartTime);
+					std::cout<<0<<" ";
+					return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
+				}
 			}
 			
 
@@ -1122,12 +1356,17 @@ public:
 			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
-			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			
 			total_cost = maximum_timestep;
 			current_makespan=maximum_timestep;
 
-			// std::cout << "---------------SELECTED NODE-------------------" << std::endl;
-			// printNode(p);
+			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+			if(!debug_disabled){
+				std::cout<<"MT: "<<maximum_timestep<<std::endl;
+				std::cout << "---------------SELECTED NODE-------------------"<< std::endl;
+				printNode(p);
+				std::cin.get();
+			}
 			// if(numSearches%2 == 0)
 			{
 				// std::cout<<PQ.PQsize()<<std::endl;
@@ -1178,11 +1417,13 @@ public:
 			CollaborationConstraint constraint_c;
 
 			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, 
-				constraint_c, p.non_collaboration_constraints))
+				constraint_c, p.non_collaboration_constraints, p, current_makespan))
 			{
-				// std::cout << "-----Colab Conflict Found-----------" << std::endl;
-				// printCollabConflict(constraint_c, collaborating_agent_ids);
-				// std::cin.get();
+				if(!debug_disabled){
+					std::cout << "-----Colab Conflict Found-----------" << std::endl;
+					printCollabConflict(constraint_c, collaborating_agent_ids);
+					std::cin.get();
+				}
 
 				std::vector<int> consider_agents;
 				for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -1245,11 +1486,13 @@ public:
 						// std::cout<<"inserting left!"<<std::endl;
 						PQ.insert(costs_c, p.collision_constraints, increase_constraints_c,
 								p.non_collaboration_constraints, shortestPaths_c);
-						// std::cout << "---------------EXPANDED NODE 1-------------------" << std::endl;
-						// Element a(costs_c, p.collision_constraints, increase_constraints_c,
-						// 		p.non_collaboration_constraints, shortestPaths_c);
-						// printNode(a);
-						// std::cin.get();
+						if(!debug_disabled){
+							std::cout << "---------------EXPANDED NODE 1-------------------" << std::endl;
+							Element a(costs_c, p.collision_constraints, increase_constraints_c,
+									p.non_collaboration_constraints, shortestPaths_c);
+							printNode(a);
+							std::cin.get();
+						}
 					}
 				}
 				{
@@ -1303,11 +1546,13 @@ public:
 					{
 						PQ.insert(costs_c, p.collision_constraints, p.collaboration_constraints,
 								increase_constraints_c, shortestPaths_c);
-						// std::cout << "---------------EXPANDED NODE 2-------------------" << std::endl;
-						// Element a(costs_c, p.collision_constraints, p.collaboration_constraints,
-						// 		increase_constraints_c, shortestPaths_c);
-						// printNode(a);
-						// std::cin.get();
+						if(!debug_disabled){
+							std::cout << "---------------EXPANDED NODE 2-------------------" << std::endl;
+							Element a(costs_c, p.collision_constraints, p.collaboration_constraints,
+									increase_constraints_c, shortestPaths_c);
+							printNode(a);
+							std::cin.get();
+						}
 					}
 
 				}
@@ -1326,12 +1571,15 @@ public:
 
 			// std::cout<<"Calling CollaborationConstraint!"<<std::endl;
 
-			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2))
+			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2
+				,p, current_makespan))
 			{
-				// agent_id_1
-				// std::cout << "-----Colision Conflict Found-----------" << std::endl;
-				// printColConflict(agent_id_1, constraint_1, agent_id_2, constraint_2);
-				// std::cin.get();
+				if(!debug_disabled){
+					// agent_id_1
+					std::cout << "-----Colision Conflict Found-----------" << std::endl;
+					printColConflict(agent_id_1, constraint_1, agent_id_2, constraint_2);
+					std::cin.get();
+				}
 
 				PRINT<<"Collision Conflict found between:\n { ";
 				for(int i=0; i<agent_id_1.size();i++)
@@ -1394,11 +1642,13 @@ public:
 						p.non_collaboration_constraints, shortestPaths_agent_id_1);
 					auto stop1 = high_resolution_clock::now();
 					mQOTime += (stop1 - start1);
-					// std::cout << "---------------EXPANDED NODE 1-------------------" << std::endl;
-					// Element a(costs_agent_id_1,increase_constraints_agent_id_1, p.collaboration_constraints, 
-					// 	p.non_collaboration_constraints, shortestPaths_agent_id_1);
-					// printNode(a);
-					// std::cin.get();
+					if(!debug_disabled){
+						std::cout << "---------------EXPANDED NODE 1-------------------" << std::endl;
+						Element a(costs_agent_id_1,increase_constraints_agent_id_1, p.collaboration_constraints, 
+							p.non_collaboration_constraints, shortestPaths_agent_id_1);
+						printNode(a);
+						std::cin.get();
+					}
 			}
 
 				// 
@@ -1448,12 +1698,13 @@ public:
 						p.non_collaboration_constraints, shortestPaths_agent_id_2);
 					auto stop2 = high_resolution_clock::now();
 					mQOTime += (stop2 - start2);
-
-					// std::cout << "---------------EXPANDED NODE 2-------------------" << std::endl;
-					// Element a(costs_agent_id_2,increase_constraints_agent_id_2, p.collaboration_constraints, 
-					// 	p.non_collaboration_constraints, shortestPaths_agent_id_2);
-					// printNode(a);
-					// std::cin.get();
+					if(!debug_disabled){
+						std::cout << "---------------EXPANDED NODE 2-------------------" << std::endl;
+						Element a(costs_agent_id_2,increase_constraints_agent_id_2, p.collaboration_constraints, 
+							p.non_collaboration_constraints, shortestPaths_agent_id_2);
+						printNode(a);
+						std::cin.get();
+					}
 				}
 
 				continue;
@@ -1866,7 +2117,7 @@ public:
 		for (auto s:pathSegment)
 			path.push_back(s);
 		// std::cout << "CSP all out = " << costOut << std::endl;
-		// std::cout << "Max Timestep = " << path.at(path.size()-1).timestep << std::endl;
+		// std::cout << "CSP Max Timestep = " << path.at(path.size()-1).timestep << std::endl;
 		// std::cin.get();
 		costOut = path.at(path.size()-1).timestep*mUnitEdgeLength;
 		// costOut = costOut*mUnitEdgeLength;
