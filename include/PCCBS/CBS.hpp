@@ -613,8 +613,12 @@ public:
 				// return true;
 			}
 		}
-		
-		if(candidate_collaborating_agent_ids.size()==0) return false;
+		// std::cout << candidate_collaborating_agent_ids.size() << std::endl;
+		// return false;
+		if(candidate_collaborating_agent_ids.size()==0) {
+			collaborating_agent_ids.clear();
+			return false;
+		}
 		// return true;
 
 		double new_cost = -1;
@@ -947,6 +951,10 @@ public:
 							// std::cout << "TASK IDS = " << tid_i << " " << tid_j << std::endl;
 							PRINT<<"vertex conflict!"<<std::endl;
 							// std::cout << "TARGET TASK ID i = " << target_task_ids[i] << std::endl;
+
+							agent_id_1.clear();
+							agent_id_2.clear();
+							
 							if(target_task_ids[i]==-1){
 								agent_id_1.push_back(i);
 							}
@@ -971,6 +979,7 @@ public:
 							constraint_2 = CollisionConstraint(target_vertices[j], tid_j, 
 								target_in_delivery[j], current_timestep+1);
 
+							
 							candidate_collaborating_agent_ids_1.push_back(agent_id_1);
 							candidate_collaborating_agent_ids_2.push_back(agent_id_2);
 
@@ -1028,6 +1037,10 @@ public:
 							<<") ("<<source_vertices[j]<<","<<target_vertices[j]<<")"<<std::endl;
 							PRINT<<"agents: "<<i<<" "<<j<<std::endl;
 							PRINT<<"source_task_ids: "<<source_task_ids[i]<<" "<<source_task_ids[j]<<std::endl;
+
+							agent_id_1.clear();
+							agent_id_2.clear();
+
 							if(source_task_ids[i]==-1)
 								agent_id_1.push_back(i);
 							else
@@ -1059,6 +1072,7 @@ public:
 							constraint_2 = CollisionConstraint(edge_2, tid_j, 
 								target_in_delivery[j], current_timestep+1);
 
+							
 							candidate_collaborating_agent_ids_1.push_back(agent_id_1);
 							candidate_collaborating_agent_ids_2.push_back(agent_id_2);
 
@@ -1072,6 +1086,9 @@ public:
 			
 			current_timestep++;
 		}
+		// std::cout << candidate_collaborating_agent_ids_1.size() << std::endl;
+		// return false;
+
 		if(candidate_collaborating_agent_ids_1.size()==0) return false;
 
 		double new_cost = -1;
@@ -1777,11 +1794,12 @@ public:
 
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
 				
-
-			// std::cout<<"Press [ENTER] to display path: ";
-			// std::cin.get();
-			// displayPath(path_configs);
-			// printStats();
+			if(!debug_disabled){
+				std::cout<<"Press [ENTER] to display path: ";
+				std::cin.get();
+				displayPath(path_configs);
+				printStats();
+			}
 			return collision_free_path;
 		}
 
