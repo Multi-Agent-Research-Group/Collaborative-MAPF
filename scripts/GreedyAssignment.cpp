@@ -230,7 +230,8 @@ int main(int argc, char *argv[])
 				"Path to graph files")
 			("obstacleFile,o", po::value<std::string>()->default_value("/home/kushal/ros_ws/src/CMAPF/data/obstacles/easy"), 
 				"Path to obstacles files")
-			("planningProblemsFile,p",po::value<std::string>()->default_value("/home/kushal/ros_ws/src/CMAPF/data/greedy/"),
+			("planningProblemsFile,p",po::value<std::string>()->default_value
+				("/home/kushal/ros_ws/src/CMAPF/data/greedy/4_12_1/"),
 			 "Path to planning problems file")
 			("num_agents,n", po::value<int>()->default_value(2), "Number of Agents")
 			("num_tasks,m", po::value<int>()->default_value(5), "Number of Tasks")
