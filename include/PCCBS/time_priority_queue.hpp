@@ -36,6 +36,12 @@ struct SearchState
 			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery );
 	}
 
+	bool operator!=(const SearchState &other) const
+	{ 
+		return (vertex != other.vertex || timestep != other.timestep
+			|| tasks_completed != other.tasks_completed || in_delivery != other.in_delivery );
+	}
+
 };
 
 bool compareCollaborationConstraints(SearchState &i1, SearchState &i2)

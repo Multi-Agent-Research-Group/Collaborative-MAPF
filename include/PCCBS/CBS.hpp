@@ -670,7 +670,9 @@ public:
 									cost_c,
 									current_makespan, 
 									p.shortestPaths,
-									consider_agents);
+									consider_agents,
+									candidate_constraints[i].task_id,
+									true,-1);
 						collab_cost = std::max(collab_cost, cost_c);
 					}
 					else{
@@ -709,7 +711,8 @@ public:
 						}
 					}
 					if(allowed){
-						increase_constraints_c[candidate_collaborating_agent_ids[i][j]].push_back(candidate_constraints[i]);
+						increase_constraints_c[candidate_collaborating_agent_ids[i][j]].
+						push_back(candidate_constraints[i]);
 						double cost_c;
 						shortestPaths_c[candidate_collaborating_agent_ids[i][j]] = 
 								computeShortestPath(candidate_collaborating_agent_ids[i][j], 
@@ -719,7 +722,10 @@ public:
 									cost_c,
 									current_makespan, 
 									p.shortestPaths,
-									consider_agents);
+									consider_agents,
+									candidate_constraints[i].task_id,
+									false,
+									candidate_constraints[i].timestep);
 						collab_cost = std::max(collab_cost, cost_c);
 					}
 					else{
@@ -1111,7 +1117,8 @@ public:
 
 			for(int j=0; j<candidate_collaborating_agent_ids_1[i].size(); j++)
 			{
-				increase_constraints_agent_id_1[candidate_collaborating_agent_ids_1[i][j]].push_back(candidate_constraints_1[i]);
+				increase_constraints_agent_id_1[candidate_collaborating_agent_ids_1[i][j]].
+				push_back(candidate_constraints_1[i]);
 				double cost_agent_id_1;
 				shortestPaths_agent_id_1[candidate_collaborating_agent_ids_1[i][j]] = 
 						computeShortestPath(candidate_collaborating_agent_ids_1[i][j], 
@@ -1121,7 +1128,10 @@ public:
 							cost_agent_id_1,
 							current_makespan, 
 							p.shortestPaths,
-							consider_agents);
+							consider_agents,
+							candidate_constraints_1[i].tasks_completed,
+							false,
+							candidate_constraints_1[i].timestep);
 				conflict_cost_1 = std::max(conflict_cost_1, cost_agent_id_1);
 				if(cost_agent_id_1 == INF) break;
 			}
@@ -1139,7 +1149,8 @@ public:
 
 			for(int j=0; j<candidate_collaborating_agent_ids_2[i].size(); j++)
 			{
-				increase_constraints_agent_id_2[candidate_collaborating_agent_ids_2[i][j]].push_back(candidate_constraints_2[i]);
+				increase_constraints_agent_id_2[candidate_collaborating_agent_ids_2[i][j]].
+				push_back(candidate_constraints_2[i]);
 				double cost_agent_id_2;
 				shortestPaths_agent_id_2[candidate_collaborating_agent_ids_2[i][j]] = 
 						computeShortestPath(candidate_collaborating_agent_ids_2[i][j], 
@@ -1149,7 +1160,10 @@ public:
 							cost_agent_id_2,
 							current_makespan, 
 							p.shortestPaths,
-							consider_agents);
+							consider_agents,
+							candidate_constraints_2[i].tasks_completed,
+							false,
+							candidate_constraints_2[i].timestep);
 				conflict_cost_2 = std::max(conflict_cost_2, cost_agent_id_2);
 				if(cost_agent_id_2 == INF) break;
 			}
@@ -1480,6 +1494,7 @@ public:
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
 						// std::cout << "Colab size = " << increase_constraints_c[collaborating_agent_ids[i]].size() << std::endl;
+						int tid = constraint_c.task_id;
 						shortestPaths_c[collaborating_agent_ids[i]] = 
 								computeShortestPath(collaborating_agent_ids[i], 
 									p.collision_constraints[collaborating_agent_ids[i]], 
@@ -1488,7 +1503,9 @@ public:
 									cost_c,
 									current_makespan, 
 									p.shortestPaths,
-									consider_agents);
+									consider_agents,
+									tid,
+									true,-1);
 						costs_c[collaborating_agent_ids[i]] = cost_c;
 						// std::cout << "colab cost = " << cost_c << std::endl;
 						if(cost_c == INF)
@@ -1542,6 +1559,7 @@ public:
 						}
 						increase_constraints_c[collaborating_agent_ids[i]].push_back(constraint_c);
 						double cost_c;
+						int tid = constraint_c.task_id;
 						shortestPaths_c[collaborating_agent_ids[i]] = 
 								computeShortestPath(collaborating_agent_ids[i], 
 									p.collision_constraints[collaborating_agent_ids[i]], 
@@ -1550,7 +1568,10 @@ public:
 									cost_c,
 									current_makespan, 
 									p.shortestPaths,
-									consider_agents);
+									consider_agents,
+									tid,
+									false,
+									constraint_c.timestep);
 						costs_c[collaborating_agent_ids[i]] = cost_c;
 						if(cost_c == INF)
 						{
@@ -1631,6 +1652,7 @@ public:
 
 				for(int i=0; i<agent_id_1.size(); i++)
 				{
+					int tid = constraint_1.tasks_completed;
 					increase_constraints_agent_id_1[agent_id_1[i]].push_back(constraint_1);
 					double cost_agent_id_1;
 					shortestPaths_agent_id_1[agent_id_1[i]] = 
@@ -1641,7 +1663,10 @@ public:
 								cost_agent_id_1,
 								current_makespan, 
 								p.shortestPaths,
-								consider_agents);
+								consider_agents,
+								tid,
+								false,
+								constraint_1.timestep);
 					costs_agent_id_1[agent_id_1[i]] = cost_agent_id_1;
 
 					if(cost_agent_id_1 == INF)
@@ -1685,6 +1710,7 @@ public:
 
 				for(int i=0; i<agent_id_2.size(); i++)
 				{
+					int tid = constraint_2.tasks_completed;
 					increase_constraints_agent_id_2[agent_id_2[i]].push_back(constraint_2);
 					double cost_agent_id_2;
 					shortestPaths_agent_id_2[agent_id_2[i]] = 
@@ -1695,7 +1721,10 @@ public:
 								cost_agent_id_2,
 								current_makespan, 
 								p.shortestPaths,
-								consider_agents);
+								consider_agents,
+								tid,
+								false,
+								constraint_2.timestep);
 
 					costs_agent_id_2[agent_id_2[i]] = cost_agent_id_2;
 					
@@ -1826,7 +1855,10 @@ public:
 						ind_cost, 
 						initial_makespan,
 						shortestPaths, 
-						consider_agents);
+						consider_agents,
+						-1,
+						false,
+						-1);
 			shortestPaths.push_back(path);
 			costs.push_back(ind_cost);
 			consider_agents.push_back(agent_id);
@@ -2004,6 +2036,10 @@ public:
 		return heuristics;
 	}
 
+	void debugPrint(SearchState s){
+		std::cout<<"     -- CV: "<<s.vertex<<" CT: "<<s.timestep<<" CTC: "<<s.tasks_completed
+				<<" CID: "<<s.in_delivery<<std::endl;
+	}
 	std::vector<SearchState> computeShortestPath(int &agent_id, 
 		std::vector<CollisionConstraint> &collision_constraints,
 		std::vector<CollaborationConstraint> &collaboration_constraints, 
@@ -2011,7 +2047,10 @@ public:
 		double& costOut,
 		int &current_makespan, 
 		std::vector<std::vector<SearchState> > &shortestPaths, 
-		std::vector<int> &consider_agents)
+		std::vector<int> &consider_agents,
+		int last_task_id,
+		bool collab,
+		int csp_timestep)
 	{
 		// std::cout << current_makespan << std::endl; 
 		// std::cout<<"\n --------> CSP call! -- Agent ID: "<<agent_id<<"\n\n";
@@ -2030,6 +2069,19 @@ public:
 		
 
 		std::vector <SearchState> wayPoints;
+
+		int tasks_completed = -1;
+		if(last_task_id!=-1){
+			for(int i=0; i<mTasksList[agent_id].size(); i++)
+				if(last_task_id == mTasksList[agent_id][i].first)
+					tasks_completed = i;
+			if (tasks_completed==-1) {
+				std::cout << last_task_id << std::endl;
+				std::cout << "-1 tasks" << std::endl;
+				std::cin.get();
+			}
+		}
+
 		// std::cout << "Colab size = " << collaboration_constraints.size() << std::endl;
 		for( CollaborationConstraint &c: collaboration_constraints)
 		{
@@ -2072,75 +2124,227 @@ public:
 		}
 
 		std::sort(wayPoints.begin(), wayPoints.end(), compareCollaborationConstraints);
+
 		// auto stop1 = high_resolution_clock::now();
 		// mMapOperationsTime += (stop1 - start1); 
 
 		double segmentCost;
 		int startTimestep = 0;
-		int tasks_completed = 0;
+		// int tasks_completed = 0;
 		// std::cout << "Waypoints size = " << wayPoints.size() << std::endl;
-		for(auto constraintState: wayPoints){
-			SearchState goal = constraintState;
-			// std::cout << goal.vertex << " " << start.vertex << std::endl;
-			// std::cin.get();
+		int cur_idx = 0;
+
+		if(last_task_id == -1){
+			SearchState goal = SearchState();
 			std::vector<SearchState> pathSegment = 
 				computeShortestPathSegment(agent_id, 
 					collision_constraints, start, goal,
 					non_collaboration_constraints, segmentCost, 
-					startTimestep, constraintState.timestep, 
-					nonCollabMap, constraintState.timestep, 
+					startTimestep, -1, 
+					nonCollabMap, current_makespan, 
 					shortestPaths, consider_agents);
-			costOut += segmentCost;
+			
 			if (pathSegment.size()==0) {
 				costOut = INF;
 				return std::vector<SearchState>();
 			}
-
-			start = goal;
-			if (goal.in_delivery == true) 
-				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
-			else
-				start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
-			
-			int altTimestep = constraintState.timestep;
-			startTimestep = pathSegment.at(pathSegment.size()-1).timestep;
-			if(startTimestep!=altTimestep){
-				costOut = INF;
-				std::cout << "wrong\n";
-				std::cout << altTimestep << startTimestep << std::endl;
-				std::cin.get();
-				return std::vector<SearchState>();
-			}
-
-			for (auto s:pathSegment)
+			for(auto s: pathSegment){
 				path.push_back(s);
+			}
+			costOut = path.at(path.size()-1).timestep*mUnitEdgeLength;
+			// costOut = costOut*mUnitEdgeLength;
+			return path;
 		}
 
 		SearchState goal = SearchState();
-		std::vector<SearchState> pathSegment = 
-			computeShortestPathSegment(agent_id, 
-				collision_constraints, start, goal,
-				non_collaboration_constraints, segmentCost, 
-				startTimestep, -1, 
-				nonCollabMap, current_makespan, 
-				shortestPaths, consider_agents);
 
-		
-		if (pathSegment.size()==0) {
-			costOut = INF;
-			return std::vector<SearchState>();
+		// std::cerr << last_task_id << std::endl;
+		if(collab){
+			// std::cerr << "in collab\n";
+			std::vector<SearchState> Segment1, Segment2;
+			for(int idx = 0; idx < wayPoints.size(); idx++){
+				goal = wayPoints[idx];
+				if(goal.tasks_completed == tasks_completed){
+					Segment1 = 
+					computeShortestPathSegment(agent_id, 
+						collision_constraints, start, goal,
+						non_collaboration_constraints, segmentCost, 
+						start.timestep, goal.timestep, 
+						nonCollabMap, goal.timestep, 
+						shortestPaths, consider_agents);
+					if (Segment1.size()==0) {
+						costOut = INF;
+						return std::vector<SearchState>();
+					}
+
+					if (goal.in_delivery == true) 
+						goal = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+					else
+						goal = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
+
+					startTimestep = Segment1.at(Segment1.size()-1).timestep;
+					SearchState next_goal = SearchState();
+
+					// std::cout << "Segment2\n";
+					if(idx==wayPoints.size()-1){
+						Segment2 = 
+							computeShortestPathSegment(agent_id, 
+								collision_constraints, goal, next_goal,
+								non_collaboration_constraints, segmentCost, 
+								goal.timestep, -1, 
+								nonCollabMap, current_makespan, 
+								shortestPaths, consider_agents);
+						
+						if (Segment2.size()==0) {
+							costOut = INF;
+							return std::vector<SearchState>();
+						}
+						// std::cout << "tfdj\n";
+						next_goal = Segment2.at(Segment2.size()-1);
+						// std::cout << "tfdj\n";
+					}
+					else{
+						// std::cout << "Segment2else\n";
+						next_goal = wayPoints[idx+1];
+						// std::cout << (goal.timestep) << " " << next_goal.timestep << std::endl;
+						// printState(
+						Segment2 = 
+						computeShortestPathSegment(agent_id, 
+							collision_constraints, goal, next_goal,
+							non_collaboration_constraints, segmentCost, 
+							goal.timestep, next_goal.timestep, 
+							nonCollabMap, next_goal.timestep, 
+							shortestPaths, consider_agents);
+						if (Segment2.size()==0) {
+							costOut = INF;
+							return std::vector<SearchState>();
+						}
+					}
+					goal = next_goal;
+					break;
+				}
+				startTimestep = goal.timestep;
+				if (goal.in_delivery == true) 
+					start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+				else
+					start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
+			}
+
+			//fill up path appropriately
+			// std::cout << "whyy\n";
+			for(int idx = 0; idx < shortestPaths[agent_id].size(); idx++){
+				if(shortestPaths[agent_id][idx] == start){
+					for(auto s: Segment1){
+						path.push_back(s);
+					}
+					for(auto s: Segment2){
+						path.push_back(s);
+					}
+					SearchState next_goal = SearchState();
+					if (goal.in_delivery == true) 
+						next_goal = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+					else
+						next_goal = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
+					while(idx !=shortestPaths[agent_id].size() && shortestPaths[agent_id][idx] != goal)
+						idx++;
+					// if(shortestPaths[agent_id][idx] != next_goal) idx+=1;
+				}
+				else{
+					path.push_back(shortestPaths[agent_id][idx]);
+				}
+			}
+			// std::cout << "whyy\n";
 		}
-		// costOut = pathSegment.at(pathSegment.size()-1).timestep*mUnitEdgeLength;
-		costOut += segmentCost;
-		for (auto s:pathSegment)
-			path.push_back(s);
-		// std::cout << "CSP all out = " << costOut << std::endl;
-		// std::cout << "CSP Max Timestep = " << path.at(path.size()-1).timestep << std::endl;
-		// std::cin.get();
+		else{
+			// std::cerr << "in col\n";
+			int cur_idx=0;
+			for(int idx = 0; idx < wayPoints.size(); idx++){
+				goal = wayPoints[idx];
+				if(goal.timestep >= csp_timestep && start.timestep <= csp_timestep){
+					std::vector<SearchState> pathSegment = 
+					computeShortestPathSegment(agent_id, 
+						collision_constraints, start, goal,
+						non_collaboration_constraints, segmentCost, 
+						start.timestep, goal.timestep, 
+						nonCollabMap, goal.timestep, 
+						shortestPaths, consider_agents);
+					if (pathSegment.size()==0) {
+						costOut = INF;
+						return std::vector<SearchState>();
+					}
+					for(auto s: pathSegment){
+						path.push_back(s);
+					}
+					if (goal.in_delivery == true) 
+						start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+					else
+						start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
+					// std::cout << "here errror\n";
+					// std::cout << "goal state\n";
+					// debugPrint(goal);
+
+					while(shortestPaths[agent_id][cur_idx] != goal && shortestPaths[agent_id][cur_idx] != start){
+						if(cur_idx == shortestPaths[agent_id].size()){
+							std::cout << "whyytfffffff";
+							std::cin.get();
+						}
+						// std::cout << "state at --- " << cur_idx << "\n";
+						// debugPrint(shortestPaths[agent_id][cur_idx]);
+						if(shortestPaths[agent_id][cur_idx] != start) 
+							cur_idx++;
+					}
+					// cur_idx+=1;
+					
+				}
+				else{
+					// std::cout << "there errror\n";
+					// std::cout << csp_timestep << std::endl;
+					if (goal.in_delivery == true) 
+						start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed+1,false);
+					else
+						start = SearchState(goal.vertex,goal.timestep,goal.tasks_completed,true);
+					// start = goal;
+					while(shortestPaths[agent_id][cur_idx] != goal && shortestPaths[agent_id][cur_idx] != start){
+						path.push_back(shortestPaths[agent_id][cur_idx]);
+						cur_idx++;
+					}
+					if(shortestPaths[agent_id][cur_idx] != start) 
+						cur_idx+=1;
+				}
+				startTimestep = path.at(path.size()-1).timestep;
+			}
+
+			if(start.timestep <= csp_timestep){
+				SearchState goal = SearchState();
+				std::vector<SearchState> pathSegment = 
+					computeShortestPathSegment(agent_id, 
+						collision_constraints, start, goal,
+						non_collaboration_constraints, segmentCost, 
+						start.timestep, -1, 
+						nonCollabMap, current_makespan, 
+						shortestPaths, consider_agents);
+				
+				if (pathSegment.size()==0) {
+					costOut = INF;
+					return std::vector<SearchState>();
+				}
+				for(auto s: pathSegment){
+					path.push_back(s);
+				}
+			}
+			else{
+				while(cur_idx != shortestPaths[agent_id].size()){
+					path.push_back(shortestPaths[agent_id][cur_idx]);
+					cur_idx++;
+				}
+			}
+		}
+
 		costOut = path.at(path.size()-1).timestep*mUnitEdgeLength;
 		// costOut = costOut*mUnitEdgeLength;
 		return path;
 	}
+
 	std::vector<SearchState> computeShortestPathSegment(int &agent_id, 
 		std::vector<CollisionConstraint> &collision_constraints,
 		SearchState start_state, SearchState goal_state, 
