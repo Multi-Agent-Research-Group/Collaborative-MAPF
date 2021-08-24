@@ -48,6 +48,11 @@ struct CollaborationConstraint
 	CollaborationConstraint() {}
 	CollaborationConstraint(Vertex _v, int _task_id, bool _is_pickup, int _t) 
 		: v(_v), task_id(_task_id), is_pickup(_is_pickup), timestep(_t){}
+	bool operator==(const CollaborationConstraint &other) const
+	{ 
+		return (v == other.v && timestep == other.timestep
+			&& task_id == other.task_id && is_pickup == other.is_pickup );
+	}
 };
 
 struct Element
