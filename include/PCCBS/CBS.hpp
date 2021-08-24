@@ -53,6 +53,14 @@ namespace PCCBS {
 
 using namespace BGL_DEFINITIONS;
 
+struct collaboration_constraint_hash
+{
+	std::size_t operator()(const CollaborationConstraint& k) const
+	{
+		return size_t(k.is_pickup)+2*size_t(k.task_id)+size_t(k.v)*2*16+size_t(k.timestep)*2*16*1024;
+	}
+};
+
 class CBS
 {
 
@@ -76,6 +84,9 @@ public:
 	std::chrono::duration<double, std::micro> mPlanningTime;
 	std::chrono::duration<double, std::micro> mPreprocessTime;
 	std::chrono::duration<double, std::micro> mMapOperationsTime;
+
+	std::chrono::duration<double, std::micro> mGetCollisionTime;
+	std::chrono::duration<double, std::micro> mGetCollaborationTime;
 
 	std::string mImagePath;
 	std::vector<int> mTaskStartTimestep;
@@ -114,6 +125,7 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
+	boost::unordered_map<CollaborationConstraint, int, collaboration_constraint_hash> mWaypointHashMap;
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
 
 	double mUnitEdgeLength = 0.1;
@@ -193,6 +205,8 @@ public:
 		mPlanningTime = t2-t1;
 		mPreprocessTime = t2-t1;
 		mMapOperationsTime = t2-t1;
+		mGetCollisionTime = t2-t1;
+		mGetCollaborationTime = t2-t1;
 
 		mCollisionIterations = 0;
 		mCollaborationIterations = 0;
@@ -325,11 +339,27 @@ public:
 	void printStats()
 	{
 		std::cout<<mPlanningTime.count()/1000000.0<<" "<<mCBSIterations<<std::endl;
-		// std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
-		// std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
-		// std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
-		// std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
-		// std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
+		std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
+		std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
+		std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
+		std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
+		std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
+		std::cout<<"Get heuristics time: "<<mHeuristicsTime.count()/1000000.0<<std::endl;
+		std::cout<<"Collision Hashing time: "<<mCHTime.count()/1000000.0<<std::endl;
+		std::cout<<"Map operations time: "<<mMapOperationsTime.count()/1000000.0<<std::endl;
+		std::cout<<"Count Collision ConflictsTime: "<<mCollisionCTime.count()/1000000.0<<std::endl;
+		std::cout<<"Count Collaboration Conflicts Time: "<<mCollabCTime.count()/1000000.0<<std::endl;
+		std::cout<<"Get Collision ConflictsTime: "<<mGetCollisionTime.count()/1000000.0<<std::endl;
+		std::cout<<"Get Collaboration Conflicts Time: "<<mGetCollaborationTime.count()/1000000.0<<std::endl;
+
+		for (auto it = mWaypointHashMap.begin(); it != mWaypointHashMap.end(); it++)
+		{
+		    printCollabConstraint(it->first);
+		    std::cout <<"Number of times = "    // string (key)
+		              << ':'
+		              << it->second   // string's value 
+		              << std::endl;
+		}
 	}
 
 
@@ -522,6 +552,7 @@ public:
 		std::vector<std::vector<CollaborationConstraint>> &non_collaboration_constraints,
 		Element p, int current_makespan)
 	{
+		auto start1 = high_resolution_clock::now();
 		std::vector <std::vector <int>> candidate_collaborating_agent_ids;
 		std::vector <CollaborationConstraint> candidate_constraints;
 
@@ -615,7 +646,10 @@ public:
 		}
 		// std::cout << candidate_collaborating_agent_ids.size() << std::endl;
 		// return false;
+
 		if(candidate_collaborating_agent_ids.size()==0) {
+			auto stop1 = high_resolution_clock::now();
+			mGetCollaborationTime += (stop1 - start1);
 			collaborating_agent_ids.clear();
 			return false;
 		}
@@ -741,6 +775,8 @@ public:
 		// printCollabConflict(constraint_c, collaborating_agent_ids);
 		// std::cerr << "Collaboration Conflict = " << current_makespan << " " << new_cost << std::endl;
 		// std::cin.get();
+		auto stop1 = high_resolution_clock::now();
+		mGetCollaborationTime += (stop1 - start1);
 		return true;
 	}
 
@@ -748,6 +784,7 @@ public:
 		std::vector<boost::unordered_map<std::pair<int,int>, bool >> &mVertexCollisionPathsMap,
 		std::vector<boost::unordered_map<std::pair<int,std::pair<int,int>>, bool >> &mEdgeCollisionPathsMap)
 	{
+		// return 0;
 		auto start1 = high_resolution_clock::now();
 
 		if(state.timestep + 1 != new_state.timestep)
@@ -828,6 +865,7 @@ public:
 		std::vector<int> &agent_id_2, CollisionConstraint &constraint_2,
 		Element p, int current_makespan)
 	{
+		auto start1 = high_resolution_clock::now();
 		int current_timestep = 0;
 		int maximum_timestep = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -1089,7 +1127,13 @@ public:
 		// std::cout << candidate_collaborating_agent_ids_1.size() << std::endl;
 		// return false;
 
-		if(candidate_collaborating_agent_ids_1.size()==0) return false;
+		if(candidate_collaborating_agent_ids_1.size()==0) {
+			agent_id_1.clear();
+			agent_id_2.clear();
+			auto stop1 = high_resolution_clock::now();
+			mGetCollisionTime += (stop1 - start1);
+			return false;
+		}
 
 		double new_cost = -1;
 		for(int i=0; i<candidate_constraints_1.size(); i++){
@@ -1164,6 +1208,8 @@ public:
 				agent_id_2 = candidate_collaborating_agent_ids_2[i];
 			}
 		}
+		auto stop1 = high_resolution_clock::now();
+		mGetCollisionTime += (stop1 - start1);
 		// printCollabConflict(constraint_c, collaborating_agent_ids);
 		// std::cerr << "Collision Conflict = " << current_makespan << " " << new_cost << std::endl;
 		// std::cin.get();
@@ -1198,6 +1244,17 @@ public:
 			}
 			std::cout << std::endl;
 		}
+	}
+
+	void printCollabConstraint(CollaborationConstraint c){
+		// return;
+		std::cout << "Task ID: " << c.task_id << std::endl;
+		std::cout << "Timestep: "<< c.timestep << std::endl;
+		std::cout << "Is Pickup?: "<< (int)c.is_pickup << std::endl;
+		std::cout << "Position: ";
+		std::cout<<" - ("<<
+			int( (mGraphs[0][c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraphs[0][c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
 	}
 
 	void printCollabConflict(CollaborationConstraint c, std::vector <int> collaborating_agent_ids){
@@ -1351,7 +1408,7 @@ public:
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
 			if(debug_disabled){
-				if (timespent.count() > 300000000)
+				if (timespent.count() > 3000000000)
 				{
 					auto solve_stop = high_resolution_clock::now();
 					mPlanningTime = (solve_stop - mSolveStartTime);
@@ -1436,6 +1493,13 @@ public:
 			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, 
 				constraint_c, p.non_collaboration_constraints, p, current_makespan))
 			{
+				if(mWaypointHashMap.find(constraint_c)!=mWaypointHashMap.end()){
+					std::cout << "FOUND A REPEAT\n";
+					mWaypointHashMap[constraint_c]+=1;
+				}
+				else{
+					mWaypointHashMap[constraint_c]=1;
+				}
 				if(!debug_disabled){
 					std::cout << "-----Colab Conflict Found-----------" << std::endl;
 					printCollabConflict(constraint_c, collaborating_agent_ids);
@@ -1797,12 +1861,12 @@ public:
 			if(!debug_disabled){
 				std::cout<<"Press [ENTER] to display path: ";
 				std::cin.get();
-				displayPath(path_configs);
-				printStats();
+				displayPath(path_configs);		
 			}
+			// printStats();
 			return collision_free_path;
 		}
-
+		std::cout << "CBS FAILED WTF IS WRONG\n";
 		return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 	}
 
@@ -1991,7 +2055,7 @@ public:
 			}
 			mHValueMap[std::make_pair(agent_id,state)] = h_value;
 		}
-		std::vector<double> heuristics(6,g_value);
+		std::vector<double> heuristics(6,h_value);
 		heuristics[0] = std::max(0.0, g_value + h_value - current_makespan);
 		heuristics[1] = count_collaboration_conflicts;
 		heuristics[2] = count_collision_conflicts;
@@ -2302,8 +2366,9 @@ public:
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 1000000000)
+			if (timespent.count() > 3000000000)
 			{
+				std::cout << "CSP TIMEOUT WTF IS WRONG\n";
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
 				costOut = INF;
@@ -2372,9 +2437,12 @@ public:
 					// 		break;
 					// 	}
 					// }
+					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, true);
 					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
+					auto yoma12 = high_resolution_clock::now();
+					mMapOperationsTime += yoma12-yoma11;
 					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
@@ -2419,10 +2487,13 @@ public:
 					// 		break;
 					// 	}
 					// }
+					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, false);
 					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
 					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					auto yoma12 = high_resolution_clock::now();
+					mMapOperationsTime += yoma12-yoma11;
 					if(allowed)
 					{
 						SearchState new_state= SearchState(current_vertex, current_timestep, 
