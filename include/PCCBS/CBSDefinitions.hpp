@@ -26,6 +26,8 @@ struct CollisionConstraint
 {
 	int constraint_type;  // 1 -> vertex collision_constraint 2 -> edge collision_constraint
 	Vertex v;
+	Vertex v1;
+	Vertex v2;
 	Edge e;	//edge
 	int tasks_completed;
 	bool in_delivery;
@@ -36,6 +38,34 @@ struct CollisionConstraint
 		: v(_v), tasks_completed(_tasks_completed), in_delivery(_in_delivery), timestep(_t), constraint_type(1) {}
 	CollisionConstraint(Edge _e, int _tasks_completed, bool _in_delivery, int _t) 
 		: e(_e), tasks_completed(_tasks_completed), in_delivery(_in_delivery), timestep(_t), constraint_type(2) {}
+
+	bool operator==(const CollisionConstraint &other) const
+	{ 
+		return (v == other.v && timestep == other.timestep
+			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery && e==other.e);
+	}
+};
+
+struct collision_hash
+{
+  std::size_t operator()(const CollisionConstraint &k1) const
+  {
+	using namespace boost;
+	using boost::hash_combine;
+	size_t seed = 42;
+	if(k1.constraint_type==2){
+		hash_combine(seed, k1.v1);
+		hash_combine(seed, k1.v2);
+	}
+	else{
+		hash_combine(seed, k1.v);
+		hash_combine(seed, k1.v);
+	}
+	hash_combine(seed, k1.tasks_completed);
+	hash_combine(seed, k1.in_delivery);
+	hash_combine(seed, k1.timestep);
+	return seed;
+  }
 };
 
 struct CollaborationConstraint

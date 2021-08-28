@@ -1970,16 +1970,25 @@ public:
 		std::vector<SearchState> path;
 		SearchState start = SearchState(mStartVertex[agent_id], 0, 0, 0);
 
-		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap;
+		boost::unordered_map <SearchState, int, state_hash> nonCollabMap;
 
+		boost::unordered_map <CollisionConstraint, int, collision_hash> nonCollisionMap;
 		
 		for(CollaborationConstraint &c: non_collaboration_constraints)
 		{
 			SearchState state = SearchState(c.v,c.timestep,c.task_id,c.is_pickup);
-			nonCollabMap[std::make_pair(c.timestep, state)] = 1;
+			nonCollabMap[state] = 1;
+		}
+
+		for(CollisionConstraint &c: collision_constraints)
+		{
+			if(c.constraint_type==2){
+				c.v1 = source(c.e, mGraphs[0]);
+				c.v2 = target(c.e, mGraphs[0]);
+			}
+			nonCollisionMap[c] = 1;
 		}
 		
-
 		std::vector <SearchState> wayPoints;
 		// std::cout << "Colab size = " << collaboration_constraints.size() << std::endl;
 		for( CollaborationConstraint &c: collaboration_constraints)
@@ -2040,7 +2049,8 @@ public:
 					non_collaboration_constraints, segmentCost, 
 					startTimestep, constraintState.timestep, 
 					nonCollabMap, constraintState.timestep, 
-					shortestPaths, consider_agents);
+					shortestPaths, consider_agents,
+					nonCollisionMap);
 			costOut += segmentCost;
 			if (pathSegment.size()==0) {
 				costOut = INF;
@@ -2074,7 +2084,8 @@ public:
 				non_collaboration_constraints, segmentCost, 
 				startTimestep, -1, 
 				nonCollabMap, current_makespan, 
-				shortestPaths, consider_agents);
+				shortestPaths, consider_agents,
+				nonCollisionMap);
 
 		
 		if (pathSegment.size()==0) {
@@ -2097,9 +2108,10 @@ public:
 		SearchState start_state, SearchState goal_state, 
 		std::vector<CollaborationConstraint> &non_collaboration_constraints, double& costOut, 
 		int start_timestep, int collaboration_timestep, 
-		boost::unordered_map <std::pair <int, SearchState>, int, time_state_hash> nonCollabMap,
+		boost::unordered_map <SearchState, int, state_hash> nonCollabMap,
 		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, 
-		std::vector<int> &consider_agents)
+		std::vector<int> &consider_agents, 
+		boost::unordered_map <CollisionConstraint, int, collision_hash> &nonCollisionMap)
 	{
 		// old_computeShortestPathSegment(agent_id,collision_constraints,
 		// 	start_state,goal_state,non_collaboration_constraints,costOut, 
@@ -2327,10 +2339,10 @@ public:
 					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, true);
-					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
+					// std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
 					auto yoma12 = high_resolution_clock::now();
 					mMapOperationsTime += yoma12-yoma11;
-					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					if(nonCollabMap.find(key_state)!=nonCollabMap.end()) allowed = false;
 					if(allowed)
 					{
 						SearchState new_state = SearchState(current_vertex, current_timestep, 
@@ -2377,8 +2389,8 @@ public:
 					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, false);
-					std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
-					if(nonCollabMap.find(key)!=nonCollabMap.end()) allowed = false;
+					// std::pair <int, SearchState> key = std::make_pair(current_timestep, key_state);
+					if(nonCollabMap.find(key_state)!=nonCollabMap.end()) allowed = false;
 					auto yoma12 = high_resolution_clock::now();
 					mMapOperationsTime += yoma12-yoma11;
 					if(allowed)
@@ -2421,20 +2433,25 @@ public:
 				// std::cout << "in col\n";
 				auto start2 = high_resolution_clock::now();
 				bool col = false;
-				for( CollisionConstraint &c: collision_constraints)
-				{
-					int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					if( c.constraint_type == 1 && current_vertex == c.v 
-						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1)
-					// if( c.constraint_type == 1 && current_vertex == c.v 
-					//  	&& c.timestep == current_timestep + 1)
-					{
-						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-						col =true;
-						break;
-					}
-				}
+
+				int task_id = mTasksList[agent_id][current_tasks_completed].first;
+				CollisionConstraint c2(current_vertex, task_id, current_in_delivery, current_timestep+1);
+				if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) col=true;
+
+				// for( CollisionConstraint &c: collision_constraints)
+				// {
+				// 	int task_id = mTasksList[agent_id][current_tasks_completed].first;
+				// 	if( c.constraint_type == 1 && current_vertex == c.v 
+				// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
+				// 	 	&& c.timestep == current_timestep + 1)
+				// 	// if( c.constraint_type == 1 && current_vertex == c.v 
+				// 	//  	&& c.timestep == current_timestep + 1)
+				// 	{
+				// 		// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+				// 		col =true;
+				// 		break;
+				// 	}
+				// }
 				auto stop2 = high_resolution_clock::now();
 				mCCTime += (stop2 - start2);
 
@@ -2479,25 +2496,27 @@ public:
 
 				auto start2 = high_resolution_clock::now();
 				bool col = false;
-				for( CollisionConstraint c: collision_constraints)
-				{
-					int task_id = mTasksList[agent_id][current_tasks_completed].first;
-					if( (c.constraint_type == 1 && successor == c.v 
-						&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 	&& c.timestep == current_timestep + 1) 
-						|| (c.constraint_type == 2 && uv_edge == c.e 
-							&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-					 		&& c.timestep == current_timestep + 1) )
-					// if( (c.constraint_type == 1 && successor == c.v 
-					//  	&& c.timestep == current_timestep + 1) 
-					//  	|| (c.constraint_type == 2 && uv_edge == c.e 
-					//  		&& c.timestep == current_timestep + 1) )
-					{
-						// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-						col =true;
-						break;
-					}
-				}
+
+				int task_id = mTasksList[agent_id][current_tasks_completed].first;
+				CollisionConstraint c1(uv_edge, task_id, current_in_delivery, current_timestep+1);
+				c1.v1 = source(c1.e, mGraphs[0]); c1.v2 = target(c1.e, mGraphs[0]);
+				CollisionConstraint c2(successor, task_id, current_in_delivery, current_timestep+1);
+				if(nonCollisionMap.find(c1)!=nonCollisionMap.end()) col=true;
+				if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) col=true;
+				// for( CollisionConstraint c: collision_constraints)
+				// {
+				// 	if( (c.constraint_type == 1 && successor == c.v 
+				// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
+				// 	 	&& c.timestep == current_timestep + 1) 
+				// 		|| (c.constraint_type == 2 && uv_edge == c.e 
+				// 			&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
+				// 	 		&& c.timestep == current_timestep + 1) )
+				// 	{
+				// 		// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
+				// 		col =true;
+				// 		break;
+				// 	}
+				// }
 				auto stop2 = high_resolution_clock::now();
 				mCCTime += (stop2 - start2);
 
