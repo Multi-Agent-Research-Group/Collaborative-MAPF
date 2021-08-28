@@ -75,6 +75,29 @@ struct state_hash
   }
 };
 
+size_t get_hash_state(SearchState k){
+	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
+}
+
+struct agent_state_pair_hash
+{
+  std::size_t operator()(const std::pair<int, std::pair <SearchState,SearchState>>& k1) const
+  {
+      using boost::hash_value;
+      using boost::hash_combine;
+
+      // Start with a hash value of 0    .
+      std::size_t seed = 0;
+
+      // Modify 'seed' by XORing and bit-shifting in
+      // one member of 'SearchState' after the other:
+      hash_combine(seed, hash_value(get_hash_state(k1.second.first)));
+      hash_combine(seed, hash_value(get_hash_state(k1.second.second)));
+      hash_combine(seed, hash_value((k1.first)));
+      return seed;
+  }
+};
+
 struct time_state_hash
 {
   std::size_t operator()(const std::pair<int, SearchState>& k1) const

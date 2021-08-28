@@ -92,7 +92,7 @@ public:
 	std::vector<int> mTaskStartTimestep;
 	std::vector<int> mTaskEndTimestep;
 
-	boost::unordered_map <std::pair <int, SearchState>, double, time_state_hash> mHValueMap;
+	boost::unordered_map <std::pair <int, std::pair<SearchState,SearchState>>, double, agent_state_pair_hash> mHValueMap;
 
 	high_resolution_clock::time_point mSolveStartTime;
 
@@ -339,27 +339,27 @@ public:
 	void printStats()
 	{
 		std::cout<<mPlanningTime.count()/1000000.0<<" "<<mCBSIterations<<std::endl;
-		std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
-		std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
-		std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
-		std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
-		std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
-		std::cout<<"Get heuristics time: "<<mHeuristicsTime.count()/1000000.0<<std::endl;
-		std::cout<<"Collision Hashing time: "<<mCHTime.count()/1000000.0<<std::endl;
-		std::cout<<"Map operations time: "<<mMapOperationsTime.count()/1000000.0<<std::endl;
-		std::cout<<"Count Collision ConflictsTime: "<<mCollisionCTime.count()/1000000.0<<std::endl;
-		std::cout<<"Count Collaboration Conflicts Time: "<<mCollabCTime.count()/1000000.0<<std::endl;
-		std::cout<<"Get Collision ConflictsTime: "<<mGetCollisionTime.count()/1000000.0<<std::endl;
-		std::cout<<"Get Collaboration Conflicts Time: "<<mGetCollaborationTime.count()/1000000.0<<std::endl;
+		// std::cout<<"computeShortestPath time: "<<mCSPTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Queue Operations time: "<<mQOTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Get Neighbors time: "<<mGNTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Constraints time: "<<mCCTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Preproccessing time: "<<mPreprocessTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Get heuristics time: "<<mHeuristicsTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Collision Hashing time: "<<mCHTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Map operations time: "<<mMapOperationsTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Count Collision ConflictsTime: "<<mCollisionCTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Count Collaboration Conflicts Time: "<<mCollabCTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Get Collision ConflictsTime: "<<mGetCollisionTime.count()/1000000.0<<std::endl;
+		// std::cout<<"Get Collaboration Conflicts Time: "<<mGetCollaborationTime.count()/1000000.0<<std::endl;
 
-		for (auto it = mWaypointHashMap.begin(); it != mWaypointHashMap.end(); it++)
-		{
-		    printCollabConstraint(it->first);
-		    std::cout <<"Number of times = "    // string (key)
-		              << ':'
-		              << it->second   // string's value 
-		              << std::endl;
-		}
+		// for (auto it = mWaypointHashMap.begin(); it != mWaypointHashMap.end(); it++)
+		// {
+		//     printCollabConstraint(it->first);
+		//     std::cout <<"Number of times = "    // string (key)
+		//               << ':'
+		//               << it->second   // string's value 
+		//               << std::endl;
+		// }
 	}
 
 
@@ -614,7 +614,7 @@ public:
 
 				candidate_constraints.push_back(constraint_c);
 				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
-				// return true;
+				return true;
 			}
 			if(delivery_timesteps.size()>1)
 			{
@@ -641,7 +641,7 @@ public:
 				candidate_constraints.push_back(constraint_c);
 				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
 
-				// return true;
+				return true;
 			}
 		}
 		// std::cout << candidate_collaborating_agent_ids.size() << std::endl;
@@ -1333,24 +1333,7 @@ public:
 			(mNumAgents, std::vector<CollaborationConstraint>());
 		std::vector<std::vector<CollaborationConstraint>> non_collaboration_constraints
 			(mNumAgents, std::vector<CollaborationConstraint>());
-		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		// {
-		// 	for(int i=0; i<mTasksList.size(); i++)
-		// 	{
-		// 		for(int j=0; j<mTasksList[i].size(); j++)
-		// 		{
-		// 			int task_id = mTasksList[i][j].first;
-		// 			int task_start_time = mTaskStartTimestep[task_id];
-		// 			Vertex pickup_vertex = mTasksList[i][j].second.first;
-		// 			for(int timestep=0; timestep<task_start_time; timestep++)
-		// 			{
-		// 				CollaborationConstraint c = 
-		// 					CollaborationConstraint(pickup_vertex, task_id, true,timestep);
-		// 				non_collaboration_constraints[agent_id].push_back(c);
-		// 			}
-		// 		}
-		// 	}
-		// }
+
 		for(int i=0; i<mTasksList.size(); i++)
 		{
 			for(int j=0; j<mTasksList[i].size(); j++)
@@ -1390,7 +1373,8 @@ public:
 
 		
 		
-		PQ.insert(start_costs, collision_constraints, collaboration_constraints, non_collaboration_constraints, start_shortestPaths);
+		PQ.insert(start_costs, collision_constraints, 
+			collaboration_constraints, non_collaboration_constraints, start_shortestPaths);
 
 		
 		int numSearches = 0;
@@ -1408,7 +1392,7 @@ public:
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
 			if(debug_disabled){
-				if (timespent.count() > 3000000000)
+				if (timespent.count() > 300000000)
 				{
 					auto solve_stop = high_resolution_clock::now();
 					mPlanningTime = (solve_stop - mSolveStartTime);
@@ -1429,7 +1413,8 @@ public:
 			int maximum_timestep=0;
 			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
 			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-				maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
+				maximum_timestep = std::max(maximum_timestep, 
+					paths[agent_id].at(paths[agent_id].size()-1).timestep);
 			
 			total_cost = maximum_timestep;
 			current_makespan=maximum_timestep;
@@ -1493,13 +1478,13 @@ public:
 			if(getCollaborationConstraints(p.shortestPaths, collaborating_agent_ids, 
 				constraint_c, p.non_collaboration_constraints, p, current_makespan))
 			{
-				if(mWaypointHashMap.find(constraint_c)!=mWaypointHashMap.end()){
-					std::cout << "FOUND A REPEAT\n";
-					mWaypointHashMap[constraint_c]+=1;
-				}
-				else{
-					mWaypointHashMap[constraint_c]=1;
-				}
+				// if(mWaypointHashMap.find(constraint_c)!=mWaypointHashMap.end()){
+				// 	std::cout << "FOUND A REPEAT\n";
+				// 	mWaypointHashMap[constraint_c]+=1;
+				// }
+				// else{
+				// 	mWaypointHashMap[constraint_c]=1;
+				// }
 				if(!debug_disabled){
 					std::cout << "-----Colab Conflict Found-----------" << std::endl;
 					printCollabConflict(constraint_c, collaborating_agent_ids);
@@ -1520,6 +1505,7 @@ public:
 					
 
 					bool all_paths_exist = true;
+					// std::cout << "Number of collaborating agents = " << collaborating_agent_ids.size() << std::endl;
 					for(int i=0; i<collaborating_agent_ids.size(); i++)
 					{
 						// make sure that collab and not collab do not share a constraint
@@ -1693,6 +1679,7 @@ public:
 
 				bool all_paths_exist = true;
 
+				// std::cout << "Number of colliding agents = " << agent_id_1.size() << std::endl;
 				for(int i=0; i<agent_id_1.size(); i++)
 				{
 					increase_constraints_agent_id_1[agent_id_1[i]].push_back(constraint_1);
@@ -1747,6 +1734,7 @@ public:
 
 				all_paths_exist = true;
 
+				// std::cout << "Number of colliding agents = " << agent_id_2.size() << std::endl;
 				for(int i=0; i<agent_id_2.size(); i++)
 				{
 					increase_constraints_agent_id_2[agent_id_2[i]].push_back(constraint_2);
@@ -1851,13 +1839,18 @@ public:
 				path_configs.push_back(config);
 			}
 
+			// std::cout << "WAYPOINTS SIZES\n"; 
+			// for (int i=0; i<mNumAgents; i++){
+			// 	std::cout << "Agent ID = " << i << "\t Size = "
+			// 	<< p.collaboration_constraints[i].size() << std::endl;
+			// }
+
 			std::cout<<path_configs.size()<<" ";
 
 			auto solve_stop = high_resolution_clock::now();
 			mPlanningTime = (solve_stop - solve_start);
 
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
-				
 			if(!debug_disabled){
 				std::cout<<"Press [ENTER] to display path: ";
 				std::cin.get();
@@ -1901,7 +1894,7 @@ public:
 		return shortestPaths;
 	}
 
-	double getHeuristic(int &agent_id, SearchState &state)
+	double getCostToGo(int &agent_id, SearchState &state)
 	{
 		// return 0;
 		double heuristic=0;
@@ -1936,125 +1929,19 @@ public:
 		auto start1 = high_resolution_clock::now();
 
 		double h_value=0;
-		if(mHValueMap.find(std::make_pair(agent_id,state)) != mHValueMap.end())
-			h_value = mHValueMap[std::make_pair(agent_id,state)];
-		else
-		{
-			if(goal_state == SearchState())
-			{
-				if(state.tasks_completed < mTasksList[agent_id].size())
-				{
-					if(state.in_delivery == true)
-						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.second)];
-					else
-					{
-						h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][state.tasks_completed].second.first, 
-							mTasksList[agent_id][state.tasks_completed].second.second)];
-					}
-					// std::cout<<state.tasks_completed+1<<" "<<mTasksList[agent_id].size()<<std::endl;
-					for(int i=state.tasks_completed+1; i<mTasksList[agent_id].size(); i++)
-					{
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][i-1].second.second,mTasksList[agent_id][i].second.first)];
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
-					}
-				}
-			}
-			else
-			{
-				if(state.tasks_completed == goal_state.tasks_completed)
-				{
-					if(goal_state.in_delivery)
-					{
-						if(mTasksList[agent_id][state.tasks_completed].second.second != goal_state.vertex)
-						{
-							std::cout<<"WTF1!";
-							std::cin.get();
-						}
-						if(state.in_delivery == true){
-							h_value += mAllPairsShortestPathMap[
-								std::make_pair(state.vertex, 
-									mTasksList[agent_id][state.tasks_completed].second.second)];
-						}
-						else
-						{
-							h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
-							h_value += mAllPairsShortestPathMap[std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, mTasksList[agent_id][state.tasks_completed].second.second)];
-						}
-					}
-					else
-					{
-						if(mTasksList[agent_id][state.tasks_completed].second.first != goal_state.vertex)
-						{
-							std::cout<<"WTF2!";
-							std::cin.get();
-						}
-						if(state.in_delivery == true)
-						{
-							std::cout<<"WTF3!";
-							std::cin.get();
-						}
-						else
-							h_value += mAllPairsShortestPathMap[std::make_pair(state.vertex, mTasksList[agent_id][state.tasks_completed].second.first)];
-					}
-				}
-				else if(state.tasks_completed < goal_state.tasks_completed)
-				{
-					// h_value += (mTasksList[agent_id].size() - state.tasks_completed)*1000;
-					if(state.in_delivery == true){
-						h_value += mAllPairsShortestPathMap[
-							std::make_pair(state.vertex, 
-								mTasksList[agent_id][state.tasks_completed].second.second)];
-					}
-					else
-					{
-						h_value += mAllPairsShortestPathMap[
-							std::make_pair(state.vertex, 
-								mTasksList[agent_id][state.tasks_completed].second.first)];
-						h_value += mAllPairsShortestPathMap[
-							std::make_pair(mTasksList[agent_id][state.tasks_completed].second.first, 
-								mTasksList[agent_id][state.tasks_completed].second.second)];
-					}
-					// std::cout<<state.tasks_completed+1<<" "<<mTasksList[agent_id].size()<<std::endl;
-					int i=state.tasks_completed+1;
-					for(; i<goal_state.tasks_completed; i++)
-					{
-						h_value += mAllPairsShortestPathMap[
-							std::make_pair(mTasksList[agent_id][i-1].second.second,
-								mTasksList[agent_id][i].second.first)];
-						h_value += mAllPairsShortestPathMap[
-							std::make_pair(mTasksList[agent_id][i].second.first,
-								mTasksList[agent_id][i].second.second)];
-					}
-					if(goal_state.in_delivery)
-					{
-						if(mTasksList[agent_id][i].second.second != goal_state.vertex)
-						{
-							std::cout<<"WTF4!";
-							std::cin.get();
-						}
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][i-1].second.second, mTasksList[agent_id][i].second.first)];
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][i].second.first,mTasksList[agent_id][i].second.second)];
-					}
-					else
-					{
-						if(mTasksList[agent_id][i].second.first != goal_state.vertex)
-						{
-							std::cout<<"WTF5!";
-							std::cin.get();
-						}
-						h_value += mAllPairsShortestPathMap[std::make_pair(
-							mTasksList[agent_id][i-1].second.second, mTasksList[agent_id][i].second.first)];
-					}
-				}
-			}
-			mHValueMap[std::make_pair(agent_id,state)] = h_value;
-		}
+		// std::pair <int, std::pair<SearchState,SearchState>> key = 
+		// 	std::make_pair(agent_id, std::make_pair(state, goal_state));
+		// if(mHValueMap.find(key)==mHValueMap.end()){
+		h_value = getCostToGo(agent_id, state);
+		if(!(goal_state==SearchState())){
+			h_value -= getCostToGo(agent_id, goal_state);
+		} 
+		// mHValueMap[key] = h_value;
+		// }
+		// else{
+		// 	h_value = mHValueMap[key];
+		// }
+		
 		std::vector<double> heuristics(6,h_value);
 		heuristics[0] = std::max(0.0, g_value + h_value - current_makespan);
 		heuristics[1] = count_collaboration_conflicts;
@@ -2219,7 +2106,7 @@ public:
 		// 	start_timestep,collaboration_timestep,nonCollabMap,
 		// 	current_makespan,shortestPaths,consider_agents);
 
-		mHValueMap.clear();
+		// mHValueMap.clear();
 
 		// std::cout<<"Non Collab Constraints: "<<non_collaboration_constraints.size()<<std::endl;
 		// std::cout<<"Collision Constraints: "<<collision_constraints.size()<<std::endl;
@@ -2366,9 +2253,9 @@ public:
 			auto stop = high_resolution_clock::now();
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
-			if (timespent.count() > 3000000000)
+			if (timespent.count() > 300000000)
 			{
-				std::cout << "CSP TIMEOUT WTF IS WRONG\n";
+				// std::cout << "CSP TIMEOUT WTF IS WRONG\n";
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - mSolveStartTime);
 				costOut = INF;
