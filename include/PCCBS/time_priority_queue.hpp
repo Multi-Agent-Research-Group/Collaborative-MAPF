@@ -47,31 +47,7 @@ struct state_hash
 {
   std::size_t operator()(const SearchState& k) const
   {
- //  	size_t h(14695981039346656037UL); // Offset basis
-	// unsigned i(0);
-	// Start with a hash value of 0    .
-	// std::size_t seed = 0;
-	// std::vector<size_t> hash_elements;
 	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
-	// hash_elements.push_back();
-	// hash_elements.push_back(k.timestep);
-	// hash_elements.push_back(k.tasks_completed);
-	// hash_elements.push_back(k.in_delivery);
-	// // Modify 'seed' by XORing and bit-shifting in
-	// // one member of 'SearchState' after the other:
-	// for(int hi=0; hi<hash_elements.size(); hi++)
-	// {
-	// 	size_t h1(hash_elements[hi]);
-	// 	uint8_t c[sizeof(size_t)];
-	// 	memcpy(c,&h1,sizeof(size_t));
-	// 	for(unsigned j(0); j<sizeof(size_t); ++j){
-	// 		//hash[k*sizeof(uint64_t)+j]=((int)c[j])?c[j]:1; // Replace null-terminators in the middle of the string
-	// 		h=h^c[j]; // Xor with octet
-	// 		h=h*1099511628211; // multiply by the FNV prime
-	// 	}
-	// }
-	// Return the result.
-	// return h;
   }
 };
 
@@ -102,25 +78,8 @@ struct time_state_hash
 {
   std::size_t operator()(const std::pair<int, SearchState>& k1) const
   {
-      // using boost::hash_value;
-      // using boost::hash_combine;
-
-      // Start with a hash value of 0    .
-      // std::size_t seed = 0;
-
-      // Modify 'seed' by XORing and bit-shifting in
-      // one member of 'SearchState' after the other:
-      // hash_combine(seed, hash_value(k1.first));
-      // SearchState k = k1.second;
-      // hash_combine(seed,hash_value(k.vertex));
-      // hash_combine(seed,hash_value(k.timestep));
-      // hash_combine(seed,hash_value(k.tasks_completed));
-      // hash_combine(seed,hash_value(k.in_delivery));
-      // std::vector<size_t> hash_elements;
 	  return size_t(k1.second.in_delivery)+2*size_t(k1.second.tasks_completed)+size_t(k1.second.vertex)*2*16+
 	  size_t(k1.second.timestep)*2*16*1024+size_t(k1.first)*2*16*1024*1024;
-      // Return the result.
-      // return seed;
   }
 };
 // struct state_hash
