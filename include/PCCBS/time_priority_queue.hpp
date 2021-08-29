@@ -38,9 +38,9 @@ struct SearchState
 
 };
 
-bool compareCollaborationConstraints(SearchState &i1, SearchState &i2)
+bool compareWaypoints(std::pair<SearchState, SearchState> &i1, std::pair<SearchState,SearchState> &i2)
 {
-    return (i1.timestep < i2.timestep);
+    return (i1.first.timestep < i2.first.timestep);
 }
 
 struct state_hash
