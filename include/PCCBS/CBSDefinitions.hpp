@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include "BGLDefinitions.hpp"
 #include "LoadGraphfromFile.hpp"
+#include "time_priority_queue.hpp"
 
 namespace PCCBS {
 
@@ -87,16 +88,22 @@ struct CollaborationConstraint
 
 struct Element
 {
-	std::vector<double> costs;
-	std::vector<std::vector< CollisionConstraint >> collision_constraints;
+	std::vector <boost::unordered_map <SearchState, int, state_hash>> nonCollabMap;
+	std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> nonCollisionMap;
 	std::vector<std::vector< CollaborationConstraint >> collaboration_constraints;
-	std::vector<std::vector< CollaborationConstraint >> non_collaboration_constraints;
+	std::vector<std::vector< std::pair <SearchState, SearchState> >> collision_waypoints;
 	std::vector<std::vector<SearchState>> shortestPaths;
 
-	Element(std::vector<double> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
-		std::vector<std::vector<CollaborationConstraint>> _collaboration_constraints, std::vector<std::vector<CollaborationConstraint>> _non_collaboration_constraints,
+	Element(std::vector <boost::unordered_map <SearchState, int, state_hash>> _nonCollabMap,
+		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> _nonCollisionMap, 
+		std::vector<std::vector< CollaborationConstraint >> _collaboration_constraints,
+		std::vector<std::vector< std::pair <SearchState, SearchState> >> _collision_waypoints,
 		std::vector<std::vector<SearchState>> _shortestPaths): 
-		costs(_costs), collision_constraints(_collision_constraints), collaboration_constraints(_collaboration_constraints), non_collaboration_constraints(_non_collaboration_constraints), shortestPaths(_shortestPaths) 
+		nonCollabMap(_nonCollabMap), 
+		nonCollisionMap(_nonCollisionMap), 
+		collaboration_constraints(_collaboration_constraints), 
+		collision_waypoints(_collision_waypoints),
+		shortestPaths(_shortestPaths) 
 		{}
 
 	inline bool operator < (const Element &b) const 
@@ -147,19 +154,23 @@ public:
 	CBSPriorityQueue(int numAgents)
 	{ 
 		mNumAgents = numAgents;
-		Element a(std::vector<double>(mNumAgents, -1),std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
-			std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()), std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()),
-			std::vector<std::vector<SearchState>>(mNumAgents,std::vector<SearchState>()));
+		std::vector <boost::unordered_map <SearchState, int, state_hash>> v1(mNumAgents);
+		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> v2(mNumAgents);
+		std::vector<std::vector< CollaborationConstraint >> v3(mNumAgents);
+		std::vector<std::vector< std::pair <SearchState, SearchState> >> v4(mNumAgents) ;
+		std::vector<std::vector<SearchState>> v5(mNumAgents,std::vector<SearchState>());
+		Element a(v1, v2, v3, v4, v5);
 		PQ.push_back(a);
 	}
 	void reset()
 	{
 		PQ.clear();
-		Element a(std::vector<double>(mNumAgents, -1),
-			std::vector<std::vector<CollisionConstraint>>(mNumAgents, std::vector<CollisionConstraint>()),
-			std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()), 
-			std::vector<std::vector<CollaborationConstraint>>(mNumAgents, std::vector<CollaborationConstraint>()),
-			std::vector<std::vector<SearchState>>(mNumAgents,std::vector<SearchState>()));
+		std::vector <boost::unordered_map <SearchState, int, state_hash>> v1(mNumAgents);
+		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> v2(mNumAgents);
+		std::vector<std::vector< CollaborationConstraint >> v3(mNumAgents);
+		std::vector<std::vector< std::pair <SearchState, SearchState> >> v4(mNumAgents) ;
+		std::vector<std::vector<SearchState>> v5(mNumAgents,std::vector<SearchState>());
+		Element a(v1, v2, v3, v4, v5);
 		PQ.push_back(a);
 	}
 	int PQsize()
@@ -184,14 +195,15 @@ public:
 		min_heapify(1);
 		return temp;
 	}
-	void insert(std::vector<double> _costs, std::vector<std::vector<CollisionConstraint>> _collision_constraints,
-		std::vector<std::vector<CollaborationConstraint>> _collaboration_constraints, 
-		std::vector<std::vector<CollaborationConstraint>> _non_collaboration_constraints,
+	void insert(std::vector <boost::unordered_map <SearchState, int, state_hash>> _nonCollabMap,
+		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> _nonCollisionMap, 
+		std::vector<std::vector< CollaborationConstraint >> _collaboration_constraints,
+		std::vector<std::vector< std::pair <SearchState, SearchState> >> _collision_waypoints,
 		std::vector<std::vector<SearchState>> _shortestPaths)
 	{
 		// std::cout << "ddd\n"; 
-		Element a(_costs, _collision_constraints, _collaboration_constraints, 
-			_non_collaboration_constraints,  _shortestPaths);
+		Element a(_nonCollabMap, _nonCollisionMap, 
+			_collaboration_constraints, _collision_waypoints,  _shortestPaths);
 		PQ.push_back(a);
 		
 		int i=PQ.size()-1;
@@ -206,46 +218,6 @@ public:
 			}
 		}
 
-	}
-	void printPQ(int numAgents)
-	{
-		cout<<"Elements: "<<endl;
-		for(int i=1;i<PQ.size();i++)
-		{
-			cout<<"Cost: ";
-			for(int j=0; j<PQ[i].costs.size(); j++)
-				cout<<PQ[i].costs[j]<<" ";
-			cout<<endl;
-
-			// cout<<"Constraints: "<<endl;
-			// //print collision_constraints
-			// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			// {
-			// 	std::cout<<" Agent: "<<agent_id<<" - ";
-
-			// 	std::cout<<" Collision Constraints - ";
-			// 	for(auto it=PQ[i].collision_constraints[agent_id].begin(); it != PQ[i].collision_constraints[agent_id].end(); it++)
-			// 	{
-			// 		if((*it).constraint_type == 1)
-			// 			cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).timestep<<endl;
-			// 		else
-			// 			cout<<"Edge: "<<(*it).e<<" Time: "<<(*it).timestep<<endl;
-			// 	}
-
-			// 	std::cout<<" Collaboration Constraints - ";
-			// 	for(auto it=PQ[i].collaboration_constraints[agent_id].begin(); it != PQ[i].collaboration_constraints[agent_id].end(); it++)
-			// 			cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).timestep<<endl;
-
-			// 	std::cout<<" Non-Collaboration Constraints - ";
-			// 	for(auto it=PQ[i].non_collaboration_constraints[agent_id].begin(); it != PQ[i].non_collaboration_constraints[agent_id].end(); it++)
-			// 			cout<<"Vertex: "<<(*it).v<<" Time: "<<(*it).timestep<<endl;
-			// }
-
-			// cout<<"shortestPaths: "<<endl;
-			// not print paths as indexmap needed
-			cout<<endl;
-		}
-		cout<<endl;
 	}
 };
 

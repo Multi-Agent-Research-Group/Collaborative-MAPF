@@ -82,33 +82,10 @@ struct time_state_hash
 	  size_t(k1.second.timestep)*2*16*1024+size_t(k1.first)*2*16*1024*1024;
   }
 };
-// struct state_hash
-// {
-//   std::size_t operator()(const SearchState& k) const
-//   {
-//       using boost::hash_value;
-//       using boost::hash_combine;
-
-//       // Start with a hash value of 0    .
-//       std::size_t seed = 0;
-
-//       // Modify 'seed' by XORing and bit-shifting in
-//       // one member of 'SearchState' after the other:
-//       hash_combine(seed,hash_value(k.vertex));
-//       hash_combine(seed,hash_value(k.timestep));
-//       hash_combine(seed,hash_value(k.tasks_completed));
-//       hash_combine(seed,hash_value(k.in_delivery));
-
-//       // Return the result.
-//       return seed;
-//   }
-// };
 
 class timePriorityQueue
 {
 private:
-
-
 	struct element
 	{
 		std::vector<double> keys;
