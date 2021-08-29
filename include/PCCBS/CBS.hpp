@@ -1634,10 +1634,6 @@ public:
 			std::vector<int> agent_id_2;
 			CollisionConstraint constraint_2;
 
-			// 
-
-			// std::cout<<"Calling CollaborationConstraint!"<<std::endl;
-
 			if(getCollisionConstraints(p.shortestPaths, agent_id_1, constraint_1, agent_id_2, constraint_2
 				,p, current_makespan))
 			{
@@ -2044,9 +2040,7 @@ public:
 			// std::cout << goal.vertex << " " << start.vertex << std::endl;
 			// std::cin.get();
 			std::vector<SearchState> pathSegment = 
-				computeShortestPathSegment(agent_id, 
-					collision_constraints, start, goal,
-					non_collaboration_constraints, segmentCost, 
+				computeShortestPathSegment(agent_id, start, goal, segmentCost, 
 					startTimestep, constraintState.timestep, 
 					nonCollabMap, constraintState.timestep, 
 					shortestPaths, consider_agents,
@@ -2079,10 +2073,8 @@ public:
 
 		SearchState goal = SearchState();
 		std::vector<SearchState> pathSegment = 
-			computeShortestPathSegment(agent_id, 
-				collision_constraints, start, goal,
-				non_collaboration_constraints, segmentCost, 
-				startTimestep, -1, 
+			computeShortestPathSegment(agent_id, start, goal,
+				segmentCost, startTimestep, -1, 
 				nonCollabMap, current_makespan, 
 				shortestPaths, consider_agents,
 				nonCollisionMap);
@@ -2104,22 +2096,13 @@ public:
 		return path;
 	}
 	std::vector<SearchState> computeShortestPathSegment(int &agent_id, 
-		std::vector<CollisionConstraint> &collision_constraints,
-		SearchState start_state, SearchState goal_state, 
-		std::vector<CollaborationConstraint> &non_collaboration_constraints, double& costOut, 
+		SearchState start_state, SearchState goal_state, double& costOut, 
 		int start_timestep, int collaboration_timestep, 
 		boost::unordered_map <SearchState, int, state_hash> nonCollabMap,
 		int current_makespan, std::vector<std::vector<SearchState> > &shortestPaths, 
 		std::vector<int> &consider_agents, 
 		boost::unordered_map <CollisionConstraint, int, collision_hash> &nonCollisionMap)
 	{
-		// old_computeShortestPathSegment(agent_id,collision_constraints,
-		// 	start_state,goal_state,non_collaboration_constraints,costOut, 
-		// 	start_timestep,collaboration_timestep,nonCollabMap,
-		// 	current_makespan,shortestPaths,consider_agents);
-
-		// mHValueMap.clear();
-
 		// std::cout<<"Non Collab Constraints: "<<non_collaboration_constraints.size()<<std::endl;
 		// std::cout<<"Collision Constraints: "<<collision_constraints.size()<<std::endl;
 
@@ -2196,9 +2179,9 @@ public:
 		// std::cout << collaboration_timestep << std::endl;
 		if(collaboration_timestep==-1){
 			lastSegment = true;
-			for( CollisionConstraint &c: collision_constraints)
+			for( auto it: nonCollisionMap)
 			{
-				min_goal_timestep = std::max(min_goal_timestep, c.timestep);
+				min_goal_timestep = std::max(min_goal_timestep, (it.first).timestep);
 			}
 		}
 		// std::cout << "Min goal timestep = " << min_goal_timestep << std::endl;
@@ -2326,16 +2309,6 @@ public:
 				if(!current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.first == current_vertex) //pickup point
 				{
 					bool allowed = true;
-					// for( CollaborationConstraint &c: non_collaboration_constraints)
-					// {
-					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-					// 		&& c.is_pickup==true && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-					// 	{
-					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-					// 		allowed = false;
-					// 		break;
-					// 	}
-					// }
 					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, true);
@@ -2376,16 +2349,6 @@ public:
 				if(current_in_delivery && mTasksList[agent_id][current_tasks_completed].second.second == current_vertex) //delivery point
 				{
 					bool allowed = true;
-					// for( CollaborationConstraint &c: non_collaboration_constraints)
-					// {
-					// 	if( current_vertex == c.v && mTasksList[agent_id][current_tasks_completed].first == c.task_id
-					// 		&& c.is_pickup==false && c.timestep == current_timestep) //pickup object is not allowed at this timestep
-					// 	{
-					// 		// std::cout<<"Non collaboration Constraint Encountered! "<<std::endl;
-					// 		allowed = false;
-					// 		break;
-					// 	}
-					// }
 					auto yoma11 = high_resolution_clock::now();
 					SearchState key_state = SearchState(current_vertex, current_timestep, 
 						mTasksList[agent_id][current_tasks_completed].first, false);
@@ -2437,21 +2400,6 @@ public:
 				int task_id = mTasksList[agent_id][current_tasks_completed].first;
 				CollisionConstraint c2(current_vertex, task_id, current_in_delivery, current_timestep+1);
 				if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) col=true;
-
-				// for( CollisionConstraint &c: collision_constraints)
-				// {
-				// 	int task_id = mTasksList[agent_id][current_tasks_completed].first;
-				// 	if( c.constraint_type == 1 && current_vertex == c.v 
-				// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-				// 	 	&& c.timestep == current_timestep + 1)
-				// 	// if( c.constraint_type == 1 && current_vertex == c.v 
-				// 	//  	&& c.timestep == current_timestep + 1)
-				// 	{
-				// 		// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-				// 		col =true;
-				// 		break;
-				// 	}
-				// }
 				auto stop2 = high_resolution_clock::now();
 				mCCTime += (stop2 - start2);
 
@@ -2503,20 +2451,6 @@ public:
 				CollisionConstraint c2(successor, task_id, current_in_delivery, current_timestep+1);
 				if(nonCollisionMap.find(c1)!=nonCollisionMap.end()) col=true;
 				if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) col=true;
-				// for( CollisionConstraint c: collision_constraints)
-				// {
-				// 	if( (c.constraint_type == 1 && successor == c.v 
-				// 		&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-				// 	 	&& c.timestep == current_timestep + 1) 
-				// 		|| (c.constraint_type == 2 && uv_edge == c.e 
-				// 			&& task_id == c.tasks_completed && current_in_delivery == c.in_delivery
-				// 	 		&& c.timestep == current_timestep + 1) )
-				// 	{
-				// 		// std::cout<<"CollisionConstraint Encountered! "<<std::endl;
-				// 		col =true;
-				// 		break;
-				// 	}
-				// }
 				auto stop2 = high_resolution_clock::now();
 				mCCTime += (stop2 - start2);
 
