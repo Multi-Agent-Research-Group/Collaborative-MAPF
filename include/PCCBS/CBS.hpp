@@ -1110,7 +1110,7 @@ public:
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
 			if(debug_disabled){
-				if (timespent.count() > 30000000)
+				if (timespent.count() > 300000000)
 				{
 					auto solve_stop = high_resolution_clock::now();
 					mPlanningTime = (solve_stop - mSolveStartTime);
@@ -1613,11 +1613,11 @@ public:
 			mPlanningTime = (solve_stop - solve_start);
 
 			// std::cout<<"CBS numSearches: "<<numSearches<<std::endl;
-			if(!debug_disabled){
+			// if(!debug_disabled){
 				std::cout<<"Press [ENTER] to display path: ";
 				std::cin.get();
 				displayPath(path_configs);		
-			}
+			// }
 			// printStats();
 			return collision_free_path;
 		}
@@ -2000,7 +2000,7 @@ public:
 			std::chrono::duration<double, std::micro> timespent = stop - mSolveStartTime;
 
 			if(debug_disabled){
-				if (timespent.count() > 30000000)
+				if (timespent.count() > 300000000)
 				{
 					// std::cout << "CSP TIMEOUT WTF IS WRONG\n";
 					auto solve_stop = high_resolution_clock::now();
