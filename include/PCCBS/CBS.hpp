@@ -677,38 +677,6 @@ public:
 				collision_hash>> increase_collisions_c = p.nonCollisionMap;
 		bool all_paths_exist = true;
 
-		for(int i=0; i<collaborating_agent_ids.size(); i++)
-		{
-			bool allowed = true;
-			if(p.nonCollisionMap[collaborating_agent_ids[i]].find(constraint_col)!=
-				p.nonCollisionMap[collaborating_agent_ids[i]].end())
-			{
-				allowed = false;
-			}
-			if(!allowed)
-			{
-				all_paths_exist = false;
-				break;
-			}	
-			increase_constraints_c[collaborating_agent_ids[i]].push_back(collision_waypoint);
-			double cost_c;
-			shortestPaths_c[collaborating_agent_ids[i]] = 
-					computeShortestPath(collaborating_agent_ids[i], 
-						p.nonCollabMap[collaborating_agent_ids[i]], 
-						p.nonCollisionMap[collaborating_agent_ids[i]],
-						p.collaboration_constraints[collaborating_agent_ids[i]], 
-						increase_constraints_c[collaborating_agent_ids[i]],
-						cost_c,
-						current_makespan, 
-						p.shortestPaths,
-						consider_agents);
-			if(cost_c == INF)
-			{
-				all_paths_exist = false;
-				break;
-			}
-		}
-
 		for(int i=0; i<other_agents.size(); i++)
 		{
 			bool allowed = true;
@@ -741,21 +709,23 @@ public:
 				break;
 			}
 			increase_collisions_c[other_agents[i]][other_constraint]=1;
-			double cost_c;
-			shortestPaths_c[other_agents[i]] = 
-					computeShortestPath(other_agents[i], 
-						p.nonCollabMap[other_agents[i]], 
-						increase_collisions_c[other_agents[i]],
-						p.collaboration_constraints[other_agents[i]], 
-						p.collision_waypoints[other_agents[i]],
-						cost_c,
-						current_makespan, 
-						p.shortestPaths,
-						other_consider_agents);
-			if(cost_c == INF)
-			{
-				all_paths_exist = false;
-				break;
+			if(shortestPaths_c[other_agents[i]].at(shortestPaths_c[other_agents[i]].size()-1).timestep==current_makespan){
+				double cost_c;
+				shortestPaths_c[other_agents[i]] = 
+						computeShortestPath(other_agents[i], 
+							p.nonCollabMap[other_agents[i]], 
+							increase_collisions_c[other_agents[i]],
+							p.collaboration_constraints[other_agents[i]], 
+							p.collision_waypoints[other_agents[i]],
+							cost_c,
+							current_makespan, 
+							p.shortestPaths,
+							other_consider_agents);
+				if(cost_c == INF)
+				{
+					all_paths_exist = false;
+					break;
+				}
 			}
 		}
 
@@ -813,7 +783,8 @@ public:
 			}
 			increase_constraints_c[collaborating_agent_ids[i]][constraint_col]=1;
 			double cost_c;
-			shortestPaths_c[collaborating_agent_ids[i]] = 
+			if(shortestPaths_c[collaborating_agent_ids[i]].at(shortestPaths_c[collaborating_agent_ids[i]].size()-1).timestep==current_makespan){
+				shortestPaths_c[collaborating_agent_ids[i]] = 
 					computeShortestPath(collaborating_agent_ids[i],
 						p.nonCollabMap[collaborating_agent_ids[i]],
 						increase_constraints_c[collaborating_agent_ids[i]],
@@ -823,10 +794,11 @@ public:
 						current_makespan, 
 						p.shortestPaths,
 						consider_agents);
-			if(cost_c == INF)
-			{
-				all_paths_exist = false;
-				break;
+				if(cost_c == INF)
+				{
+					all_paths_exist = false;
+					break;
+				}
 			}
 		}
 
