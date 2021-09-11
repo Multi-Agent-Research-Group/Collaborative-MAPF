@@ -553,22 +553,24 @@ public:
 			}
 			if(pickup_timesteps.size()>1)
 			{
-				int collaboration_timestep = (*pickup_timesteps.begin()+*pickup_timesteps.rbegin())/2;
+				// int collaboration_timestep = (*pickup_timesteps.begin()+*pickup_timesteps.rbegin())/2;
+				int collaboration_timestep = *pickup_timesteps.rbegin();
 				collaborating_agent_ids.clear();
 				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
 					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-				constraint_c = CollaborationConstraint(pickup_vertex, tid, true,collaboration_timestep);
+				constraint_c = CollaborationConstraint(pickup_vertex, tid, false,collaboration_timestep);
 				candidate_constraints.push_back(constraint_c);
 				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
 				return true;
 			}
 			if(delivery_timesteps.size()>1)
 			{
-				int collaboration_timestep = (*delivery_timesteps.rbegin() + *delivery_timesteps.begin())/2;
+				// int collaboration_timestep = (*delivery_timesteps.rbegin() + *delivery_timesteps.begin())/2;
+				int collaboration_timestep = *delivery_timesteps.rbegin();
 				collaborating_agent_ids.clear();
 				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
 					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-				constraint_c = CollaborationConstraint(delivery_vertex, tid, false,collaboration_timestep);
+				constraint_c = CollaborationConstraint(delivery_vertex, tid, true,collaboration_timestep);
 				candidate_constraints.push_back(constraint_c);
 				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
 				return true;
@@ -750,6 +752,8 @@ public:
 					PRINT<<"Checking between agents: "<<i<<" "<<j<<std::endl;
 					if(getVerticesCollisionStatus(mGraphs[0][target_vertices[i]].state, mGraphs[0][target_vertices[j]].state))
 					{
+						// printVertex(target_vertices[i]);
+						// printVertex(target_vertices[j]);
 						bool safe_i = false;
 						bool safe_j = false;
 						if(target_in_delivery[i] == false)
@@ -994,14 +998,16 @@ public:
 				break;
 			}
 		}
-
+		// std::cout << "what\n";
 		if(all_paths_exist)
 		{
 			Element expandedNode(nonCollabMap, p.nonCollisionMap, shortestPaths_c);
 			possible = true;
+			// printIntervals(nonCollabMap);
+			// printNode(expandedNode);
 			return expandedNode;
 		}
-
+		// std::cout << "what\n";
 		possible = false;
 		return p;
 	}
@@ -1011,7 +1017,7 @@ public:
 		bool &possible1, bool &possible2)
 	{
 		SearchState key_state = SearchState(constraint.v,-1,constraint.task_id,constraint.is_pickup);
-		int max_time = constraint.timestep, min_time = constraint.timestep+1;
+		int max_time = constraint.timestep-1, min_time = constraint.timestep;
 
 		allowedInterval curInterval = allowedInterval();
 		if(p.nonCollabMap.find(key_state)!=p.nonCollabMap.end()){
@@ -1019,26 +1025,29 @@ public:
 		}
 
 		Element maxNode = p, minNode = p;
-		if(max_time >= curInterval.minTime && max_time < curInterval.maxTime){
+		if(max_time >= curInterval.minTime && max_time <= curInterval.maxTime){
 			allowedInterval newInterval = allowedInterval(curInterval.minTime, max_time);
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
+			// printIntervals(increasedMap);
 			maxNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
+			// printNode(maxNode);
+			// std::cout << possible1 << std::endl;
 		}
 		else{
 			possible1 = false;
 		}
 		
-		if(min_time <= curInterval.maxTime && min_time > curInterval.minTime){
+		if(min_time <= curInterval.maxTime && min_time >= curInterval.minTime){
 			allowedInterval newInterval = allowedInterval(min_time, curInterval.maxTime);
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
-			minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
+			minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible2);
 		}
 		else{
 			possible2 = false;
 		}
-
+		// std::cout << possible1 << " " << possible2 << std::endl;
 		return std::make_pair(maxNode, minNode);
 	}
 
@@ -1087,7 +1096,7 @@ public:
 				if(nonCollabMap.find(state)!=nonCollabMap.end()){
 					Interval = nonCollabMap[state];
 				}
-				Interval.minTime = std::max(Interval.minTime, task_start_time);
+				Interval.minTime = std::max(Interval.minTime, task_end_time);
 				nonCollabMap[state] = Interval;
 			}
 		}
@@ -1158,6 +1167,22 @@ public:
 						possible1, possible2);
 				if(possible1) PQ.insert(colabChildren.first); 
 				if(possible2) PQ.insert(colabChildren.second);
+
+				if(!debug_disabled){
+					if(possible1){
+						std::cout << "---------------EXPANDED NODE 1-------------------"<< std::endl;
+						printNode(colabChildren.first);
+						std::cout << "---------------INTERVALS-------------------"<< std::endl;
+						printIntervals(colabChildren.first.nonCollabMap);
+					}
+					if(possible2){
+						std::cout << "---------------EXPANDED NODE 2-------------------"<< std::endl;
+						printNode(colabChildren.second);
+						std::cout << "---------------INTERVALS-------------------"<< std::endl;
+						printIntervals(colabChildren.second.nonCollabMap);
+					}
+					std::cin.get();
+				}
 				continue;
 			}				
 
@@ -1182,6 +1207,17 @@ public:
 					collaborating_agent_ids_2, constraint_2, possible1, possible2);
 				if(possible1) PQ.insert(colabChildren.first); 
 				if(possible2) PQ.insert(colabChildren.second);
+				if(!debug_disabled){
+					if(possible1){
+						std::cout << "---------------EXPANDED NODE 1-------------------"<< std::endl;
+						printNode(colabChildren.first);
+					}
+					if(possible2){
+						std::cout << "---------------EXPANDED NODE 2-------------------"<< std::endl;
+						printNode(colabChildren.second);
+					}
+					std::cin.get();
+				}
 				continue;
 			} 
 
@@ -1243,6 +1279,7 @@ public:
 		std::vector<boost::unordered_map <CollisionConstraint, int, collision_hash>> &nonCollisionMap)
 	{
 		std::vector<std::vector<SearchState> > shortestPaths;
+		std::vector<std::vector<SearchState> > dummyPaths;
 		std::vector<int> consider_agents;
 		int current_makespan = 0;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
@@ -1252,11 +1289,12 @@ public:
 					computeShortestPath(agent_id,consider_agents,
 					ind_cost, current_makespan, 
 					nonCollabMap, nonCollisionMap[agent_id],
-					shortestPaths);
+					dummyPaths);
 			shortestPaths.push_back(path);
-			consider_agents.push_back(agent_id);
-			if(path.size()>0)
-				current_makespan = std::max(current_makespan,path[path.size()-1].timestep);
+			// consider_agents.push_back(agent_id);
+			// std::cerr << agent_id << std::endl;
+			// if(path.size()>0)
+			// 	current_makespan = std::max(current_makespan,path[path.size()-1].timestep);
 		}
 		return shortestPaths;
 	}
@@ -1406,8 +1444,10 @@ public:
 			}
 			if(current_tasks_completed >= mTasksList[agent_id].size())
 				continue;
-			if(current_timestep > 1000)
+			if(current_timestep > 70){
+				// std::cout << "yo\n";
 				continue;
+			}
 
 			if(mSpecialPosition[agent_id].count(current_vertex)!= 0)
 			{
