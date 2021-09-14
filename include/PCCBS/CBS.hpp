@@ -204,7 +204,8 @@ public:
 
 		// std::vector< PCVertex > c;
 		// topological_sort(_pcg, std::back_inserter(c));
-
+		mPredecessors = std::vector <std::vector<int>> (numTasks);
+		mSuccessors = std::vector <std::vector<int>> (numTasks);
 		for ( std::vector< PCVertex >::reverse_iterator ii=mTopologicalOrder.rbegin(); 
 			ii!=mTopologicalOrder.rend(); ++ii)
 		{
@@ -261,8 +262,8 @@ public:
 				PCVertex curSuc = target(*ei, mPCGraph);
 				successors.push_back(curSuc);
 			}
-			mPredecessors.push_back(predecessors);
-			mSuccessors.push_back(successors);
+			mPredecessors[task_id]=predecessors;
+			mSuccessors[task_id]=successors;
 			// std::cin.get();
 		}
 
@@ -1070,58 +1071,110 @@ public:
 		return p;
 	}
 
-	// void updateSchedule(){
-	// 	for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
-	// 	{
-	// 		int agent_id = *ii;
-	// 		meta_data *vertex = &get(mProp, agent_id);
-	// 		vector <int> predecessors = mPredecessors[agent_id];
-	// 		if(predecessors.size() == 0){
-	// 			vertex->start_time = 0;
-	// 			vertex->end_time = mComputedPaths[agent_id].size()-1;
-	// 			// std::cerr << "here" << std::endl;
-	// 		}
-	// 		else{
-	// 			int makespan = 0;
-	// 			for(auto pred: predecessors){
-	// 				meta_data *pred_vertex = &get(mProp, pred);
-	// 				if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
-	// 			}
-	// 			vertex->start_time = std::max(makespan, vertex->start_time);
-	// 			vertex->end_time = vertex->start_time+mComputedPaths[agent_id].size()-1;
-	// 			// std::cerr << "there" << std::endl;
-	// 		}
-	// 		// std::cin.get();
-	// 	}
+	bool isValid(allowedInterval Interval){
+		if(Interval.maxTime>=Interval.minTime) return true;
+		return false;
+	}
 
-	// 	int makespan = 0;
-		
-	// 	for(int i=0; i<mNumAgents; i++){
-	// 		meta_data *vertex = &get(mProp, i);
-	// 		makespan = std::max(makespan, vertex->end_time);
-	// 	}
-	// 	// std::cerr << "CURRENT MAKESPAN " << makespan << std::endl;
+	int getIntegerTime(double time){
+		return (int)(time+0.0001)/mUnitEdgeLength;
+	}
+	void updateSchedule(boost::unordered_map <SearchState, allowedInterval, state_hash> &nonCollabMap,
+		bool &possible){
 
-	// 	for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
-	// 	{
-	// 		int agent_id = *ii;
-	// 		meta_data *vertex = &get(mProp, agent_id);
-	// 		vector <int> successors = mSuccessors[agent_id];
-	// 		if(successors.size() == 0){
-	// 			vertex->slack = std::min(vertex->slack, makespan-vertex->end_time);
-	// 		}
-	// 		else{
-	// 			int makespan = -1;
-	// 			for(auto suc: successors){
-	// 				meta_data *suc_vertex = &get(mProp, suc);
-	// 				// vertex->end_time = std::max(suc_vertex->start_time, vertex->end_time);
-	// 				// suc_vertex->start_time = std::max(suc_vertex->start_time, vertex->end_time);
-	// 				vertex->slack = std::min(vertex->slack, suc_vertex->start_time + suc_vertex->slack - vertex->end_time);
-	// 			}
-	// 		}
-	// 	}
-	// }
-	
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		{
+			int task_id = *ii;
+			// std::cout << "TASK ID = " << task_id << std::endl;
+			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
+			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
+			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
+			vector <int> predecessors = mPredecessors[task_id];
+			for(auto pred: predecessors){
+				// std::cout << "PRED = " << pred << std::endl;
+				std::pair <SearchState, SearchState> predTaskStates = mTaskToSearchStates[pred];
+				allowedInterval predInterval = nonCollabMap[predTaskStates.second];
+				curStartInterval.minTime = std::max(
+					curStartInterval.minTime, 
+					predInterval.minTime+
+					getIntegerTime(
+							mAllPairsShortestPathMap[
+							std::make_pair(predTaskStates.second.vertex, curTaskStates.first.vertex)
+							]
+						)
+					);
+			}
+			curGoalInterval.minTime = std::max(
+				curGoalInterval.minTime, 
+				curStartInterval.minTime+
+				getIntegerTime(
+					mAllPairsShortestPathMap[
+						std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
+						]
+					)
+				);	
+			nonCollabMap[curTaskStates.first] = curStartInterval;
+			nonCollabMap[curTaskStates.second] = curGoalInterval;
+			// std::cin.get();
+		}
+
+		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		{
+			int task_id = *ii;
+			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
+			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
+			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
+
+			vector <int> successors = mSuccessors[task_id];
+			for(auto succ: successors){
+				std::pair <SearchState, SearchState> succTaskStates = mTaskToSearchStates[succ];
+				allowedInterval succInterval = nonCollabMap[succTaskStates.first];
+
+				curGoalInterval.maxTime = std::min(
+					curGoalInterval.maxTime, 
+					succInterval.maxTime-
+					getIntegerTime(
+						mAllPairsShortestPathMap[
+							std::make_pair(curTaskStates.second.vertex, succTaskStates.first.vertex)
+							]
+						)
+					);
+			}
+
+			curStartInterval.maxTime = std::min(
+				curStartInterval.maxTime, 
+				curGoalInterval.maxTime-
+				getIntegerTime(
+					mAllPairsShortestPathMap[
+						std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
+						]
+					)
+				);
+			
+			nonCollabMap[curTaskStates.first] = curStartInterval;
+			nonCollabMap[curTaskStates.second] = curGoalInterval;
+		}
+
+		//check validity
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		{
+			int task_id = *ii;
+			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
+			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
+			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
+			if(!isValid(curStartInterval)){
+				possible=false;
+				return;
+			}
+
+			if(!isValid(curGoalInterval)){
+				possible=false;
+				return;
+			}
+		}
+		possible = true;
+	}
+
 	std::pair <Element, Element> expandCollaborationConflict(Element p,
 		std::vector <int> collaborating_agent_ids, CollaborationConstraint constraint,
 		bool &possible1, bool &possible2)
@@ -1140,7 +1193,9 @@ public:
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
 			// printIntervals(increasedMap);
-			maxNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
+			updateSchedule(increasedMap, possible1);
+			if(possible1)
+				maxNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
 			// printNode(maxNode);
 			// std::cout << possible1 << std::endl;
 		}
@@ -1152,7 +1207,9 @@ public:
 			allowedInterval newInterval = allowedInterval(min_time, curInterval.maxTime);
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
-			minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible2);
+			updateSchedule(increasedMap, possible2);
+			if(possible2)
+				minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible2);
 		}
 		else{
 			possible2 = false;
@@ -1209,6 +1266,13 @@ public:
 				Interval.minTime = std::max(Interval.minTime, task_end_time);
 				nonCollabMap[state] = Interval;
 			}
+		}
+		// std::cin.get();
+		bool possible;
+		updateSchedule(nonCollabMap, possible);
+		if(!possible){
+			std::cout << "Problem is wrong.\n";
+			std::cin.get();
 		}
 		// std::cin.get();
 		std::vector<double> start_costs;
@@ -1397,7 +1461,7 @@ public:
 			double ind_cost;
 			std::vector <SearchState> path = 
 					computeShortestPath(agent_id,consider_agents,
-					ind_cost, current_makespan, 
+					ind_cost, 0, 
 					nonCollabMap, nonCollisionMap[agent_id],
 					dummyPaths);
 			shortestPaths.push_back(path);
@@ -1554,7 +1618,8 @@ public:
 			}
 			if(current_tasks_completed >= mTasksList[agent_id].size())
 				continue;
-			if(current_timestep > 70){
+
+			if(current_makespan && current_timestep > current_makespan+20){
 				// std::cout << "yo\n";
 				continue;
 			}
