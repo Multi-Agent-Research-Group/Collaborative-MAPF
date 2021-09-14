@@ -1619,10 +1619,27 @@ public:
 			if(current_tasks_completed >= mTasksList[agent_id].size())
 				continue;
 
-			if(current_makespan && current_timestep > current_makespan+20){
-				// std::cout << "yo\n";
+			std::pair <SearchState, SearchState> curTaskStates = 
+				mTaskToSearchStates[mTasksList[agent_id][current_tasks_completed].first];
+			
+			SearchState key_state;
+			if(current_in_delivery){
+				key_state = curTaskStates.second;
+			}	
+			else{
+				key_state = curTaskStates.first;
+			}
+
+			allowedInterval Interval = nonCollabMap[key_state];
+			if(current_timestep>Interval.maxTime) {
+				// std::cout << Interval.maxTime << " " << current_timestep << std::endl;
 				continue;
 			}
+
+			// if(current_makespan && current_timestep > current_makespan+10){
+			// 	// std::cout << "yo\n";
+			// 	continue;
+			// }
 
 			if(mSpecialPosition[agent_id].count(current_vertex)!= 0)
 			{
