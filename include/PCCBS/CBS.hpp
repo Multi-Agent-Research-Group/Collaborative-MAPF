@@ -19,6 +19,7 @@ using namespace std::chrono;
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/reverse_graph.hpp>
+#include <boost/graph/transpose_graph.hpp>
 #include <boost/property_map/dynamic_property_map.hpp>
 #include <algorithm>        // std::reverse
 #include <cmath>            // pow, sqrt
@@ -160,6 +161,18 @@ public:
 	std::vector<int> mStartTimestep;
 	std::vector<int> mGoalTimestep;
 
+	PrecedenceConstraintGraph mPCGraph;
+	PrecedenceConstraintGraph mPCGraph_T;
+
+	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp;
+	property_map<PrecedenceConstraintGraph, meta_data_t>::type mProp_T;
+
+	vector <vector <int>> mPredecessors;
+	vector <vector <int>> mSuccessors;
+	container mTopologicalOrder;
+
+
+	boost::unordered_map<int, std::pair <SearchState, SearchState>> mTaskToSearchStates;
 	boost::unordered_map<CollaborationConstraint, int, collaboration_constraint_hash> mWaypointHashMap;
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
 
@@ -174,7 +187,12 @@ public:
 		, mTaskStartTimestep(taskStartTimestep)
 		, mTaskEndTimestep(taskEndTimestep)
 		, mImagePath(imagePath)
+		, mPCGraph(_pcg)
 	{
+		transpose_graph(mPCGraph, mPCGraph_T);
+		mProp = get(meta_data_t(), mPCGraph);
+		mProp_T = get(meta_data_t(), mPCGraph_T);
+		topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
 
 		int numTasks = boost::num_vertices(_pcg);
 
@@ -184,18 +202,16 @@ public:
 		//stores the agents assigned to a task, and their i"th task number by precedence
 		std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(numTasks);
 
-		std::vector< PCVertex > c;
-		topological_sort(_pcg, std::back_inserter(c));
+		// std::vector< PCVertex > c;
+		// topological_sort(_pcg, std::back_inserter(c));
 
-		for ( std::vector< PCVertex >::reverse_iterator ii=c.rbegin(); ii!=c.rend(); ++ii)
+		for ( std::vector< PCVertex >::reverse_iterator ii=mTopologicalOrder.rbegin(); 
+			ii!=mTopologicalOrder.rend(); ++ii)
 		{
-			// std::cout << std::endl;
-			// std::cerr<<"iter\n";std::cin.get();
 			meta_data vertex = get(get(meta_data_t(), _pcg), *ii);
-
-			int task_id = vertex.task_id;
-			// std::cout << "Task id:"<<task_id << std::endl;
-
+			int task_id = *ii; //vertex.task_id
+			// std::cout << "Task id:"<<task_id << " " << *ii << std::endl;
+			// std::cout << mTaskStartTimestep[task_id] << " " << mTaskEndTimestep[task_id] << std::endl;
 			Eigen::VectorXd start_config(2);
 			start_config[0] = vertex.start.first;
 			start_config[1] = vertex.start.second;
@@ -210,8 +226,43 @@ public:
 				_tasks_to_agents_list[task_id].push_back(std::make_pair(agentNum,_tasks_list[agentNum].size()));
 				_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
 			}
-			// PRINT << std::endl;
-			// PRINT<<"loop end\n";
+			// std::cerr << "yo\n";
+			Graph graph;
+			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[0],2,get(&EProp::prior,graph));
+			create_edges(graph,get(&EProp::length,graph));
+			VertexIter ind_vi, ind_vi_end;
+			SearchState start_task, goal_task;
+			// std::cerr << "yo\n";
+			for (boost::tie(ind_vi, ind_vi_end) = vertices(graph); ind_vi != ind_vi_end; ++ind_vi)
+			{
+				// std::cerr << "yo\n";
+				if(start_config.isApprox(graph[*ind_vi].state))
+				{
+					start_task = SearchState(*ind_vi, -1, task_id, false);
+				}
+				if(goal_config.isApprox(graph[*ind_vi].state))
+				{
+					goal_task = SearchState(*ind_vi, -1, task_id, true);
+				}
+			}
+			mTaskToSearchStates[task_id] = std::make_pair(start_task, goal_task);
+
+			PCOutEdgeIter ei, ei_end;
+			vector <int> predecessors;
+			for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph_T); ei != ei_end; ++ei) 
+			{
+				PCVertex curPred = target(*ei, mPCGraph_T);
+				predecessors.push_back(curPred);
+			}
+
+			vector <int> successors;
+			for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph); ei != ei_end; ++ei) 
+			{
+				PCVertex curSuc = target(*ei, mPCGraph);
+				successors.push_back(curSuc);
+			}
+			mPredecessors.push_back(predecessors);
+			mSuccessors.push_back(successors);
 			// std::cin.get();
 		}
 
@@ -306,6 +357,13 @@ public:
 		}
 		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		preprocess_graph(mGraphs[0]);
+		// for(int i=0; i<numTasks; i++){
+		// 	std::pair <SearchState, SearchState> states = mTaskToSearchStates[i];
+		// 	// std::cerr << "yo1\n";
+		// 	printState(states.first);
+		// 	// std::cerr << "yo1\n";
+		// 	printState(states.second);
+		// }
 	}
 
 	int getStateHash(Eigen::VectorXd state)
@@ -1012,6 +1070,58 @@ public:
 		return p;
 	}
 
+	// void updateSchedule(){
+	// 	for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+	// 	{
+	// 		int agent_id = *ii;
+	// 		meta_data *vertex = &get(mProp, agent_id);
+	// 		vector <int> predecessors = mPredecessors[agent_id];
+	// 		if(predecessors.size() == 0){
+	// 			vertex->start_time = 0;
+	// 			vertex->end_time = mComputedPaths[agent_id].size()-1;
+	// 			// std::cerr << "here" << std::endl;
+	// 		}
+	// 		else{
+	// 			int makespan = 0;
+	// 			for(auto pred: predecessors){
+	// 				meta_data *pred_vertex = &get(mProp, pred);
+	// 				if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
+	// 			}
+	// 			vertex->start_time = std::max(makespan, vertex->start_time);
+	// 			vertex->end_time = vertex->start_time+mComputedPaths[agent_id].size()-1;
+	// 			// std::cerr << "there" << std::endl;
+	// 		}
+	// 		// std::cin.get();
+	// 	}
+
+	// 	int makespan = 0;
+		
+	// 	for(int i=0; i<mNumAgents; i++){
+	// 		meta_data *vertex = &get(mProp, i);
+	// 		makespan = std::max(makespan, vertex->end_time);
+	// 	}
+	// 	// std::cerr << "CURRENT MAKESPAN " << makespan << std::endl;
+
+	// 	for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+	// 	{
+	// 		int agent_id = *ii;
+	// 		meta_data *vertex = &get(mProp, agent_id);
+	// 		vector <int> successors = mSuccessors[agent_id];
+	// 		if(successors.size() == 0){
+	// 			vertex->slack = std::min(vertex->slack, makespan-vertex->end_time);
+	// 		}
+	// 		else{
+	// 			int makespan = -1;
+	// 			for(auto suc: successors){
+	// 				meta_data *suc_vertex = &get(mProp, suc);
+	// 				// vertex->end_time = std::max(suc_vertex->start_time, vertex->end_time);
+	// 				// suc_vertex->start_time = std::max(suc_vertex->start_time, vertex->end_time);
+	// 				vertex->slack = std::min(vertex->slack, suc_vertex->start_time + suc_vertex->slack - vertex->end_time);
+	// 			}
+	// 		}
+	// 	}
+	// }
+	
 	std::pair <Element, Element> expandCollaborationConflict(Element p,
 		std::vector <int> collaborating_agent_ids, CollaborationConstraint constraint,
 		bool &possible1, bool &possible2)
@@ -1879,15 +1989,6 @@ public:
 			mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_3)];
 		}
 
-		// std::cout<<"All pairs shortest paths: "<<std::endl;
-		// for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
-		// for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
-		// {
-		// 	Vertex vertex_1 = *vi_1;
-		// 	Vertex vertex_2 = *vi_2;
-		// 	std::cout<<vertex_1<<" "<<vertex_2<<" "<<mAllPairsShortestPathMap[std::make_pair(vertex_1,vertex_2)]<<std::endl;
-		// }
-		// std::cin.get();
 		auto stop1 = high_resolution_clock::now();
 		mPreprocessTime += (stop1 - start1);
 	}
