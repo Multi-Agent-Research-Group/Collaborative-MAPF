@@ -721,6 +721,12 @@ public:
 		return std::min(1,count_conflicts);
 	}
 
+	int count_collision_conflicts(SearchState curr, SearchState next, 
+		boost::unordered_map <SearchState, int, state_hash> vertexMap,
+		boost::unordered_map std::pair<<SearchState, SearchState>> edgeMap){
+		return 0;
+	}
+
 	bool getCollisionConstraints(Element &p, 
 		std::vector<int> &collaborating_agent_ids, std::vector <int> &other_agents,
 		CollisionConstraint &constraint_c, CollisionConstraint &other_constraint)
@@ -1560,6 +1566,7 @@ public:
 			mVertexCollisionPathsMap.push_back(vertex_collision_path_map);
 			mEdgeCollisionPathsMap.push_back(edge_collision_path_map);
 		}
+		mSearchStateMap[SearchState]
 
 		auto stop3 = high_resolution_clock::now();
 		mCHTime += (stop3 - start3);
