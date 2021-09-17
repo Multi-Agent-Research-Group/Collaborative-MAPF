@@ -1077,7 +1077,7 @@ public:
 	}
 
 	int getIntegerTime(double time){
-		return (int)(time+0.0001)/mUnitEdgeLength;
+		return (int)((time+0.0001)/mUnitEdgeLength);
 	}
 	void updateSchedule(boost::unordered_map <SearchState, allowedInterval, state_hash> &nonCollabMap,
 		bool &possible){

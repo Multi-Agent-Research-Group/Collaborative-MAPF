@@ -39,8 +39,14 @@ struct CollisionConstraint
 
 	bool operator==(const CollisionConstraint &other) const
 	{ 
-		return (v == other.v && timestep == other.timestep
-			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery && e==other.e);
+		if(constraint_type!=other.constraint_type) return false;
+		if(constraint_type==1)
+			return (v == other.v && timestep == other.timestep
+			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery);
+		else{
+			return (v1 == other.v1 && v2 == other.v2 && timestep == other.timestep
+			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery);
+		}
 	}
 };
 
