@@ -47,7 +47,8 @@ bool cerr_disabled = true;
 #define PRINT if (cerr_disabled) {} else std::cerr
 #define DEBUG if (cerr_disabled) {} else 
 
-bool debug_disabled = true;
+// bool debug_disabled = true;
+bool debug_disabled = false;
 #define print if (debug_disabled) {} else std::cerr
 
 namespace PCCBS {
@@ -587,8 +588,11 @@ public:
 		std::vector <CollaborationConstraint> candidate_constraints;
 
 		bool is_pickup = false;
-		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
+		// for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
+		// for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
+			int tid = *ii;
 			Vertex pickup_vertex;
 			std::set<int> pickup_timesteps;
 			Vertex delivery_vertex;
@@ -714,6 +718,7 @@ public:
 		auto stop1 = high_resolution_clock::now();
 		mCollisionCTime += (stop1 - start1);
 		return count_conflicts;
+		return std::min(1,count_conflicts);
 	}
 
 	bool getCollisionConstraints(Element &p, 
@@ -969,7 +974,8 @@ public:
 
 							other_constraint.v1 = source(other_constraint.e, mGraphs[0]);
 							other_constraint.v2 = target(other_constraint.e, mGraphs[0]);
-
+							// std::cout << source_vertices[i] << " " << target_vertices[i] << "\n";
+							// std::cout << source_vertices[j] << " " << target_vertices[j] << "\n";
 							return true;
 						}
 					}
@@ -1005,6 +1011,7 @@ public:
 		bool all_paths_exist = true; double cost_c;
 		for(int i=0; i<collaborating_agent_ids.size(); i++)
 		{
+			// std::cout << constraint.v1 << " " << constraint.v2 << "\n";
 			increase_constraints_c[collaborating_agent_ids[i]][constraint]=1;
 			
 			shortestPaths_c[collaborating_agent_ids[i]] = 
@@ -1077,7 +1084,7 @@ public:
 	}
 
 	int getIntegerTime(double time){
-		return (int)(time+0.0001)/mUnitEdgeLength;
+		return (int)((time+0.0001)/mUnitEdgeLength);
 	}
 	void updateSchedule(boost::unordered_map <SearchState, allowedInterval, state_hash> &nonCollabMap,
 		bool &possible){
@@ -1104,6 +1111,9 @@ public:
 						)
 					);
 			}
+			// if(task_id==0){
+			// 	std::cout << curStartInterval.minTime << " " << curGoalInterval.minTime << std::endl;
+			// }
 			curGoalInterval.minTime = std::max(
 				curGoalInterval.minTime, 
 				curStartInterval.minTime+
@@ -1113,6 +1123,12 @@ public:
 						]
 					)
 				);	
+			// if(task_id==0){
+			// 	std::cout << getIntegerTime(mAllPairsShortestPathMap[
+			// 			std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
+			// 			]) << std::endl;
+			// 	std::cout << curStartInterval.minTime << " " << curGoalInterval.minTime << std::endl;
+			// }
 			nonCollabMap[curTaskStates.first] = curStartInterval;
 			nonCollabMap[curTaskStates.second] = curGoalInterval;
 			// std::cin.get();
@@ -1192,8 +1208,9 @@ public:
 			allowedInterval newInterval = allowedInterval(curInterval.minTime, max_time);
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
-			// printIntervals(increasedMap);
 			updateSchedule(increasedMap, possible1);
+			printIntervals(increasedMap);
+			std::cout << "IS IT POSSIBLE? " << possible1 << std::endl;
 			if(possible1)
 				maxNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
 			// printNode(maxNode);
@@ -1208,6 +1225,8 @@ public:
 			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
 			increasedMap[key_state] = newInterval;
 			updateSchedule(increasedMap, possible2);
+			printIntervals(increasedMap);
+			std::cout << possible2 << std::endl;
 			if(possible2)
 				minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible2);
 		}
@@ -1442,6 +1461,7 @@ public:
 				displayPath(path_configs);	
 				printStats();	
 			}
+			// displayPath(path_configs);
 			return collision_free_path;
 		}
 		std::cout << "CBS FAILED WTF IS WRONG\n";
@@ -1784,7 +1804,6 @@ public:
 				if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) col=true;
 				auto stop2 = high_resolution_clock::now();
 				mCCTime += (stop2 - start2);
-
 				if(!col)
 				{       
 					SearchState new_state = SearchState(successor, current_timestep+1, 
@@ -1872,6 +1891,7 @@ public:
 		std::vector<double> heuristics(6,h_value);
 		heuristics[0] = std::max(0.0, g_value + h_value - current_makespan);
 		heuristics[1] = count_collaboration_conflicts;
+		// heuristics[1] = 0;
 		heuristics[2] = count_collision_conflicts;
 		heuristics[3] = count_move_actions+h_value;
 		heuristics[4] = h_value;
@@ -1939,6 +1959,23 @@ public:
 			int( (mGraphs[0][c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
 	}
 
+	void printCollisionConstraint(CollisionConstraint c1){
+		std::cout << "============Constraint=============== \n";
+		if(c1.constraint_type == 1){
+			std::cout << "Vertex constraint\n";
+			std::cout << "Position: ";
+			printVertex(c1.v);
+		}
+		else{
+			std::cout << "Edge constraint\n";
+			std::cout << "Position: \n";
+			printEdge(c1.e);
+		}
+		std::cout << "Tasks Id: " << c1.tasks_completed << std::endl;
+		std::cout << "Timestep: "<< c1.timestep << std::endl;
+		std::cout << "In Delivery?: "<< (int)c1.in_delivery << std::endl;
+		std::cout << "=================================== \n";
+	}
 
 	void printColConflict(std::vector <int> agent_id_1, CollisionConstraint c1, 
 		std::vector <int> agent_id_2, CollisionConstraint c2)
