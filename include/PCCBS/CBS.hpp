@@ -1081,7 +1081,8 @@ public:
 	}
 	void updateSchedule(boost::unordered_map <SearchState, allowedInterval, state_hash> &nonCollabMap,
 		bool &possible){
-
+		// possible=true;
+		// return;
 		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			int task_id = *ii;
