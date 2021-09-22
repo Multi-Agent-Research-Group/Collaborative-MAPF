@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 			("graph,g", po::value<std::string>()->default_value("./src/CMAPF/data/new_graphs/graph0.graphml"), "Path to Graph File")
 			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
 			("image,i", po::value<std::string>()->default_value("videos/"), "Path to Storing Images")
+			("upper_bound,u", po::value<std::string>()->default_value("1000"), "Upper Bound for Search")
 	;
 
 	// Read arguments
@@ -48,8 +49,8 @@ int main(int argc, char *argv[])
 
 	if (vm.count("help"))
 	{
-			std::cout << desc << std::endl;
-			return 1;
+		std::cout << desc << std::endl;
+		return 1;
 	}
 
 	std::string file_name(vm["file"].as<std::string>());
@@ -129,8 +130,9 @@ int main(int argc, char *argv[])
 	
 	// Setup planner
 	// std::cerr<<"setup!";
+	int upper_bound = std::stoi(vm["upper_bound"].as<std::string>());
 	CBS planner(G,image,num_robots,graph_files,init_config,
-		start_times, end_times, vm["image"].as<std::string>());
+		start_times, end_times, vm["image"].as<std::string>(), upper_bound);
 
 	auto start = high_resolution_clock::now();
 	// std::cerr<<"calling solve!";

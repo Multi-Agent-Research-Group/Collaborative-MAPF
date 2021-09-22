@@ -228,10 +228,9 @@ int main(int argc, char *argv[])
 			("help,h", "produce help message")
 			("graph,g", po::value<std::string>()->default_value("/home/kushal/ros_ws/src/CMAPF/data/test_graphs/"), 
 				"Path to graph files")
-			("obstacleFile,o", po::value<std::string>()->default_value("/home/kushal/ros_ws/src/CMAPF/data/obstacles/easy"), 
+			("obstacleFile,o", po::value<std::string>()->default_value("/home/kushal/ros_ws/src/colab/data/obstacles/easy"), 
 				"Path to obstacles files")
-			("planningProblemsFile,p",po::value<std::string>()->default_value
-				("/home/kushal/ros_ws/src/CMAPF/data/greedy/4_12_1/"),
+			("planningProblemsFile,p",po::value<std::string>()->default_value("/home/kushal/ros_ws/src/colab/data/greedy/6_6_1/"),
 			 "Path to planning problems file")
 			("num_agents,n", po::value<int>()->default_value(2), "Number of Agents")
 			("num_tasks,m", po::value<int>()->default_value(5), "Number of Tasks")
@@ -262,6 +261,8 @@ int main(int argc, char *argv[])
 		planning_problems_file = "/home/rajat/melodic_ws/src/CMAPF/data/planning_problems/";
 
 
+	// std::cout << planning_problems_file << std::endl;
+	// std::cin.get();
 	int numAgents = vm["num_agents"].as<int>();
 	int numTasks = vm["num_tasks"].as<int>();
 
@@ -448,6 +449,17 @@ int main(int argc, char *argv[])
 			taskTimes[best_task] = std::make_pair(best_start, best_time);
 		}
 
+		bool not_possible_combo = false;
+		for(int agent = 0; agent  < numAgents; agent++){
+			if(agentLastTask[agent] == -1){
+				not_possible_combo = true;
+			}
+		}
+		if(not_possible_combo){
+			std::cout << "Not possible bubba\n";
+			count -= 1;
+			continue;
+		}
 		std::ofstream file_stream;
 		std::cout << ICTS_planning_problems_file + std::to_string(count) + ".txt" << std::endl;
 		file_stream.open(ICTS_planning_problems_file + std::to_string(count) + ".txt");
