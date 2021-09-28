@@ -2,19 +2,19 @@ import os
 from pathlib import Path
 
 
-agents = [3, 4, 6, 9]
-tasks = [3, 6, 9, 12]
-degrees = [1, 2, 3]
-obstacle_files = ['easy']
+agents = [4, 6]
+tasks = [4, 6]
+degrees = [1, 2]
+obstacle_files = ['yo']
 
 for agent in agents:
 	for task in tasks:
 		for degree in degrees:
 			if agent > task*degree: continue
 			for o in obstacle_files:
-				o_file = '/home/kushal/ros_ws/src/CMAPF/data/obstacles/100'
+				o_file = f'/home/kushal/ros_ws/src/CMAPF/data/obstacles/tunnel_{o}'
 
-				p_file = f'/home/kushal/ros_ws/src/CMAPF/data/greedy/empty/{agent}_{task}_{degree}/'
+				p_file = f'/home/kushal/ros_ws/src/CMAPF/data/greedy/tunnel_{o}/{agent}_{task}_{degree}/'
 
 				Path(p_file+'/CBS').mkdir(exist_ok = True, parents=True)
 				Path(p_file+'/ICTS').mkdir(exist_ok = True, parents=True)
