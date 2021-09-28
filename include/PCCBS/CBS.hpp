@@ -1406,8 +1406,10 @@ public:
 				displayPath(path_configs);	
 				printStats();	
 			}
-			// displayPath(path_configs);
-			// printStats();
+			std::cout<<"Press [ENTER] to display path: ";
+			std::cin.get();
+			displayPath(path_configs);
+			printStats();
 			return collision_free_path;
 		}
 		std::cout << "CBS FAILED WTF IS WRONG\n";
