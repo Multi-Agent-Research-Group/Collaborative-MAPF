@@ -22,18 +22,17 @@ struct SearchState
 	Vertex vertex;
 	int timestep;
 	int tasks_completed;
-	bool in_delivery;
 
 	SearchState()
-		: vertex(0), timestep(0), tasks_completed(0), in_delivery(false) {}
+		: vertex(0), timestep(-1), tasks_completed(-1){}
 
-	SearchState(Vertex _vertex, int _timestep, int _tasks_completed, bool _in_delivery) 
-		: vertex(_vertex), timestep(_timestep), tasks_completed(_tasks_completed), in_delivery(_in_delivery) {}
+	SearchState(Vertex _vertex, int _timestep, int _tasks_completed)
+		: vertex(_vertex), timestep(_timestep), tasks_completed(_tasks_completed) {}
 
 	bool operator==(const SearchState &other) const
 	{ 
 		return (vertex == other.vertex && timestep == other.timestep
-			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery );
+			&& tasks_completed == other.tasks_completed);
 	}
 
 };
@@ -45,14 +44,14 @@ bool compareWaypoints(std::pair<SearchState, SearchState> &i1, std::pair<SearchS
 
 struct state_hash
 {
-  std::size_t operator()(const SearchState& k) const
-  {
-	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
-  }
+	std::size_t operator()(const SearchState& k) const
+	{
+		return size_t(k.tasks_completed)+size_t(k.vertex)*16+size_t(k.timestep)*16*1024;
+	}
 };
 
 size_t get_hash_state(SearchState k){
-	return size_t(k.in_delivery)+2*size_t(k.tasks_completed)+size_t(k.vertex)*2*16+size_t(k.timestep)*2*16*1024;
+	return size_t(k.tasks_completed)+size_t(k.vertex)*16+size_t(k.timestep)*16*1024;
 }
 
 struct agent_state_pair_hash
@@ -74,14 +73,6 @@ struct agent_state_pair_hash
   }
 };
 
-struct time_state_hash
-{
-  std::size_t operator()(const std::pair<int, SearchState>& k1) const
-  {
-	  return size_t(k1.second.in_delivery)+2*size_t(k1.second.tasks_completed)+size_t(k1.second.vertex)*2*16+
-	  size_t(k1.second.timestep)*2*16*1024+size_t(k1.first)*2*16*1024*1024;
-  }
-};
 
 class timePriorityQueue
 {
@@ -99,32 +90,12 @@ private:
 				std::cin.get();
 			}
 			for(int i=0; i<keys.size(); i++){
-			// for(int i=0; i<1; i++){
 				if((keys[i] - b.keys[i]) < -0.01)
 					return true;
 				else if((keys[i] - b.keys[i]) > 0.01)
 					return false;
 			}
-			// return true;
 			return s.vertex < b.s.vertex;
-
-			// if(key1<b.key1)
-			// 	return true;
-			// else if(std::abs(key1-b.key1)<EPS && key2<b.key2)
-			// 	return true;
-			// return false;
-			// if(std::abs(key1-b.key1)<0.001)
-			// {
-			// 	// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
-			// 	return s.vertex < b.s.vertex;
-			// }
-			// return key1 < b.key1;
-   //      	if(key1<b.key1)
-			// 	return true;
-			// else if(key1 == b.key1 && key2<b.key2)
-			// 	return true;
-			// else
-			// 	return false;
 		}
 	};
 	vector <element> PQ;
@@ -220,7 +191,7 @@ public:
 		for(int i=1;i<PQ.size();i++)
 		{
 			cout<<"( Vertex: "<<PQ[i].s.vertex<<", Timestep: "<<PQ[i].s.timestep
-				<<", Tasks Completed: "<<PQ[i].s.tasks_completed<<", In Delivery: "<<PQ[i].s.in_delivery
+				<<", Tasks Completed: "<<PQ[i].s.tasks_completed
 				<<", Keys: ";
 
 			for(int j=0; j<PQ[i].keys.size(); j++)
@@ -229,132 +200,6 @@ public:
 		}
 	}
 };
-// class timePriorityQueue
-// {
-// private:
-
-
-// 	struct element
-// 	{
-// 		double key1;
-// 		double key2;
-// 		SearchState s;
-// 		element(double _key1, double _key2, SearchState _s): key1(_key1), key2(_key2), s(_s) {} 
-// 		inline bool operator < (const element &b) const 
-// 		{
-// 			if(std::abs(key1-b.key1)<0.001)
-// 			{
-// 				// std::cout<<s.vertex<<" "<<b.s.vertex<<std::endl;
-// 				return s.vertex < b.s.vertex;
-// 			}
-// 			return key1 < b.key1;
-//    //      	if(key1<b.key1)
-// 			// 	return true;
-// 			// else if(key1 == b.key1 && key2<b.key2)
-// 			// 	return true;
-// 			// else
-// 			// 	return false;
-// 		}
-// 	};
-// 	vector <element> PQ;
-
-// 	void min_heapify(int x)
-// 	{
-// 		int l=2*x;
-// 		int r=2*x+1;
-// 		int smallest = x;
-// 		if(l<=(PQ.size()-1) && PQ[l]<PQ[x])
-// 			smallest = l;
-// 		if(r<=(PQ.size()-1) && PQ[r]<PQ[smallest])
-// 			smallest = r;
-// 		if(smallest!=x)
-// 		{
-// 			swap(PQ[smallest],PQ[x]);
-// 			min_heapify(smallest);
-// 		}
-// 	}
-
-// public:
-// 	timePriorityQueue()
-// 	{ 
-// 		SearchState s = SearchState();
-// 		element a(-1,-1,s);
-// 		PQ.push_back(a);
-// 	}
-// 	void reset()
-// 	{
-// 		PQ.clear();
-// 		SearchState s = SearchState();
-// 		element a(-1,-1,s);
-// 		PQ.push_back(a);
-// 	}
-// 	int PQsize()
-// 	{
-// 		return PQ.size()-1;
-// 	}
-// 	pair<double,double> topKey()
-// 	{
-// 		return make_pair(PQ[1].key1,PQ[1].key2);
-// 	}
-// 	SearchState pop()
-// 	{
-// 		SearchState s=PQ[1].s;
-// 		PQ[1]=PQ[PQ.size()-1];
-// 		PQ.erase(PQ.end()-1);
-// 		min_heapify(1);
-// 		return s;
-// 	}
-// 	void insert(SearchState s, double k1, double k2)
-// 	{
-// 		// std::cout<<"Inserting : "<<v<<std::endl;
-// 		element a(k1,k2,s);
-// 		PQ.push_back(a);
-// 		// printPQ();
-// 		int i=PQ.size()-1;
-// 		while((i/2)>0)
-// 		{
-// 			if(PQ[i/2]<PQ[i])
-// 				break;
-// 			else
-// 			{
-// 				swap(PQ[i/2],PQ[i]);
-// 				i=i/2;
-// 			}
-// 		}
-
-// 	}
-// 	void remove(SearchState s)
-// 	{
-// 		int i;
-// 		for(i=1;i<PQ.size();i++)
-// 			if(PQ[i].s.vertex==s.vertex && PQ[i].s.timestep == s.timestep 
-// 				&& PQ[i].s.tasks_completed == s.tasks_completed && PQ[i].s.in_delivery == s.in_delivery)
-// 				break;
-// 		swap(PQ[i],PQ[PQ.size()-1]);
-// 		PQ.erase(PQ.end()-1);
-// 		// printPQ();
-// 		min_heapify(i);
-// 		// printPQ();
-// 	}
-// 	bool contains(SearchState s)
-// 	{
-// 		for(int i=1;i<PQ.size();i++)
-// 			if(PQ[i].s.vertex==s.vertex && PQ[i].s.timestep == s.timestep 
-// 				&& PQ[i].s.tasks_completed == s.tasks_completed && PQ[i].s.in_delivery == s.in_delivery)
-// 				break;
-// 		return false;
-// 	}
-// 	void printPQ()
-// 	{
-// 		cout<<"Elements: "<<endl;
-// 		for(int i=1;i<PQ.size();i++)
-// 			cout<<"( Vertex: "<<PQ[i].s.vertex<<", Timestep: "<<PQ[i].s.timestep
-// 				<<", Tasks Completed: "<<PQ[i].s.tasks_completed<<", In Delivery: "<<PQ[i].s.in_delivery
-// 				<<", Key1: "<<PQ[i].key1<<", Key2: "<<PQ[i].key2<<"), ";
-// 		cout<<endl;
-// 	}
-// };
-
 } // namespace PCCBS
 
 #endif 
