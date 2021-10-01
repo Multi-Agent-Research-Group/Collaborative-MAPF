@@ -28,46 +28,44 @@ struct CollisionConstraint
 	Vertex v2;
 	Edge e;	//edge
 	int tasks_completed;
-	bool in_delivery;
 	int timestep; //time . for edge, time is time of target vertex
 
 	CollisionConstraint() : constraint_type(1) {}
-	CollisionConstraint(Vertex _v, int _tasks_completed, bool _in_delivery, int _t) 
-		: v(_v), tasks_completed(_tasks_completed), in_delivery(_in_delivery), timestep(_t), constraint_type(1) {}
-	CollisionConstraint(Edge _e, int _tasks_completed, bool _in_delivery, int _t) 
-		: e(_e), tasks_completed(_tasks_completed), in_delivery(_in_delivery), timestep(_t), constraint_type(2) {}
+	CollisionConstraint(Vertex _v, int _tasks_completed, int _t) 
+		: v(_v), tasks_completed(_tasks_completed), timestep(_t), constraint_type(1) {}
+	CollisionConstraint(Edge _e, int _tasks_completed, int _t) 
+		: e(_e), tasks_completed(_tasks_completed), timestep(_t), constraint_type(2) {}
 
 	bool operator==(const CollisionConstraint &other) const
 	{ 
 		if(constraint_type!=other.constraint_type) return false;
 		if(other.constraint_type==2) 
 			return (timestep == other.timestep
-			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery && e==other.e);
+			&& tasks_completed == other.tasks_completed && e==other.e);
 		return (v == other.v && timestep == other.timestep
-			&& tasks_completed == other.tasks_completed && in_delivery == other.in_delivery);
+			&& tasks_completed == other.tasks_completed);
 	}
 };
 
 struct collision_hash
 {
-  std::size_t operator()(const CollisionConstraint &k1) const
-  {
-	using namespace boost;
-	using boost::hash_combine;
-	size_t seed = 42;
-	if(k1.constraint_type==2){
-		hash_combine(seed, k1.v1);
-		hash_combine(seed, k1.v2);
+	std::size_t operator()(const CollisionConstraint &k1) const
+	{
+		using namespace boost;
+		using boost::hash_combine;
+		size_t seed = 42;
+		if(k1.constraint_type==2){
+			hash_combine(seed, k1.v1);
+			hash_combine(seed, k1.v2);
+		}
+		else{
+			hash_combine(seed, k1.v);
+			hash_combine(seed, k1.v);
+		}
+		hash_combine(seed, k1.tasks_completed);
+		hash_combine(seed, k1.timestep);
+		return seed;
 	}
-	else{
-		hash_combine(seed, k1.v);
-		hash_combine(seed, k1.v);
-	}
-	hash_combine(seed, k1.tasks_completed);
-	hash_combine(seed, k1.in_delivery);
-	hash_combine(seed, k1.timestep);
-	return seed;
-  }
 };
 
 struct CollaborationConstraint
@@ -97,11 +95,11 @@ struct allowedInterval{
 
 struct Element
 {
-	boost::unordered_map <SearchState, allowedInterval, state_hash> nonCollabMap;
+	std::vector <std::pair<allowedInterval, allowedInterval>> nonCollabMap;
 	std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> nonCollisionMap;
 	std::vector<std::vector<SearchState>> shortestPaths;
 
-	Element(boost::unordered_map <SearchState, allowedInterval, state_hash> _nonCollabMap,
+	Element(std::vector <std::pair<allowedInterval, allowedInterval>> _nonCollabMap,
 		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> _nonCollisionMap, 
 		std::vector<std::vector<SearchState>> _shortestPaths): 
 		nonCollabMap(_nonCollabMap), nonCollisionMap(_nonCollisionMap), shortestPaths(_shortestPaths) 
@@ -133,7 +131,7 @@ class CBSPriorityQueue
 private:
 	vector <Element> PQ;
 	int mNumAgents;
-
+	int mNumTasks;
 	void min_heapify(int x)
 	{
 		int l=2*x;
@@ -151,15 +149,16 @@ private:
 	}
 
 public:
-	CBSPriorityQueue(int numAgents)
+	CBSPriorityQueue(int numAgents, int numTasks)
 	{ 
 		mNumAgents = numAgents;
+		mNumTasks = numTasks;
 		reset();
 	}
 	void reset()
 	{
 		PQ.clear();
-		boost::unordered_map <SearchState, allowedInterval, state_hash> v1;
+		std::vector <std::pair<allowedInterval, allowedInterval>> v1(mNumTasks);
 		std::vector <boost::unordered_map <CollisionConstraint, int, collision_hash>> v2(mNumAgents);
 		std::vector<std::vector<SearchState>> v3(mNumAgents,std::vector<SearchState>());
 		Element a(v1, v2, v3);
