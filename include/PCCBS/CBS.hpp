@@ -142,26 +142,23 @@ public:
 	/// Environment
 	cv::Mat mImage;
 
-	std::vector<std::vector<std::pair<int,std::pair<Vertex,Vertex>>>> mTasksList;
-	std::vector<std::vector<std::pair<int,int>>> mTasksToAgentsList;
+	std::vector<<std::pair<int, int>> mTasksList;
+	std::vector<std::vector<int>> mTasksToAgentsList;
+	std::vector<std::vector <int>> mAgentsToTasksList;
 	std::vector<std::unordered_map<Vertex,bool>> mSpecialPosition;
 
 	/// The fixed graphs denoting individual environment of corresponding agents
 	std::vector<Graph> mGraphs;
+	Graph mGraph;
 
 	/// Number of agents
 	int mNumAgents; 
 
+	/// Number of tasks
+	int mNumTasks;
+
 	/// Path to the roadmap files.
 	std::vector<std::string> mRoadmapFileNames;
-
-	/// Source vertex.
-	std::vector<Eigen::VectorXd> mStartConfig;
-	std::vector<Vertex> mStartVertex;
-
-	std::vector<int> mStartTimestep;
-	std::vector<int> mGoalTimestep;
-
 	PrecedenceConstraintGraph mPCGraph;
 	PrecedenceConstraintGraph mPCGraph_T;
 
@@ -171,94 +168,73 @@ public:
 	vector <vector <int>> mPredecessors;
 	vector <vector <int>> mSuccessors;
 	container mTopologicalOrder;
-
-
-	boost::unordered_map<int, std::pair <SearchState, SearchState>> mTaskToSearchStates;
-	boost::unordered_map<CollaborationConstraint, int, collaboration_constraint_hash> mWaypointHashMap;
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
-
 	double mUnitEdgeLength = 0.1;
-	int mUpperBound;
-	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents, std::vector<std::string> roadmapFileNames, 
-		Eigen::VectorXd _start_config, std::vector<int> taskStartTimestep, 
-		std::vector<int> taskEndTimestep, std::string imagePath, int upper_bound)
+
+	std::pair <Vertex, Vertex> getVertexFromGraph(meta_data vertex){
+		Eigen::VectorXd start_config(2);
+		start_config[0] = vertex.start.first;
+		start_config[1] = vertex.start.second;
+
+		Eigen::VectorXd goal_config(2);
+		goal_config[0] = vertex.goal.first;
+		goal_config[1] = vertex.goal.second;
+
+		Vertex s,g; VertexIter ind_vi, ind_vi_end;
+		for (boost::tie(ind_vi, ind_vi_end) = vertices(mGraph); ind_vi != ind_vi_end; ++ind_vi)
+		{
+			if(start_config.isApprox(mGraph[*ind_vi].state))
+				s = *ind_vi;
+			if(goal_config.isApprox(mGraph[*ind_vi].state))
+				g = *ind_vi;
+		}
+		return std::make_pair(s,g);
+	}
+
+	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents 
+		,std::vector<std::string> roadmapFileNames, std::string imagePath)
 		: mImage(img)
 		, mNumAgents(numAgents)
 		, mRoadmapFileNames(roadmapFileNames)
-		, mTaskStartTimestep(taskStartTimestep)
-		, mTaskEndTimestep(taskEndTimestep)
 		, mImagePath(imagePath)
 		, mPCGraph(_pcg)
-		, mUpperBound(upper_bound)
 	{
+		//set up transpose graph and topological sort
 		transpose_graph(mPCGraph, mPCGraph_T);
 		mProp = get(meta_data_t(), mPCGraph);
 		mProp_T = get(meta_data_t(), mPCGraph_T);
 		topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
+		int mNumTasks = boost::num_vertices(_pcg);
 
-		int numTasks = boost::num_vertices(_pcg);
+		//set up graph preprocessing
+		create_vertices(mGraph,get(&VProp::state,mGraph),mRoadmapFileNames[0],2,get(&EProp::prior,mGraph));
+		create_edges(mGraph,get(&EProp::length,mGraph));
+		preprocess_graph(mGraph);
 
-		//stores the tasks assigned to an agent, with start and goal for each task
-		std::vector<std::vector<std::pair<int,std::pair<Eigen::VectorXd,Eigen::VectorXd>>>> _tasks_list(numAgents);
+		//initialise the search problem
+		mPredecessors = std::vector <std::vector<int>> (mNumTasks);
+		mSuccessors = std::vector <std::vector<int>> (mNumTasks);
+		mTasksList = std::vector <std::pair <int,int> > (mNumTasks);
+		mTasksToAgentsList = std::vector <std::vector <int>> (mNumTasks);
 
-		//stores the agents assigned to a task, and their i"th task number by precedence
-		std::vector<std::vector<std::pair<int,int>>> _tasks_to_agents_list(numTasks);
-
-		// std::vector< PCVertex > c;
-		// topological_sort(_pcg, std::back_inserter(c));
-		mPredecessors = std::vector <std::vector<int>> (numTasks);
-		mSuccessors = std::vector <std::vector<int>> (numTasks);
 		for ( std::vector< PCVertex >::reverse_iterator ii=mTopologicalOrder.rbegin(); 
 			ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			meta_data vertex = get(get(meta_data_t(), _pcg), *ii);
-			int task_id = *ii; //vertex.task_id
-			// std::cout << "Task id:"<<task_id << " " << *ii << std::endl;
-			// std::cout << mTaskStartTimestep[task_id] << " " << mTaskEndTimestep[task_id] << std::endl;
-			Eigen::VectorXd start_config(2);
-			start_config[0] = vertex.start.first;
-			start_config[1] = vertex.start.second;
-
-			Eigen::VectorXd goal_config(2);
-			goal_config[0] = vertex.goal.first;
-			goal_config[1] = vertex.goal.second;
-
-			std::vector <int> agent_list = vertex.agent_list;
-			for (auto agentNum: agent_list){
-				PRINT << agentNum << std::endl;
-				_tasks_to_agents_list[task_id].push_back(std::make_pair(agentNum,_tasks_list[agentNum].size()));
-				_tasks_list[agentNum].push_back(std::make_pair(task_id, std::make_pair(start_config, goal_config)));
+			int task_id = *ii; 
+			std::pair <Vertex, Vertex> taskVertices = getVertexFromGraph(vertex);
+			mTasksList[task_id] = taskVertices;
+			mTasksToAgentsList[task_id] = vertex.agent_list;
+			for(auto agent_id: vertex.agent_list){
+				mAgentsToTasksList.push_back(task_id);
 			}
-			// std::cerr << "yo\n";
-			Graph graph;
-			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[0],2,get(&EProp::prior,graph));
-			create_edges(graph,get(&EProp::length,graph));
-			VertexIter ind_vi, ind_vi_end;
-			SearchState start_task, goal_task;
-			// std::cerr << "yo\n";
-			for (boost::tie(ind_vi, ind_vi_end) = vertices(graph); ind_vi != ind_vi_end; ++ind_vi)
-			{
-				// std::cerr << "yo\n";
-				if(start_config.isApprox(graph[*ind_vi].state))
-				{
-					start_task = SearchState(*ind_vi, -1, task_id, false);
-				}
-				if(goal_config.isApprox(graph[*ind_vi].state))
-				{
-					goal_task = SearchState(*ind_vi, -1, task_id, true);
-				}
-			}
-			mTaskToSearchStates[task_id] = std::make_pair(start_task, goal_task);
-
 			PCOutEdgeIter ei, ei_end;
-			vector <int> predecessors;
+			vector <int> predecessors, successors;
 			for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph_T); ei != ei_end; ++ei) 
 			{
 				PCVertex curPred = target(*ei, mPCGraph_T);
 				predecessors.push_back(curPred);
 			}
-
-			vector <int> successors;
 			for (boost::tie(ei, ei_end) = out_edges(*ii, mPCGraph); ei != ei_end; ++ei) 
 			{
 				PCVertex curSuc = target(*ei, mPCGraph);
@@ -266,15 +242,11 @@ public:
 			}
 			mPredecessors[task_id]=predecessors;
 			mSuccessors[task_id]=successors;
-			// std::cin.get();
 		}
-
-		// std::cin.get();
+		std::cout << "yo\n";
+		std::cin.get();
 
 		PRINT<<"OUT";
-
-		mTasksToAgentsList = _tasks_to_agents_list;
-
 		auto t1 = std::chrono::high_resolution_clock::now();
 	    auto t2 = std::chrono::high_resolution_clock::now();
 		mCSPTime = t2-t1;mGNTime = t2-t1;mQOTime = t2-t1;mCCTime = t2-t1;
@@ -282,91 +254,8 @@ public:
 		mCollabCTime = t2-t1;mCollisionCTime = t2-t1;mGNTime = t2-t1;mQOTime = t2-t1;
 		mCCTime = t2-t1;mCHTime = t2-t1;mPlanningTime = t2-t1;mPreprocessTime = t2-t1;
 		mMapOperationsTime = t2-t1;mGetCollisionTime = t2-t1;mGetCollaborationTime = t2-t1;
-
 		mCollisionIterations = 0;mCollaborationIterations = 0;
 		mCSPExpansions = 0;mCSPIterations = 0;
-
-		PRINT<<"K";
-
-		for(int i=0; i<mNumAgents;i++)
-		{
-			Eigen::VectorXd start_config(2);
-			for (int ui = i*2; ui < i*2+2; ui++)
-				start_config[ui-i*2] = _start_config[ui];
-			mStartConfig.push_back(start_config);
-		}
-
-		PRINT<<"K";
-
-		for(int i=0; i<_tasks_list.size(); i++)
-		{
-			std::vector<std::pair<int,std::pair<Vertex,Vertex>>> agent_tasks_list;
-			// std::cout << "Agent id = " << i << std::endl;
-			for(int j=0; j<_tasks_list[i].size(); j++){
-				// std::cout << "Tasks Assigned = " << _tasks_list[i][j].first << " ";
-				agent_tasks_list.push_back(std::make_pair(_tasks_list[i][j].first,std::make_pair(0,0)));
-			}
-			// std::cout << std::endl;
-			mTasksList.push_back(agent_tasks_list);
-		}
-
-		PRINT<<"K";
-
-		//mTasksLists being assigned start and goal vertices for each task
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		{
-			Graph graph;
-			Vertex start_vertex;
-			PRINT<<"L: "<<agent_id<<"\n";
-
-			create_vertices(graph,get(&VProp::state,graph),mRoadmapFileNames[agent_id],2,get(&EProp::prior,graph));
-			create_edges(graph,get(&EProp::length,graph));
-
-			PRINT<<"M: "<<agent_id<<"\n";
-
-			VertexIter ind_vi, ind_vi_end;
-			int i=0;
-			for (boost::tie(ind_vi, ind_vi_end) = vertices(graph); ind_vi != ind_vi_end; ++ind_vi,++i)
-			{
-				put(&VProp::vertex_index,graph,*ind_vi,i);
-				if(mStartConfig[agent_id].isApprox(graph[*ind_vi].state))
-					start_vertex = *ind_vi;
-				for(int i=0; i<_tasks_list[agent_id].size(); i++)
-				{
-					if(_tasks_list[agent_id][i].second.first.isApprox(graph[*ind_vi].state))
-						mTasksList[agent_id][i].second.first = *ind_vi;
-					if(_tasks_list[agent_id][i].second.second.isApprox(graph[*ind_vi].state))
-						mTasksList[agent_id][i].second.second = *ind_vi;
-				}
-			}
-			PRINT<<"N: "<<agent_id<<"\n";
-
-			mGraphs.push_back(graph);
-			mStartVertex.push_back(start_vertex);
-			PRINT<<"out\n";
-		}
-
-		PRINT<<"K";
-
-		for(int i=0; i<mTasksList.size(); i++)
-		{
-			std::unordered_map<Vertex,bool> special_positions;
-			for(int j=0; j<mTasksList[i].size(); j++)
-			{
-				special_positions[mTasksList[i][j].second.first]=true;
-				special_positions[mTasksList[i][j].second.second]=true;
-			}
-			mSpecialPosition.push_back(special_positions);
-		}
-		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		preprocess_graph(mGraphs[0]);
-		// for(int i=0; i<numTasks; i++){
-		// 	std::pair <SearchState, SearchState> states = mTaskToSearchStates[i];
-		// 	// std::cerr << "yo1\n";
-		// 	printState(states.first);
-		// 	// std::cerr << "yo1\n";
-		// 	printState(states.second);
-		// }
 	}
 
 	int getStateHash(Eigen::VectorXd state)
@@ -413,234 +302,17 @@ public:
 		// }
 	}
 
-	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
+
+	int countCollaborationConflicts(SearchState &state, SearchState &new_state, 
+		std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents)
 	{
-		double distance = (left - right).norm();
-		if(distance < 0.00141) // tune threshold!!
-			return true;
-		return false;
-	}
-
-	bool getEdgesCollisionStatus(Eigen::VectorXd left_source, Eigen::VectorXd left_target, Eigen::VectorXd right_source, Eigen::VectorXd right_target)
-	{
-		if ( (left_source - right_target).norm() < 0.00141 &&  (right_source - left_target).norm() < 0.00141)
-			return true;
-		return false;
-	}
-
-	bool evaluateIndividualConfig(Eigen::VectorXd config)
-	{
-		int numberOfRows = mImage.rows;
-		int numberOfColumns = mImage.cols;
-
-		// agent
-		double x_point = config[0]*numberOfColumns + 0.000001;
-		double y_point = (1 - config[1])*numberOfRows + 0.000001;
-		cv::Point point((int)x_point, (int)y_point);
-
-		// Collision Check for agent with environment
-		int intensity = (int)mImage.at<uchar>(point.y, point.x);
-		if (intensity == 0) // Pixel is black
-			return false;
-
-		return true;
-	}
-
-	bool evaluateIndividualEdge(Graph &graph, Edge& e) // returns false if in collision
-	{
-		graph[e].isEvaluated = true;
-
-		Vertex source_vertex = source(e, graph);
-		Vertex target_vertex = target(e, graph);
-
-		Eigen::VectorXd sourceState(2);
-		sourceState << graph[source_vertex].state;
-
-		Eigen::VectorXd targetState(2);
-		targetState << graph[target_vertex].state;
-
-		double resolution = 0.0025;
-		unsigned int nStates = std::ceil(graph[e].length / resolution-0.000000001)+1;
-
-		// Just start and goal
-		if(nStates < 2u)
-		{
-			nStates = 2u;
-		}
-		// std::cout<<"nStates:"<<nStates<<std::endl;
-
-		bool checkResult = true;
 		
-		if (checkResult && !evaluateIndividualConfig(sourceState))
-		{
-			graph[source_vertex].status = CollisionStatus::BLOCKED;
-			graph[e].status = CollisionStatus::BLOCKED;
-			graph[e].length = INF;
-			checkResult = false;
-		}
-
-		if (checkResult && !evaluateIndividualConfig(targetState))
-		{
-			graph[target_vertex].status = CollisionStatus::BLOCKED;
-			graph[e].status = CollisionStatus::BLOCKED;
-			graph[e].length = INF;
-			checkResult = false;
-		}
-
-		if (checkResult)
-		{
-			// Evaluate the States in between
-			for (unsigned int i = 1; i < nStates-1; i++)
-			{
-
-				if(!evaluateIndividualConfig(sourceState + (resolution*i/graph[e].length)*(targetState-sourceState) ))
-				{
-					graph[e].status = CollisionStatus::BLOCKED;
-					graph[e].length = INF;
-					checkResult = false;
-					break;
-				}
-			}
-		}
-
-		return checkResult;
-	}
-
-	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
-	{
-		auto start = high_resolution_clock::now();
-		std::vector<Vertex> neighbors;
-		OutEdgeIter ei, ei_end;
-
-		for (boost::tie(ei, ei_end) = out_edges(v, graph); ei != ei_end; ++ei) 
-		{
-			Vertex curSucc = target(*ei, graph);
-			Edge e = *ei;
-			if(!graph[e].isEvaluated)
-				evaluateIndividualEdge(graph,e);
-			if(graph[e].status == CollisionStatus::FREE)
-				neighbors.push_back(curSucc);
-		}
-
-		auto stop = high_resolution_clock::now();
-		mGNTime += (stop - start);
-
-		// std::cout<<"neighbors size: "<<neighbors.size()<<std::endl;
-		return neighbors;
-	}
-
-	int countCollaborationConflicts(int &agent_id, SearchState &state, SearchState &new_state, std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents)
-	{
-		auto start1 = high_resolution_clock::now();
-
-		if(state.timestep != new_state.timestep)
-		{
-			std::cout<<"[ERROR]: on pickup/delivery action! ";
-			std::cin.get();
-		}
-		if(state.tasks_completed != new_state.tasks_completed) // delivery state
-		{
-			int delivery_taskid = mTasksList[agent_id][state.tasks_completed].first;
-			std::set<int> delivery_timesteps;
-			delivery_timesteps.insert(state.timestep);
-			for(int i=0; i<consider_agents.size(); i++)
-				for(int j=0; j<mTasksToAgentsList[delivery_taskid].size(); j++)
-					if(mTasksToAgentsList[delivery_taskid][j].first == consider_agents[i])
-					{
-						int agent_index = consider_agents[i];
-						int task_index = mTasksToAgentsList[delivery_taskid][j].second;
-						for(int k=1; k<paths[agent_index].size(); k++)
-							if(paths[agent_index][k].tasks_completed == task_index+1 && paths[agent_index][k].in_delivery == false
-								&& paths[agent_index][k-1].in_delivery == true)
-								delivery_timesteps.insert(paths[agent_index][k].timestep);
-					}
-			auto stop1 = high_resolution_clock::now();
-			mCollabCTime += (stop1 - start1);
-			return delivery_timesteps.size() - 1;
-		}
-		else // pickup state
-		{
-			int pickup_taskid = mTasksList[agent_id][state.tasks_completed].first;
-			std::set<int> pickup_timesteps;
-			pickup_timesteps.insert(state.timestep);
-			for(int i=0; i<consider_agents.size(); i++)
-				for(int j=0; j<mTasksToAgentsList[pickup_taskid].size(); j++)
-					if(mTasksToAgentsList[pickup_taskid][j].first == consider_agents[i])
-					{
-						int agent_index = consider_agents[i];
-						int task_index = mTasksToAgentsList[pickup_taskid][j].second;
-						for(int k=1; k<paths[agent_index].size(); k++)
-							if(paths[agent_index][k].tasks_completed == task_index && paths[agent_index][k].in_delivery == true
-								&& paths[agent_index][k-1].in_delivery == false)
-								pickup_timesteps.insert(paths[agent_index][k].timestep);
-					}
-			auto stop1 = high_resolution_clock::now();
-			mCollabCTime += (stop1 - start1);
-			return pickup_timesteps.size() - 1;
-		}
 	}
 
 	bool getCollaborationConstraints(Element &p, std::vector<int> &collaborating_agent_ids, 
 		CollaborationConstraint &constraint_c)
 	{
-		std::vector<std::vector<SearchState>> &paths = p.shortestPaths;
-		auto start1 = high_resolution_clock::now();
-		std::vector <std::vector <int>> candidate_collaborating_agent_ids;
-		std::vector <CollaborationConstraint> candidate_constraints;
-
-		bool is_pickup = false;
-		// for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
-		// for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
-		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
-		{
-			int tid = *ii;
-			Vertex pickup_vertex;
-			std::set<int> pickup_timesteps;
-			Vertex delivery_vertex;
-			std::set<int> delivery_timesteps;
-			for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-			{
-				int agent_id = mTasksToAgentsList[tid][k].first;
-				int task_id = mTasksToAgentsList[tid][k].second;
-				// int task_id = tid;
-				pickup_vertex = mTasksList[agent_id][task_id].second.first;
-				delivery_vertex = mTasksList[agent_id][task_id].second.second;
-				for(int i=1; i<paths[agent_id].size(); i++)
-				{	
-					if(paths[agent_id][i].tasks_completed == task_id && paths[agent_id][i].in_delivery == true
-						&& paths[agent_id][i-1].in_delivery == false)
-						pickup_timesteps.insert(paths[agent_id][i].timestep);
-					if(paths[agent_id][i].tasks_completed == task_id+1 && paths[agent_id][i].in_delivery == false
-						&& paths[agent_id][i-1].in_delivery == true)
-						delivery_timesteps.insert(paths[agent_id][i].timestep);
-				}
-			}
-			if(pickup_timesteps.size()>1)
-			{
-				// int collaboration_timestep = (*pickup_timesteps.begin()+*pickup_timesteps.rbegin())/2;
-				int collaboration_timestep = *pickup_timesteps.rbegin();
-				collaborating_agent_ids.clear();
-				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-				constraint_c = CollaborationConstraint(pickup_vertex, tid, false,collaboration_timestep);
-				candidate_constraints.push_back(constraint_c);
-				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
-				return true;
-			}
-			if(delivery_timesteps.size()>1)
-			{
-				// int collaboration_timestep = (*delivery_timesteps.rbegin() + *delivery_timesteps.begin())/2;
-				int collaboration_timestep = *delivery_timesteps.rbegin();
-				collaborating_agent_ids.clear();
-				for(int k=0; k<mTasksToAgentsList[tid].size(); k++)
-					collaborating_agent_ids.push_back(mTasksToAgentsList[tid][k].first);
-				constraint_c = CollaborationConstraint(delivery_vertex, tid, true,collaboration_timestep);
-				candidate_constraints.push_back(constraint_c);
-				candidate_collaborating_agent_ids.push_back(collaborating_agent_ids);
-				return true;
-			}
-		}
-		return false;
+		
 	}
 
 	int countCollisionConflicts(
@@ -655,273 +327,112 @@ public:
 		if(mSpecialPosition[agent_id].count(curr.vertex)!=0) return 0;
 		for(auto state: possible){
 			if(state.tasks_completed!=task_id) return 1;
-			if(!state.in_delivery) return 1;
 		}
 		return 0;
 	}
 
 	bool getCollisionConstraints(Element &p, 
-		std::vector<int> &collaborating_agent_ids, std::vector <int> &other_agents,
-		CollisionConstraint &constraint_c, CollisionConstraint &other_constraint)
+		std::vector<int> &collaborating_agent_ids_1, std::vector <int> &collaborating_agent_ids_2,
+		CollisionConstraint &constraint_1, CollisionConstraint &constraint_2,
+		int makespan)
 	{
-		std::vector<std::vector<SearchState>> &paths = p.shortestPaths;
-		auto start1 = high_resolution_clock::now();
-		int current_timestep = 0;
-		int maximum_timestep = 0;
-		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			maximum_timestep = std::max(maximum_timestep, paths[agent_id].at(paths[agent_id].size()-1).timestep);
-		// std::cout<<"MT: "<<maximum_timestep<<std::endl;
-		std::vector <std::vector <int>> candidate_collaborating_agent_ids_1;
-		std::vector <CollisionConstraint> candidate_constraints_1;
+		std::vector <std::vector <int>> timestepMap (makespan+1);
 
-		std::vector <std::vector <int>> candidate_collaborating_agent_ids_2;
-		std::vector <CollisionConstraint> candidate_constraints_2;
-
-		std::vector <int> agent_id_1, agent_id_2;
-
-		std::vector<int> current_path_id(mNumAgents, 0);
-		while(current_timestep < maximum_timestep)
-		{
-			// std::cout<<"\nCT:"<<current_timestep<<std::endl;
-			std::vector<int> source_task_ids(mNumAgents, -1);
-			std::vector<Vertex> source_vertices(mNumAgents); // all source vertices
-			std::vector<int> source_tasks_completed(mNumAgents, 0);
-			std::vector<bool> source_in_delivery(mNumAgents, false);
-
-			std::vector<int> target_task_ids(mNumAgents, -1);
-			std::vector<Vertex> target_vertices(mNumAgents); // target vertex for collab agents
-			std::vector<int> target_tasks_completed(mNumAgents, 0);
-			std::vector<bool> target_in_delivery(mNumAgents, false);
-
-
-			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-			{
-				if(current_path_id[agent_id] == paths[agent_id].size())
-				{
-					source_vertices[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).vertex;
-					source_tasks_completed[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).tasks_completed;
-					source_in_delivery[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).in_delivery;
-				}
-				else
-				{
-					source_vertices[agent_id] = paths[agent_id].at(current_path_id[agent_id]).vertex;
-					while(current_path_id[agent_id] < paths[agent_id].size()
-						&& paths[agent_id].at(current_path_id[agent_id]).timestep == current_timestep)
-					{ // more than one timestep means that you are either picking up at source, or delivering
-						if(paths[agent_id].at(current_path_id[agent_id]).in_delivery == true)
-							source_task_ids[agent_id] = mTasksList[agent_id][paths[agent_id].at(current_path_id[agent_id]).tasks_completed].first;
-						else
-							source_task_ids[agent_id] = -1;
-						source_tasks_completed[agent_id] = paths[agent_id].at(current_path_id[agent_id]).tasks_completed;
-						source_in_delivery[agent_id] = paths[agent_id].at(current_path_id[agent_id]).in_delivery;
-						current_path_id[agent_id]++;
+		for(int i=0; i<mNumAgents; i++){
+			for(int j=0; j<p.shortestPaths[i].size(); j++){
+				SearchState state = p.shortestPaths[i][j];
+				if(state.tasks_completed == mAgentsToTasksList.size()){
+					SearchState key = SearchState(state.v, i, -1);
+					timestepMap[state.timestep].push_back(key);
+					if(j==p.shortestPaths.size()-1){
+						for(int time=state.timestep+1; time <= makespan; time++){
+							SearchState key = SearchState(state.v, i, -1);
+							timestepMap[time].push_back(key);
+						}
+						break;
 					}
+					continue;
 				}
-
-				if(current_path_id[agent_id] == paths[agent_id].size())
-				{
-					target_vertices[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).vertex;
-					target_tasks_completed[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).tasks_completed;
-					target_in_delivery[agent_id] = paths[agent_id].at(paths[agent_id].size()-1).in_delivery;
-				}
-				else
-				{
-					int target_path_id = current_path_id[agent_id];
-					target_vertices[agent_id] = paths[agent_id].at(target_path_id).vertex;
-					target_tasks_completed[agent_id] = paths[agent_id].at(target_path_id).tasks_completed;
-					target_in_delivery[agent_id] = paths[agent_id].at(target_path_id).in_delivery;
-					
-
-					while(target_path_id < paths[agent_id].size()
-						&& paths[agent_id].at(target_path_id).timestep == current_timestep+1)
-					{
-						target_path_id++;
-						if(target_path_id < paths[agent_id].size() && 
-							paths[agent_id].at(target_path_id).in_delivery == true)
-							target_task_ids[agent_id] = 
-							mTasksList[agent_id][paths[agent_id].at(target_path_id).tasks_completed].first;
-						else
-							target_task_ids[agent_id] = -1;
-					}
-				}
+				int task_id = mAgentsToTasksList[state.tasks_completed];
+				SearchState key = SearchState(state.v, i, task_id);
+				timestepMap[state.timestep].push_back(key);
 			}
-
-			PRINT<<"CT: "<<current_timestep<<std::endl;
-			for(int i=0; i<mNumAgents; i++)
-			for(int j=i+1; j<mNumAgents; j++)
-			{
-				if(target_task_ids[i]==-1 || target_task_ids[i]!=target_task_ids[j])
-				{
-					PRINT<<"Checking between agents: "<<i<<" "<<j<<std::endl;
-					if(getVerticesCollisionStatus(mGraphs[0][target_vertices[i]].state, mGraphs[0][target_vertices[j]].state))
-					{
-						// printVertex(target_vertices[i]);
-						// printVertex(target_vertices[j]);
-						bool safe_i = false;
-						bool safe_j = false;
-						if(target_in_delivery[i] == false)
-						{
-							if(target_tasks_completed[i] == 0)
-								safe_i = (mStartVertex[i] == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i]);
-							else
-								safe_i = (mTasksList[i][target_tasks_completed[i]-1].second.second == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i]);
-						}
-						else
-							safe_i = (mTasksList[i][target_tasks_completed[i]].second.first == target_vertices[i] || mTasksList[i][target_tasks_completed[i]].second.second == target_vertices[i]);
-						
-						if(target_in_delivery[j] == false)
-						{
-							if(target_tasks_completed[j] == 0)
-								safe_j = (mStartVertex[j] == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j]);
-							else
-								safe_j = (mTasksList[j][target_tasks_completed[j]-1].second.second == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j]);
-						}
-						else
-							safe_j = (mTasksList[j][target_tasks_completed[j]].second.first == target_vertices[j] || mTasksList[j][target_tasks_completed[j]].second.second == target_vertices[j]);
-						
-						if(safe_i == false || safe_j == false)
-						{
-							if(target_tasks_completed[i] >= mTasksList[i].size()) 
-								target_tasks_completed[i] = mTasksList[i].size()-1;
-
-							if(target_tasks_completed[j] >= mTasksList[j].size()) 
-								target_tasks_completed[j] = mTasksList[j].size()-1;
-
-							int tid_i = mTasksList[i][target_tasks_completed[i]].first;
-							int tid_j = mTasksList[j][target_tasks_completed[j]].first;
-							// std::cout << "TASK IDS = " << tid_i << " " << tid_j << std::endl;
-							PRINT<<"vertex conflict!"<<std::endl;
-							// std::cout << "TARGET TASK ID i = " << target_task_ids[i] << std::endl;
-
-							agent_id_1.clear();
-							agent_id_2.clear();
-							
-							if(target_task_ids[i]==-1){
-								agent_id_1.push_back(i);
-							}
-							else{
-								for(int k=0; k<mNumAgents; k++)
-									if(target_task_ids[k] == target_task_ids[i])
-										agent_id_1.push_back(k);
-							}
-
-							// std::cout << "TARGET TASK ID j = " << target_task_ids[j] << std::endl;
-
-							if(target_task_ids[j]==-1)
-								agent_id_2.push_back(j);
-							else
-								for(int k=0; k<mNumAgents; k++)
-									if(target_task_ids[k] == target_task_ids[j])
-										agent_id_2.push_back(k);
-
-							constraint_c = CollisionConstraint(target_vertices[i], tid_i, 
-								target_in_delivery[i], current_timestep+1);
-							other_constraint = CollisionConstraint(target_vertices[j], tid_j, 
-								target_in_delivery[j], current_timestep+1);
-							collaborating_agent_ids = agent_id_1;
-							other_agents = agent_id_2;
-							return true;
-						}
-					}
-				}
-				
-				if(source_task_ids[i]==-1 || source_task_ids[i]!=source_task_ids[j])
-				{
-					PRINT<<"Checking between agents: "<<i<<" "<<j<<std::endl;
-					if(getEdgesCollisionStatus(mGraphs[0][source_vertices[i]].state, mGraphs[0][target_vertices[i]].state, mGraphs[0][source_vertices[j]].state, mGraphs[0][target_vertices[j]].state))
-					{
-						bool safe_i = false;
-						bool safe_j = false;
-						if(target_in_delivery[i] == false)
-						{
-							if(target_tasks_completed[i] == 0)
-								safe_i = ( (target_vertices[i] == source_vertices[i])
-									&& ((mStartVertex[i] == source_vertices[i]) 
-										|| (mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i])));
-							else
-								safe_i = ( (target_vertices[i] == source_vertices[i])
-								&& ((mTasksList[i][target_tasks_completed[i]-1].second.second == source_vertices[i]) 
-								|| (mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i])));
-						}
-						else
-							safe_i = ( (target_vertices[i] == source_vertices[i])
-							&& ((mTasksList[i][target_tasks_completed[i]].second.first == source_vertices[i]) 
-								|| (mTasksList[i][target_tasks_completed[i]].second.second == source_vertices[i])));
-						
-						if(target_in_delivery[j] == false)
-						{
-							if(target_tasks_completed[j] == 0)
-								safe_j = ( (target_vertices[j] == source_vertices[j])
-								&& ((mStartVertex[j] == source_vertices[j]) 
-								|| (mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j])));
-							else
-								safe_j = ( (target_vertices[j] == source_vertices[j])
-								&& ((mTasksList[j][target_tasks_completed[j]-1].second.second == source_vertices[j]) 
-								|| (mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j])));
-						}
-						else
-							safe_j = ( (target_vertices[j] == source_vertices[j])
-								&& ((mTasksList[j][target_tasks_completed[j]].second.first == source_vertices[j]) 
-								|| (mTasksList[j][target_tasks_completed[j]].second.second == source_vertices[j])));
-						
-						
-						if(safe_i == false || safe_j == false)
-						{
-							PRINT<<"edge conflict! - ("<<source_vertices[i]<<","<<target_vertices[i]
-							<<") ("<<source_vertices[j]<<","<<target_vertices[j]<<")"<<std::endl;
-							PRINT<<"agents: "<<i<<" "<<j<<std::endl;
-							PRINT<<"source_task_ids: "<<source_task_ids[i]<<" "<<source_task_ids[j]<<std::endl;
-
-							agent_id_1.clear();
-							agent_id_2.clear();
-
-							if(source_task_ids[i]==-1)
-								agent_id_1.push_back(i);
-							else
-								for(int k=0; k<mNumAgents; k++)
-									if(source_task_ids[k] == source_task_ids[i])
-										agent_id_1.push_back(k);
-
-							if(source_task_ids[j]==-1)
-								agent_id_2.push_back(j);
-							else
-								for(int k=0; k<mNumAgents; k++)
-									if(source_task_ids[k] == source_task_ids[j])
-										agent_id_2.push_back(k);
-
-							if(target_tasks_completed[i] >= mTasksList[i].size()) 
-								target_tasks_completed[i] = mTasksList[i].size()-1;
-
-							if(target_tasks_completed[j] >= mTasksList[j].size()) 
-								target_tasks_completed[j] = mTasksList[j].size()-1;
-
-							int tid_i = mTasksList[i][target_tasks_completed[i]].first;
-							int tid_j = mTasksList[j][target_tasks_completed[j]].first;
-
-							Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[0]).first;
-							Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[0]).first;
-							constraint_c = CollisionConstraint(edge_1, tid_i, 
-								target_in_delivery[i], current_timestep+1);
-							other_constraint = CollisionConstraint(edge_2, tid_j, 
-								target_in_delivery[j], current_timestep+1);
-							
-							collaborating_agent_ids = agent_id_1;
-							other_agents = agent_id_2;
-
-							constraint_c.v1 = source(constraint_c.e, mGraphs[0]);
-							constraint_c.v2 = target(constraint_c.e, mGraphs[0]);
-
-							other_constraint.v1 = source(other_constraint.e, mGraphs[0]);
-							other_constraint.v2 = target(other_constraint.e, mGraphs[0]);
-							// std::cout << source_vertices[i] << " " << target_vertices[i] << "\n";
-							// std::cout << source_vertices[j] << " " << target_vertices[j] << "\n";
-							return true;
-						}
-					}
-				}
-			}
-			current_timestep++;
 		}
+
+		//check vertex conflict
+		for(int time=0; time<=makespan; time++){
+			boost::unordered_map <Vertex, std::vector<SearchState>> vertexMap;
+			int task1 = -1, task2 = -1;
+			for(state: timestep[time]){
+				vertexMap[state.vertex].push_back(state);
+			}
+
+			for(auto it: vertexMap){
+				Vertex v = it.first;
+				std::vector <SearchState> colStates = it.second;
+				std::unordered_map <int, int> agentMap;
+				for(auto state: colStates){
+					agentMap[state.timestep] = std::max(state.tasks_completed, agentMap[state.timestep]);
+				}
+
+				for(auto a1: agentMap){
+					for(auto a2: agentMap){
+						if(a1.first==a2.first) continue;
+						if(a1.second==a2.second) continue;
+						int tid_1 = a1.second, tid_2 = a2.second;
+						for(auto a3: agentMap){
+							if(a3.second == tid_1){
+								collaborating_agent_ids_1.push_back(a3.first);
+							}
+							if(a3.second == tid_2){
+								collaborating_agent_ids_2.push_back(a3.first);
+							}
+						}
+						constraint_1 = CollisionConstraint(v, tid_1, time);
+						constraint_2 = CollisionConstraint(v, tid_2, time);
+						return true;
+					}
+				}
+			}
+		}
+
+		//check edge conflict
+		for(int time=0; time<=makespan-1; time++){
+			boost::unordered_map <Vertex, std::vector<SearchState>> vertexMap;
+			int task1 = -1, task2 = -1;
+			for(state: timestep[time]){
+				vertexMap[state.vertex].push_back(state);
+			}
+
+			for(auto it: vertexMap){
+				Vertex v = it.first;
+				std::vector <SearchState> colStates = it.second;
+				std::unordered_map <int, int> agentMap;
+				for(auto state: colStates){
+					agentMap[state.timestep] = std::max(state.tasks_completed, agentMap[state.timestep]);
+				}
+
+				for(auto a1: agentMap){
+					for(auto a2: agentMap){
+						if(a1.first==a2.first) continue;
+						if(a1.second==a2.second) continue;
+						int tid_1 = a1.second, tid_2 = a2.second;
+						for(auto a3: agentMap){
+							if(a3.second == tid_1){
+								collaborating_agent_ids_1.push_back(a3.first);
+							}
+							if(a3.second == tid_2){
+								collaborating_agent_ids_2.push_back(a3.first);
+							}
+						}
+						constraint_1 = CollisionConstraint(v, tid_1, time);
+						constraint_2 = CollisionConstraint(v, tid_2, time);
+						return true;
+					}
+				}
+			}
+		}
+
 		return false;
 	}
 
@@ -932,6 +443,7 @@ public:
 		}
 		return makespan;
 	}
+
 	Element expandCollisionConstraint(Element p, 
 		std::vector <int> collaborating_agent_ids, 
 		CollisionConstraint constraint, bool &possible)
@@ -1195,37 +707,14 @@ public:
 		auto solve_start = high_resolution_clock::now();
 		CBSPriorityQueue PQ(mNumAgents);
 
-		boost::unordered_map <SearchState, allowedInterval, state_hash> nonCollabMap;
+		std::vector <allowedInterval> nonCollabMap;
 		std::vector <boost::unordered_map <CollisionConstraint, int, 
 			collision_hash>> nonCollisionMap(mNumAgents);
 
-		for(int i=0; i<mTasksList.size(); i++)
+		for(int i=0; i<mNumTasks; i++)
 		{
-			for(int j=0; j<mTasksList[i].size(); j++)
-			{
-				int task_id = mTasksList[i][j].first;
-				int task_start_time = mTaskStartTimestep[task_id];
-				int task_end_time = mTaskEndTimestep[task_id];
-				Vertex pickup_vertex = mTasksList[i][j].second.first;
-				SearchState state = SearchState(pickup_vertex,-1,task_id,false);
-				allowedInterval Interval = allowedInterval();
-				if(nonCollabMap.find(state)!=nonCollabMap.end()){
-					Interval = nonCollabMap[state];
-				}
-				Interval.minTime = std::max(Interval.minTime, task_start_time);
-				Interval.maxTime = mUpperBound;
-				nonCollabMap[state] = Interval;
-
-				Vertex delivery_vertex = mTasksList[i][j].second.second;
-				state = SearchState(delivery_vertex,-1,task_id,true);
-				Interval = allowedInterval();
-				if(nonCollabMap.find(state)!=nonCollabMap.end()){
-					Interval = nonCollabMap[state];
-				}
-				Interval.minTime = std::max(Interval.minTime, task_end_time);
-				Interval.maxTime = mUpperBound;
-				nonCollabMap[state] = Interval;
-			}
+			allowedInterval Interval = allowedInterval();
+			nonCollabMap.push_back(Interval);
 		}
 		// std::cin.get();
 		bool possible;
@@ -1238,8 +727,7 @@ public:
 			std::cout << "Problem is wrong.\n";
 			std::cin.get();
 		}
-		// std::cin.get();
-		std::vector<double> start_costs;
+
 		std::vector< std::vector<SearchState> > start_shortestPaths = 
 			computeDecoupledPaths(nonCollabMap, nonCollisionMap);
 
@@ -1256,6 +744,7 @@ public:
 		
 		Element p = Element(nonCollabMap, nonCollisionMap, start_shortestPaths);
 		PQ.insert(p);
+
 		int numSearches = 0;
 		while(PQ.PQsize()!=0)
 		{
@@ -1276,10 +765,11 @@ public:
 					return std::vector<std::vector<Eigen::VectorXd>>(mNumAgents,std::vector<Eigen::VectorXd>());
 				}
 			}
+
 			std::vector<std::vector<SearchState>> paths = p.shortestPaths;
-			int current_makespan=getMakespan(paths);		
-			double total_cost = current_makespan*mUnitEdgeLength;
-			int maximum_timestep = current_makespan;
+			int maximum_timestep=getMakespan(paths);		
+			double total_cost = maximum_timestep*mUnitEdgeLength;
+	
 			if(!debug_disabled){
 				std::cout<<"MT: "<<maximum_timestep<<std::endl;
 				std::cout << "---------------INTERVALS-------------------"<< std::endl;
@@ -1289,20 +779,20 @@ public:
 				std::cin.get();
 			}
 
-			std::vector<int> collaborating_agent_ids;
+			int task_id;
 			CollaborationConstraint constraint;
 
-			if(getCollaborationConstraints(p, collaborating_agent_ids, constraint))
+			if(getCollaborationConstraints(p, task_id))
 			{
 				if(!debug_disabled){
 					std::cout << "-----Colab Conflict Found-----------" << std::endl;
-					printCollabConflict(constraint, collaborating_agent_ids);
+					std::cout << "----- Task ID = " << task_id << std::endl;
 					std::cin.get();
 				}
+
 				bool possible1 = false, possible2 = false;
 				std::pair <Element, Element> colabChildren = 
-					expandCollaborationConflict(p, collaborating_agent_ids, constraint,
-						possible1, possible2);
+					expandCollaborationConflict(p, task_id, possible1, possible2);
 				if(possible1) PQ.insert(colabChildren.first); 
 				if(possible2) PQ.insert(colabChildren.second);
 
@@ -1331,7 +821,7 @@ public:
 
 			if(getCollisionConstraints(p, 
 				collaborating_agent_ids_1,collaborating_agent_ids_2,
-				constraint_1, constraint_2))
+				constraint_1, constraint_2, maximum_timestep))
 			{
 				if(!debug_disabled){
 					std::cout << "-----Colision Conflict Found-----------" << std::endl;
@@ -1363,8 +853,7 @@ public:
 			std::vector<std::vector<Eigen::VectorXd>> 
 			collision_free_path(mNumAgents, std::vector<Eigen::VectorXd>());
 			int current_timestep = 0;
-			maximum_timestep = current_makespan;
-			// std::cout<<"MT: "<<maximum_timestep<<std::endl;
+
 			std::vector<int> current_path_id(mNumAgents, 0);
 			while(current_timestep <= maximum_timestep)
 			{
@@ -1372,11 +861,11 @@ public:
 				{
 					if(current_path_id[agent_id] == paths[agent_id].size())
 					{
-						collision_free_path[agent_id].push_back(mGraphs[0][paths[agent_id].at(paths[agent_id].size()-1).vertex].state);
+						collision_free_path[agent_id].push_back(mGraph[paths[agent_id].at(paths[agent_id].size()-1).vertex].state);
 					}
 					else
 					{
-						collision_free_path[agent_id].push_back(mGraphs[0][paths[agent_id].at(current_path_id[agent_id]).vertex].state);
+						collision_free_path[agent_id].push_back(mGraph[paths[agent_id].at(current_path_id[agent_id]).vertex].state);
 						while(current_path_id[agent_id] < paths[agent_id].size()
 							&& paths[agent_id].at(current_path_id[agent_id]).timestep == current_timestep)
 							current_path_id[agent_id]++;
@@ -1694,18 +1183,18 @@ public:
 				}	
 			}
 
-			std::vector<Vertex> neighbors = getNeighbors(mGraphs[0],current_vertex);
+			std::vector<Vertex> neighbors = getNeighbors(mGraph,current_vertex);
 
 			for (auto &successor : neighbors) 
 			{
-				Edge uv_edge = boost::edge(current_vertex, successor, mGraphs[0]).first;
+				Edge uv_edge = boost::edge(current_vertex, successor, mGraph).first;
 
 				auto start2 = high_resolution_clock::now();
 				bool col = false;
 
 				int task_id = mTasksList[agent_id][current_tasks_completed].first;
 				CollisionConstraint c1(uv_edge, task_id, current_in_delivery, current_timestep+1);
-				c1.v1 = source(c1.e, mGraphs[0]); c1.v2 = target(c1.e, mGraphs[0]);
+				c1.v1 = source(c1.e, mGraph); c1.v2 = target(c1.e, mGraph);
 
 				CollisionConstraint c2(successor, task_id, current_in_delivery, current_timestep+1);
 				if(nonCollisionMap.find(c1)!=nonCollisionMap.end()) col=true;
@@ -1811,15 +1300,131 @@ public:
 		return heuristics;
 	}
 
+	bool getVerticesCollisionStatus(Eigen::VectorXd left, Eigen::VectorXd right)
+	{
+		double distance = (left - right).norm();
+		if(distance < 0.00141) // tune threshold!!
+			return true;
+		return false;
+	}
+
+	bool getEdgesCollisionStatus(Eigen::VectorXd left_source, Eigen::VectorXd left_target, Eigen::VectorXd right_source, Eigen::VectorXd right_target)
+	{
+		if ( (left_source - right_target).norm() < 0.00141 &&  (right_source - left_target).norm() < 0.00141)
+			return true;
+		return false;
+	}
+
+	bool evaluateIndividualConfig(Eigen::VectorXd config)
+	{
+		int numberOfRows = mImage.rows;
+		int numberOfColumns = mImage.cols;
+
+		// agent
+		double x_point = config[0]*numberOfColumns + 0.000001;
+		double y_point = (1 - config[1])*numberOfRows + 0.000001;
+		cv::Point point((int)x_point, (int)y_point);
+
+		// Collision Check for agent with environment
+		int intensity = (int)mImage.at<uchar>(point.y, point.x);
+		if (intensity == 0) // Pixel is black
+			return false;
+
+		return true;
+	}
+
+	bool evaluateIndividualEdge(Graph &graph, Edge& e) // returns false if in collision
+	{
+		graph[e].isEvaluated = true;
+
+		Vertex source_vertex = source(e, graph);
+		Vertex target_vertex = target(e, graph);
+
+		Eigen::VectorXd sourceState(2);
+		sourceState << graph[source_vertex].state;
+
+		Eigen::VectorXd targetState(2);
+		targetState << graph[target_vertex].state;
+
+		double resolution = 0.0025;
+		unsigned int nStates = std::ceil(graph[e].length / resolution-0.000000001)+1;
+
+		// Just start and goal
+		if(nStates < 2u)
+		{
+			nStates = 2u;
+		}
+		// std::cout<<"nStates:"<<nStates<<std::endl;
+
+		bool checkResult = true;
+		
+		if (checkResult && !evaluateIndividualConfig(sourceState))
+		{
+			graph[source_vertex].status = CollisionStatus::BLOCKED;
+			graph[e].status = CollisionStatus::BLOCKED;
+			graph[e].length = INF;
+			checkResult = false;
+		}
+
+		if (checkResult && !evaluateIndividualConfig(targetState))
+		{
+			graph[target_vertex].status = CollisionStatus::BLOCKED;
+			graph[e].status = CollisionStatus::BLOCKED;
+			graph[e].length = INF;
+			checkResult = false;
+		}
+
+		if (checkResult)
+		{
+			// Evaluate the States in between
+			for (unsigned int i = 1; i < nStates-1; i++)
+			{
+
+				if(!evaluateIndividualConfig(sourceState + (resolution*i/graph[e].length)*(targetState-sourceState) ))
+				{
+					graph[e].status = CollisionStatus::BLOCKED;
+					graph[e].length = INF;
+					checkResult = false;
+					break;
+				}
+			}
+		}
+
+		return checkResult;
+	}
+
+	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
+	{
+		auto start = high_resolution_clock::now();
+		std::vector<Vertex> neighbors;
+		OutEdgeIter ei, ei_end;
+
+		for (boost::tie(ei, ei_end) = out_edges(v, graph); ei != ei_end; ++ei) 
+		{
+			Vertex curSucc = target(*ei, graph);
+			Edge e = *ei;
+			if(!graph[e].isEvaluated)
+				evaluateIndividualEdge(graph,e);
+			if(graph[e].status == CollisionStatus::FREE)
+				neighbors.push_back(curSucc);
+		}
+
+		auto stop = high_resolution_clock::now();
+		mGNTime += (stop - start);
+
+		// std::cout<<"neighbors size: "<<neighbors.size()<<std::endl;
+		return neighbors;
+	}
+
 	void printVertex(Vertex v){
 		std::cout<<" - ("<<
-			int( (mGraphs[0][v].state[0]+0.001)/mUnitEdgeLength)<<","<<
-			int( (mGraphs[0][v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
+			int( (mGraph[v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraph[v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
 	}
 
 	void printEdge(Edge &a){
-		Vertex s = source(a, mGraphs[0]);
- 		Vertex t = target(a, mGraphs[0]);
+		Vertex s = source(a, mGraph);
+ 		Vertex t = target(a, mGraph);
  		std::cout << "Source Vertex: ";
  		printVertex(s);
  		std::cout << "Target Vertex: ";
@@ -1832,8 +1437,8 @@ public:
 			std::cout <<"Path for agent: "<<agent_id << " " << std::endl;
 			for(int i=0; i<p.shortestPaths[agent_id].size(); i++){
 				std::cout<<" - ("<<
-	int( (mGraphs[0][p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<
-	int( (mGraphs[0][p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<
+	int( (mGraph[p.shortestPaths[agent_id][i].vertex].state[0]+0.001)/mUnitEdgeLength)<<","<<
+	int( (mGraph[p.shortestPaths[agent_id][i].vertex].state[1]+0.001)/mUnitEdgeLength)<<") "<<
 	p.shortestPaths[agent_id][i].timestep <<" "<<p.shortestPaths[agent_id][i].tasks_completed<<" "<<
 	p.shortestPaths[agent_id][i].in_delivery<<"\t";
 			}
@@ -1848,8 +1453,8 @@ public:
 		std::cout << "Is Pickup?: "<< (int)c.is_pickup << std::endl;
 		std::cout << "Position: ";
 		std::cout<<" - ("<<
-			int( (mGraphs[0][c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
-			int( (mGraphs[0][c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
+			int( (mGraph[c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraph[c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
 	}
 
 	void printCollabConflict(CollaborationConstraint c, std::vector <int> collaborating_agent_ids){
@@ -1864,8 +1469,8 @@ public:
 		std::cout << "Is Pickup?: "<< (int)c.is_pickup << std::endl;
 		std::cout << "Position: ";
 		std::cout<<" - ("<<
-			int( (mGraphs[0][c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
-			int( (mGraphs[0][c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
+			int( (mGraph[c.v].state[0]+0.001)/mUnitEdgeLength)<<","<<
+			int( (mGraph[c.v].state[1]+0.001)/mUnitEdgeLength)<<") "<< std::endl;
 	}
 
 	void printCollisionConstraint(CollisionConstraint c1){
@@ -2051,20 +1656,20 @@ public:
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		{
 			EdgeIter ei, ei_end;
-			for(boost::tie(ei,ei_end) = edges(mGraphs[0]); ei!=ei_end;++ei)
+			for(boost::tie(ei,ei_end) = edges(mGraph); ei!=ei_end;++ei)
 			{
-				cv::Point source_Point((int)(mGraphs[0][source(*ei,mGraphs[0])].state[0]*numberOfColumns), 
-					(int)((1-mGraphs[0][source(*ei,mGraphs[0])].state[1])*numberOfColumns));
-				cv::Point target_Point((int)(mGraphs[0][target(*ei,mGraphs[0])].state[0]*numberOfColumns), 
-					(int)((1-mGraphs[0][target(*ei,mGraphs[0])].state[1])*numberOfColumns));
+				cv::Point source_Point((int)(mGraph[source(*ei,mGraph)].state[0]*numberOfColumns), 
+					(int)((1-mGraph[source(*ei,mGraph)].state[1])*numberOfColumns));
+				cv::Point target_Point((int)(mGraph[target(*ei,mGraph)].state[0]*numberOfColumns), 
+					(int)((1-mGraph[target(*ei,mGraph)].state[1])*numberOfColumns));
 				cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 10);
 			}
 
 			VertexIter vi, vi_end;
-			for (boost::tie(vi, vi_end) = vertices(mGraphs[0]); vi != vi_end; ++vi)
+			for (boost::tie(vi, vi_end) = vertices(mGraph); vi != vi_end; ++vi)
 			{
-				double x_point = mGraphs[0][*vi].state[0]*numberOfColumns;
-				double y_point = (1 - mGraphs[0][*vi].state[1])*numberOfRows;
+				double x_point = mGraph[*vi].state[0]*numberOfColumns;
+				double y_point = (1 - mGraph[*vi].state[1])*numberOfRows;
 				cv::Point centre_Point((int)x_point, (int)y_point);
 				cv::circle(image, centre_Point, 20,  cv::Scalar(0, 150, 255), -1);
 				// cv::circle(image, centre_Point, 20,  cv::Scalar(0,0,0), 4);
@@ -2094,10 +1699,10 @@ public:
 		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		// {
 		// 	VertexIter vi, vi_end;
-		// 	for (boost::tie(vi, vi_end) = vertices(mGraphs[0]); vi != vi_end; ++vi)
+		// 	for (boost::tie(vi, vi_end) = vertices(mGraph); vi != vi_end; ++vi)
 		// 	{
-		// 		double x_point = mGraphs[0][*vi].state[0]*numberOfColumns;
-		// 		double y_point = (1 - mGraphs[0][*vi].state[1])*numberOfRows;
+		// 		double x_point = mGraph[*vi].state[0]*numberOfColumns;
+		// 		double y_point = (1 - mGraph[*vi].state[1])*numberOfRows;
 		// 		cv::Point centre_Point((int)x_point, (int)y_point);
 		// 		cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
 		// 	}
@@ -2108,11 +1713,11 @@ public:
 		std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
 		for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
 		{
-			int start_x = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[0]+0.0001)/mUnitEdgeLength);
-			int start_y = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[1]+0.0001)/mUnitEdgeLength);
+			int start_x = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[0]+0.0001)/mUnitEdgeLength);
+			int start_y = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[1]+0.0001)/mUnitEdgeLength);
 
-			int goal_x = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[0]+0.0001)/mUnitEdgeLength);
-			int goal_y = int( (mGraphs[0][mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[1]+0.0001)/mUnitEdgeLength);
+			int goal_x = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[0]+0.0001)/mUnitEdgeLength);
+			int goal_y = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[1]+0.0001)/mUnitEdgeLength);
 
 			tasks.push_back(std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y)));
 		}
