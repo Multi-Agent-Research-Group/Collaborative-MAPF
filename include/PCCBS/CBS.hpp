@@ -133,7 +133,7 @@ public:
 		mProp = get(meta_data_t(), mPCGraph);
 		mProp_T = get(meta_data_t(), mPCGraph_T);
 		topological_sort(mPCGraph, std::back_inserter(mTopologicalOrder));
-		int mNumTasks = boost::num_vertices(_pcg);
+		mNumTasks = boost::num_vertices(_pcg);
 
 		//set up graph preprocessing
 		create_vertices(mGraph,get(&VProp::state,mGraph),mRoadmapFileNames[0],2,get(&EProp::prior,mGraph));
@@ -682,6 +682,7 @@ public:
 		bool possible;
 		updateSchedule(nonCollabMap, possible);
 		if(!debug_disabled){
+			std::cout << "Printing Initial Intervals\n";
 			printIntervals(nonCollabMap);
 			std::cin.get();
 		}
@@ -697,6 +698,7 @@ public:
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
+				std::cout << "Couldnt solve problem for agent_id = " << agent_id << std::endl;
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - solve_start);
 				std::cout<<0<<" ";
@@ -883,10 +885,7 @@ public:
 					nonCollabMap, nonCollisionMap[agent_id],
 					dummyPaths);
 			shortestPaths[agent_id] = path;
-			// consider_agents.push_back(agent_id);
-			// std::cerr << agent_id << std::endl;
-			// if(path.size()>0)
-			// 	current_makespan = std::max(current_makespan,path[path.size()-1].timestep);
+			std::cout << "agent id = " << agent_id << " size of path = " << path.size() << std::endl;
 		}
 		return shortestPaths;
 	}
@@ -990,7 +989,7 @@ public:
 			if(current_tasks_completed == mAgentsToTasksList[agent_id].size()) task_id = -1;
 			else {
 				task_id = mAgentsToTasksList[agent_id][current_tasks_completed];
-				if(current_timestep>nonCollabMap[task_id].second.minTime) continue;
+				if(current_timestep>nonCollabMap[task_id].second.maxTime) continue;
 
 				if(current_vertex == mTasksList[task_id].second) //end point of task
 				{
