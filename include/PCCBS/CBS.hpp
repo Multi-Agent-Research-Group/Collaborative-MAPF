@@ -1425,897 +1425,893 @@ public:
 
 	void displayPath(std::vector<Eigen::VectorXd> path)
 	{
-		// std::cerr<<"IN display Path!";
-		// cv::Mat image;
-		// cv::cvtColor(mImage, image, CV_GRAY2BGR);
-		// // cv::Mat image = cv::merge(mImage,mImage,mImage);  // going from one to 3 channel
-		// int numberOfRows = image.rows;
-		// int numberOfColumns = image.cols;
+		std::cerr<<"IN display Path!";
+		cv::Mat image;
+		cv::cvtColor(mImage, image, CV_GRAY2BGR);
+		// cv::Mat image = cv::merge(mImage,mImage,mImage);  // going from one to 3 channel
+		int numberOfRows = image.rows;
+		int numberOfColumns = image.cols;		
+
+		std::vector<cv::Mat4b> number_images(mNumAgents);
+		for(int i=0; i<number_images.size(); i++)
+		{
+			std::stringstream ss;
+			ss << "/home/kushal/ros_ws/src/CMAPF/data/viz/new_images/";
+			ss << i+1;
+			ss << ".png";
+			number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
+			double scale = 0.10;
+			// if(i!=0)
+				// scale = 0.025;
+			cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
+		}
 
 		
 
-		// std::vector<cv::Mat4b> number_images(mNumAgents);
-		// for(int i=0; i<number_images.size(); i++)
-		// {
-		// 	std::stringstream ss;
-		// 	ss << "/home/kushal/ros_ws/src/CMAPF/data/viz/new_images/";
-		// 	ss << i+1;
-		// 	ss << ".png";
-		// 	number_images[i] = imread(ss.str(), cv::IMREAD_UNCHANGED);
-		// 	double scale = 0.10;
-		// 	// if(i!=0)
-		// 		// scale = 0.025;
-		// 	cv::resize(number_images[i], number_images[i], cv::Size(), scale, scale);
-		// }
+		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+		{
+			EdgeIter ei, ei_end;
+			for(boost::tie(ei,ei_end) = edges(mGraph); ei!=ei_end;++ei)
+			{
+				cv::Point source_Point((int)(mGraph[source(*ei,mGraph)].state[0]*numberOfColumns), 
+					(int)((1-mGraph[source(*ei,mGraph)].state[1])*numberOfColumns));
+				cv::Point target_Point((int)(mGraph[target(*ei,mGraph)].state[0]*numberOfColumns), 
+					(int)((1-mGraph[target(*ei,mGraph)].state[1])*numberOfColumns));
+				cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 10);
+			}
+
+			VertexIter vi, vi_end;
+			for (boost::tie(vi, vi_end) = vertices(mGraph); vi != vi_end; ++vi)
+			{
+				double x_point = mGraph[*vi].state[0]*numberOfColumns;
+				double y_point = (1 - mGraph[*vi].state[1])*numberOfRows;
+				cv::Point centre_Point((int)x_point, (int)y_point);
+				cv::circle(image, centre_Point, 20,  cv::Scalar(0, 150, 255), -1);
+				// cv::circle(image, centre_Point, 20,  cv::Scalar(0,0,0), 4);
+			}
+		}   
+
+		
+
+		// Get state count
+		int pathSize = path.size();
+
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
+
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
+				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
+				// cv::line(image, uPoint, vPoint, cv::Scalar(0, 140, 255), 2);
+			}   
+		}
 
 		
 
 		// for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 		// {
-		// 	EdgeIter ei, ei_end;
-		// 	for(boost::tie(ei,ei_end) = edges(mGraph); ei!=ei_end;++ei)
-		// 	{
-		// 		cv::Point source_Point((int)(mGraph[source(*ei,mGraph)].state[0]*numberOfColumns), 
-		// 			(int)((1-mGraph[source(*ei,mGraph)].state[1])*numberOfColumns));
-		// 		cv::Point target_Point((int)(mGraph[target(*ei,mGraph)].state[0]*numberOfColumns), 
-		// 			(int)((1-mGraph[target(*ei,mGraph)].state[1])*numberOfColumns));
-		// 		cv::line(image, source_Point, target_Point, cv::Scalar(0, 255, 255), 10);
-		// 	}
-
 		// 	VertexIter vi, vi_end;
 		// 	for (boost::tie(vi, vi_end) = vertices(mGraph); vi != vi_end; ++vi)
 		// 	{
 		// 		double x_point = mGraph[*vi].state[0]*numberOfColumns;
 		// 		double y_point = (1 - mGraph[*vi].state[1])*numberOfRows;
 		// 		cv::Point centre_Point((int)x_point, (int)y_point);
-		// 		cv::circle(image, centre_Point, 20,  cv::Scalar(0, 150, 255), -1);
-		// 		// cv::circle(image, centre_Point, 20,  cv::Scalar(0,0,0), 4);
+		// 		cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
 		// 	}
-		// }   
+		// } 
 
 		
 
-		// // Get state count
-		// int pathSize = path.size();
+		std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
+		for(int tid=0; tid<mTasksList.size(); tid++)
+		{
+			int start_x = int( (mGraph[mTasksList[tid].first].state[0]+0.0001)/mUnitEdgeLength);
+			int start_y = int( (mGraph[mTasksList[tid].first].state[1]+0.0001)/mUnitEdgeLength);
 
-		// for (int i = 0; i < pathSize - 1; ++i)
-		// {
-		// 	Eigen::VectorXd u = path[i];
-		// 	Eigen::VectorXd v = path[i+1];
+			int goal_x = int( (mGraph[mTasksList[tid].second].state[0]+0.0001)/mUnitEdgeLength);
+			int goal_y = int( (mGraph[mTasksList[tid].second].state[1]+0.0001)/mUnitEdgeLength);
 
-		// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		// 	{
-		// 		cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
-		// 		cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
-		// 		// cv::line(image, uPoint, vPoint, cv::Scalar(0, 140, 255), 2);
-		// 	}   
-		// }
+			tasks.push_back(std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y)));
+		}
 
-		
-
-		// // for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		// // {
-		// // 	VertexIter vi, vi_end;
-		// // 	for (boost::tie(vi, vi_end) = vertices(mGraph); vi != vi_end; ++vi)
-		// // 	{
-		// // 		double x_point = mGraph[*vi].state[0]*numberOfColumns;
-		// // 		double y_point = (1 - mGraph[*vi].state[1])*numberOfRows;
-		// // 		cv::Point centre_Point((int)x_point, (int)y_point);
-		// // 		cv::circle(image, centre_Point, 4,  cv::Scalar(0, 150, 0), -1);
-		// // 	}
-		// // } 
-
-		
-
-		// std::vector< std::pair<std::pair<int,int>, std::pair<int,int>> >  tasks;
-		// for(int tid=0; tid<mTasksToAgentsList.size(); tid++)
-		// {
-		// 	int start_x = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[0]+0.0001)/mUnitEdgeLength);
-		// 	int start_y = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.first].state[1]+0.0001)/mUnitEdgeLength);
-
-		// 	int goal_x = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[0]+0.0001)/mUnitEdgeLength);
-		// 	int goal_y = int( (mGraph[mTasksList[mTasksToAgentsList[tid][0].first][mTasksToAgentsList[tid][0].second].second.second].state[1]+0.0001)/mUnitEdgeLength);
-
-		// 	tasks.push_back(std::make_pair(std::make_pair(start_x,start_y),std::make_pair(goal_x,goal_y)));
-		// }
-
-		
-
-		// for(int i=0; i<tasks.size(); i++)
-		// {
+		for(int i=0; i<tasks.size(); i++)
+		{
 			
-		// 	{
-		// 		cv::Scalar col= cv::Scalar(200,0,100);
-		// 		cv::Point uPoint((int)(tasks[i].first.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].first.second*mUnitEdgeLength)*numberOfRows)); 
-		// 		std::string text = "S" + std::to_string(i);
-		// 		cv::circle(image, uPoint, 25,  col, -1);
-		// 		cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
-		// 		if(i<10)
-		// 			cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
-		// 		else	
-		// 			cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
-		// 	}
+			{
+				cv::Scalar col= cv::Scalar(200,0,100);
+				cv::Point uPoint((int)(tasks[i].first.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].first.second*mUnitEdgeLength)*numberOfRows)); 
+				std::string text = "S" + std::to_string(i);
+				cv::circle(image, uPoint, 25,  col, -1);
+				cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
+				if(i<10)
+					cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+				else	
+					cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+			}
 
-		// 	{
-		// 		cv::Scalar col= cv::Scalar(0,200,100);
-		// 		cv::Point uPoint((int)(tasks[i].second.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].second.second*mUnitEdgeLength)*numberOfRows)); 
-		// 		std::string text = "G" + std::to_string(i);
-		// 		cv::circle(image, uPoint, 25, col, -1);
-		// 		cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
-		// 		if(i<10)
-		// 			cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
-		// 		else
-		// 			cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
-		// 	}
-		// }
-
-		
-
-		// for (int i = 0; i < pathSize - 1; ++i)
-		// {
-		// 	Eigen::VectorXd u = path[i];
-		// 	Eigen::VectorXd v = path[i+1];
-
-		// 	for(int agent_id=0; agent_id<mNumAgents; agent_id++)
-		// 	{
-		// 		cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
-		// 		cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
-		
-		// 		// if(i==0)
-		// 		// {
-		// 		// 	std::string text = "S" + std::to_string(agent_id+1);
-		// 		// 	cv::circle(image, uPoint, 7,  cv::Scalar(255,255,255), -1);
-		// 		// 	cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
-		// 		// 	cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-		// 		// }
-		// 		// if(i==pathSize-2)
-		// 		// {
-		// 		// 	std::string text = "G" + std::to_string(agent_id+1);
-		// 		// 	cv::circle(image, vPoint, 7,  cv::Scalar(255,255,255), -1);
-		// 		// 	cv::circle(image, vPoint, 8,  cv::Scalar(0,0,0), 1);
-		// 		// 	cv::putText(image, text, cv::Point(vPoint.x - 6,vPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
-		// 		// }
-		// 	}   
-		// }
+			{
+				cv::Scalar col= cv::Scalar(0,200,100);
+				cv::Point uPoint((int)(tasks[i].second.first*mUnitEdgeLength*numberOfColumns), (int)((1 - tasks[i].second.second*mUnitEdgeLength)*numberOfRows)); 
+				std::string text = "G" + std::to_string(i);
+				cv::circle(image, uPoint, 25, col, -1);
+				cv::circle(image, uPoint, 25,  cv::Scalar(0,0,0), 2);
+				if(i<10)
+					cv::putText(image, text, cv::Point(uPoint.x - 15,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+				else
+					cv::putText(image, text, cv::Point(uPoint.x - 20,uPoint.y+7), cv::FONT_HERSHEY_PLAIN, 1.3, cvScalar(0,0,0), 2, 4);
+			}
+		}
 
 		
 
-		// bool firstTime = true;
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
 
-		// cv::Mat new_image;
-		// int num_image = 0;
-		// for (int i = 0; i < pathSize - 1; ++i)
-		// {
+			for(int agent_id=0; agent_id<mNumAgents; agent_id++)
+			{
+				cv::Point uPoint((int)(u[2*agent_id]*numberOfColumns), (int)((1 - u[2*agent_id+1])*numberOfRows));
+				cv::Point vPoint((int)(v[2*agent_id]*numberOfColumns), (int)((1 - v[2*agent_id+1])*numberOfRows));  
+		
+				// if(i==0)
+				// {
+				// 	std::string text = "S" + std::to_string(agent_id+1);
+				// 	cv::circle(image, uPoint, 7,  cv::Scalar(255,255,255), -1);
+				// 	cv::circle(image, uPoint, 8,  cv::Scalar(0,0,0), 1);
+				// 	cv::putText(image, text, cv::Point(uPoint.x - 6,uPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				// }
+				// if(i==pathSize-2)
+				// {
+				// 	std::string text = "G" + std::to_string(agent_id+1);
+				// 	cv::circle(image, vPoint, 7,  cv::Scalar(255,255,255), -1);
+				// 	cv::circle(image, vPoint, 8,  cv::Scalar(0,0,0), 1);
+				// 	cv::putText(image, text, cv::Point(vPoint.x - 6,vPoint.y+3), cv::FONT_HERSHEY_PLAIN, 0.6, cvScalar(0,0,0), 1, 4);
+				// }
+			}   
+		}
+
+		
+
+		bool firstTime = true;
+
+		cv::Mat new_image;
+		int num_image = 0;
+		for (int i = 0; i < pathSize - 1; ++i)
+		{
 			
-		// 	Eigen::VectorXd u = path[i];
-		// 	Eigen::VectorXd v = path[i+1];
+			Eigen::VectorXd u = path[i];
+			Eigen::VectorXd v = path[i+1];
 
-		// 	double resolution = 0.005;
+			double resolution = 0.005;
 
-		// 	std::vector<Eigen::VectorXd> source_configs(mNumAgents,Eigen::VectorXd());
-		// 	std::vector<Eigen::VectorXd> target_configs(mNumAgents,Eigen::VectorXd());
-		// 	std::vector<double> edge_lengths(mNumAgents,0);
-		// 	std::vector<unsigned int> nStates(mNumAgents,0u);
+			std::vector<Eigen::VectorXd> source_configs(mNumAgents,Eigen::VectorXd());
+			std::vector<Eigen::VectorXd> target_configs(mNumAgents,Eigen::VectorXd());
+			std::vector<double> edge_lengths(mNumAgents,0);
+			std::vector<unsigned int> nStates(mNumAgents,0u);
 
-		// 	unsigned int max_nStates = 0u;
+			unsigned int max_nStates = 0u;
 
-		// 	for(int agent_id=0;agent_id<mNumAgents;agent_id++)
-		// 	{
-		// 		source_configs[agent_id] = u.segment(2*agent_id,2);
-		// 		target_configs[agent_id] = v.segment(2*agent_id,2);
-		// 		edge_lengths[agent_id] = (source_configs[agent_id] - target_configs[agent_id]).norm();
-		// 		nStates[agent_id] = std::ceil(edge_lengths[agent_id] / resolution)+1;
+			for(int agent_id=0;agent_id<mNumAgents;agent_id++)
+			{
+				source_configs[agent_id] = u.segment(2*agent_id,2);
+				target_configs[agent_id] = v.segment(2*agent_id,2);
+				edge_lengths[agent_id] = (source_configs[agent_id] - target_configs[agent_id]).norm();
+				nStates[agent_id] = std::ceil(edge_lengths[agent_id] / resolution)+1;
 
-		// 		if(nStates[agent_id] < 2u)
-		// 			nStates[agent_id] = 2u;
-		// 		max_nStates = std::max(max_nStates,nStates[agent_id]);
-		// 	}
+				if(nStates[agent_id] < 2u)
+					nStates[agent_id] = 2u;
+				max_nStates = std::max(max_nStates,nStates[agent_id]);
+			}
 
 			
-		// 	for (unsigned int i = 0; i < max_nStates-1; i++)
-		// 	{
+			for (unsigned int i = 0; i < max_nStates-1; i++)
+			{
 				
-		// 		new_image = image.clone();
-		// 		boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
-		// 		for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
-		// 		{
-		// 			Eigen::VectorXd intermediate_config(2);
-		// 			if(i < nStates[agent_id] - 1 && !source_configs[agent_id].isApprox(target_configs[agent_id]))
-		// 				intermediate_config <<  source_configs[agent_id] + (resolution*i/edge_lengths[agent_id])*(target_configs[agent_id]-source_configs[agent_id]);
-		// 			else
-		// 				intermediate_config << target_configs[agent_id];
+				new_image = image.clone();
+				boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
+				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
+				{
+					Eigen::VectorXd intermediate_config(2);
+					if(i < nStates[agent_id] - 1 && !source_configs[agent_id].isApprox(target_configs[agent_id]))
+						intermediate_config <<  source_configs[agent_id] + (resolution*i/edge_lengths[agent_id])*(target_configs[agent_id]-source_configs[agent_id]);
+					else
+						intermediate_config << target_configs[agent_id];
 
-		// 			double x_point = intermediate_config[0]*numberOfColumns;
-		// 			double y_point = (1 - intermediate_config[1])*numberOfRows;
-		// 			point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
-		// 			// std::cerr<<x_point<<" "<<y_point<<std::endl;
-		// 		}
+					double x_point = intermediate_config[0]*numberOfColumns;
+					double y_point = (1 - intermediate_config[1])*numberOfRows;
+					point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
+					// std::cerr<<x_point<<" "<<y_point<<std::endl;
+				}
 
-		// 		for(auto &element: point_to_agents)
-		// 		{
-		// 			cv::Point _Point(element.first.first, element.first.second);
-		// 			int x_point = element.first.first;
-		// 			int y_point = element.first.second;
+				for(auto &element: point_to_agents)
+				{
+					cv::Point _Point(element.first.first, element.first.second);
+					int x_point = element.first.first;
+					int y_point = element.first.second;
 
-		// 			if(element.second.size() == 1)
-		// 			{
-		// 				int agent_id = element.second[0];
-		// 				// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 				// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 				int x = x_point - number_images[agent_id].cols/2;
-		// 				int y = y_point - number_images[agent_id].rows/2;
-		// 				double alpha = 1.0; // alpha in [0,1]
+					if(element.second.size() == 1)
+					{
+						int agent_id = element.second[0];
+						// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+						// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+						int x = x_point - number_images[agent_id].cols/2;
+						int y = y_point - number_images[agent_id].rows/2;
+						double alpha = 1.0; // alpha in [0,1]
 
-		// 				// std::cout<<number_images[agent_id].rows<<std::endl;
+						// std::cout<<number_images[agent_id].rows<<std::endl;
 
-		// 				// std::cerr<<"MK1 - "<<i<<"\n";
-		// 				// std::cout<<x_point<<" "<<y_point<<"\n"<<x<<" "<<y<<"\n";
-		// 				cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
-		// 				// std::cerr<<"OUT - "<<i<<"\n";
-		// 				for (int r = 0; r < roi.rows; ++r)
-		// 				for (int c = 0; c < roi.cols; ++c)
-		// 				{
+						// std::cerr<<"MK1 - "<<i<<"\n";
+						// std::cout<<x_point<<" "<<y_point<<"\n"<<x<<" "<<y<<"\n";
+						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+						// std::cerr<<"OUT - "<<i<<"\n";
+						for (int r = 0; r < roi.rows; ++r)
+						for (int c = 0; c < roi.cols; ++c)
+						{
 							
-		// 					const cv::Vec4b& vf = number_images[agent_id](r,c);
+							const cv::Vec4b& vf = number_images[agent_id](r,c);
 							
-		// 					if (vf[3] > 0) // alpha channel > 0
-		// 					{
-		// 						// Blending
-		// 						cv::Vec3b& vb = roi(r,c);
+							if (vf[3] > 0) // alpha channel > 0
+							{
+								// Blending
+								cv::Vec3b& vb = roi(r,c);
 								
-		// 						// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 						// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 						// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 						vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 						vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 						vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 					}
-		// 				}
-		// 			}
-		// 			else if(element.second.size() == 2)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2;
-		// 					double alpha = 1.0; // alpha in [0,1]
+								// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+								// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+								// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+								vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+								vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+							}
+						}
+					}
+					else if(element.second.size() == 2)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 			}
-		// 			else if(element.second.size() == 3)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+					}
+					else if(element.second.size() == 3)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[2];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[2];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}						
-		// 			}
-		// 			else if(element.second.size() == 4)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}						
+					}
+					else if(element.second.size() == 4)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[2];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[2];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[3];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[3];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}			
-		// 			}
-		// 		}
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}			
+					}
+				}
 
-		// 		cv::namedWindow("Agents",cv::WINDOW_NORMAL);
-		// 		cv::imshow("Agents", new_image);
-		// 		cv::waitKey(10);
-		// 		for (int num = 0; num<1; num++){
-		// 			std::string path = mImagePath+std::to_string(num_image)+".jpg";
-		// 			cv::imwrite(path, new_image);
-		// 			num_image += 1;
-		// 		}
+				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
+				cv::imshow("Agents", new_image);
+				cv::waitKey(10);
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
 				
-		// 		if(firstTime)
-		// 		{
-		// 			for (int num = 0; num<10; num++){
-		// 				std::string path = mImagePath+std::to_string(num_image)+".jpg";
-		// 				cv::imwrite(path, new_image);
-		// 				num_image += 1;
-		// 			}
-		// 			sleep(5);
-		// 			firstTime = false;
-		// 		}
-		// 	}
-		// 	{
-		// 		new_image = image.clone();
-		// 		boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
-		// 		for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
-		// 		{
-		// 			double x_point = v[agent_id*2]*numberOfColumns;
-		// 			double y_point = (1 - v[agent_id*2+1])*numberOfRows;
-		// 			point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
-		// 		}
+				if(firstTime)
+				{
+					for (int num = 0; num<10; num++){
+						std::string path = mImagePath+std::to_string(num_image)+".jpg";
+						cv::imwrite(path, new_image);
+						num_image += 1;
+					}
+					sleep(5);
+					firstTime = false;
+				}
+			}
+			{
+				new_image = image.clone();
+				boost::unordered_map<std::pair<int,int>,std::vector<int>> point_to_agents;
+				for(int agent_id = 0; agent_id<mNumAgents; agent_id++)
+				{
+					double x_point = v[agent_id*2]*numberOfColumns;
+					double y_point = (1 - v[agent_id*2+1])*numberOfRows;
+					point_to_agents[std::make_pair((int)x_point, (int)y_point)].push_back(agent_id);
+				}
 
-		// 		for(auto &element: point_to_agents)
-		// 		{
-		// 			cv::Point _Point(element.first.first, element.first.second);
-		// 			int x_point = element.first.first;
-		// 			int y_point = element.first.second;
+				for(auto &element: point_to_agents)
+				{
+					cv::Point _Point(element.first.first, element.first.second);
+					int x_point = element.first.first;
+					int y_point = element.first.second;
 
-		// 			if(element.second.size() == 1)
-		// 			{
-		// 				int agent_id = element.second[0];
-		// 				// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 				// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 				int x = x_point - number_images[agent_id].cols/2;
-		// 				int y = y_point - number_images[agent_id].rows/2;
-		// 				double alpha = 1.0; // alpha in [0,1]
+					if(element.second.size() == 1)
+					{
+						int agent_id = element.second[0];
+						// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+						// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+						int x = x_point - number_images[agent_id].cols/2;
+						int y = y_point - number_images[agent_id].rows/2;
+						double alpha = 1.0; // alpha in [0,1]
 
-		// 				cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+						cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 				for (int r = 0; r < roi.rows; ++r)
-		// 				for (int c = 0; c < roi.cols; ++c)
-		// 				{
+						for (int r = 0; r < roi.rows; ++r)
+						for (int c = 0; c < roi.cols; ++c)
+						{
 							
-		// 					const cv::Vec4b& vf = number_images[agent_id](r,c);
+							const cv::Vec4b& vf = number_images[agent_id](r,c);
 							
-		// 					if (vf[3] > 0) // alpha channel > 0
-		// 					{
-		// 						// Blending
-		// 						cv::Vec3b& vb = roi(r,c);
+							if (vf[3] > 0) // alpha channel > 0
+							{
+								// Blending
+								cv::Vec3b& vb = roi(r,c);
 								
-		// 						// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 						// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 						// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 						vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 						vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 						vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 					}
-		// 				}
-		// 			}
-		// 			else if(element.second.size() == 2)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2;
-		// 					double alpha = 1.0; // alpha in [0,1]
+								// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+								// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+								// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+								vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+								vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+								vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+							}
+						}
+					}
+					else if(element.second.size() == 2)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 			}
-		// 			else if(element.second.size() == 3)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+					}
+					else if(element.second.size() == 3)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[2];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point  - number_images[agent_id].cols/2;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].rows/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[2];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point  - number_images[agent_id].cols/2;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].rows/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}						
-		// 			}
-		// 			else if(element.second.size() == 4)
-		// 			{
-		// 				{
-		// 					int agent_id = element.second[0];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}						
+					}
+					else if(element.second.size() == 4)
+					{
+						{
+							int agent_id = element.second[0];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[1];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[1];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 - number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[2];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[2];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 - number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}
-		// 				{
-		// 					int agent_id = element.second[3];
-		// 					// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
-		// 					// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
-		// 					int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
-		// 					int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
-		// 					double alpha = 1.0; // alpha in [0,1]
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}
+						{
+							int agent_id = element.second[3];
+							// cv::circle(new_image, _Point, 6,  cv::Scalar(0,255,0), -1);
+							// cv::circle(new_image, _Point, 8,  cv::Scalar(0,0,0), 2);
+							int x = x_point - number_images[agent_id].cols/2 + number_images[agent_id].cols/4;
+							int y = y_point - number_images[agent_id].rows/2 + number_images[agent_id].cols/4;
+							double alpha = 1.0; // alpha in [0,1]
 
-		// 					cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
+							cv::Mat3b roi = new_image(cv::Rect(x, y, number_images[agent_id].cols, number_images[agent_id].rows));
 
-		// 					for (int r = 0; r < roi.rows; ++r)
-		// 					for (int c = 0; c < roi.cols; ++c)
-		// 					{
+							for (int r = 0; r < roi.rows; ++r)
+							for (int c = 0; c < roi.cols; ++c)
+							{
 								
-		// 						const cv::Vec4b& vf = number_images[agent_id](r,c);
+								const cv::Vec4b& vf = number_images[agent_id](r,c);
 								
-		// 						if (vf[3] > 0) // alpha channel > 0
-		// 						{
-		// 							// Blending
-		// 							cv::Vec3b& vb = roi(r,c);
+								if (vf[3] > 0) // alpha channel > 0
+								{
+									// Blending
+									cv::Vec3b& vb = roi(r,c);
 									
-		// 							// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
-		// 							// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
-		// 							// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
-		// 							vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
-		// 							vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
-		// 							vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
-		// 						}
-		// 					}
-		// 				}			
-		// 			}
+									// std::cout<<alpha * vf[0] + (1 - alpha) * vb[0]<<std::endl;
+									// std::cout<<alpha * vf[1] + (1 - alpha) * vb[1]<<std::endl;
+									// std::cout<<alpha * vf[2] + (1 - alpha) * vb[2]<<std::endl;
+									vb[0] = alpha * vf[0] + (1 - alpha) * vb[0];
+									vb[1] = alpha * vf[1] + (1 - alpha) * vb[1];
+									vb[2] = alpha * vf[2] + (1 - alpha) * vb[2];
+								}
+							}
+						}			
+					}
 
-		// 		}
+				}
 				
-		// 		cv::namedWindow("Agents",cv::WINDOW_NORMAL);
-		// 		cv::imshow("Agents", new_image);
-		// 		cv::waitKey(10);
-		// 		for (int num = 0; num<1; num++){
-		// 			std::string path = mImagePath+std::to_string(num_image)+".jpg";
-		// 			cv::imwrite(path, new_image);
-		// 			num_image += 1;
-		// 		}
-		// 	}
+				cv::namedWindow("Agents",cv::WINDOW_NORMAL);
+				cv::imshow("Agents", new_image);
+				cv::waitKey(10);
+				for (int num = 0; num<1; num++){
+					std::string path = mImagePath+std::to_string(num_image)+".jpg";
+					cv::imwrite(path, new_image);
+					num_image += 1;
+				}
+			}
 			
-		// }
-		// cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
-		// cv::imshow("Graph Visualization", image);
-		// cv::waitKey(0);
+		}
+		cv::namedWindow("Graph Visualization",cv::WINDOW_NORMAL);
+		cv::imshow("Graph Visualization", image);
+		cv::waitKey(0);
 	}
 };
 
