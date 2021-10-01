@@ -171,26 +171,6 @@ public:
 	boost::unordered_map<std::pair<Vertex,Vertex>,double> mAllPairsShortestPathMap;
 	double mUnitEdgeLength = 0.1;
 
-	std::pair <Vertex, Vertex> getVertexFromGraph(meta_data vertex){
-		Eigen::VectorXd start_config(2);
-		start_config[0] = vertex.start.first;
-		start_config[1] = vertex.start.second;
-
-		Eigen::VectorXd goal_config(2);
-		goal_config[0] = vertex.goal.first;
-		goal_config[1] = vertex.goal.second;
-
-		Vertex s,g; VertexIter ind_vi, ind_vi_end;
-		for (boost::tie(ind_vi, ind_vi_end) = vertices(mGraph); ind_vi != ind_vi_end; ++ind_vi)
-		{
-			if(start_config.isApprox(mGraph[*ind_vi].state))
-				s = *ind_vi;
-			if(goal_config.isApprox(mGraph[*ind_vi].state))
-				g = *ind_vi;
-		}
-		return std::make_pair(s,g);
-	}
-
 	CBS(PrecedenceConstraintGraph _pcg, cv::Mat img, int numAgents 
 		,std::vector<std::string> roadmapFileNames, std::string imagePath)
 		: mImage(img)
@@ -216,6 +196,7 @@ public:
 		mSuccessors = std::vector <std::vector<int>> (mNumTasks);
 		mTasksList = std::vector <std::pair <int,int> > (mNumTasks);
 		mTasksToAgentsList = std::vector <std::vector <int>> (mNumTasks);
+		mAgentsToTasksList = std::vector <std::vector <int>> (mNumAgents);
 
 		for ( std::vector< PCVertex >::reverse_iterator ii=mTopologicalOrder.rbegin(); 
 			ii!=mTopologicalOrder.rend(); ++ii)
@@ -226,7 +207,7 @@ public:
 			mTasksList[task_id] = taskVertices;
 			mTasksToAgentsList[task_id] = vertex.agent_list;
 			for(auto agent_id: vertex.agent_list){
-				mAgentsToTasksList.push_back(task_id);
+				mAgentsToTasksList[agent_id].push_back(task_id);
 			}
 			PCOutEdgeIter ei, ei_end;
 			vector <int> predecessors, successors;
@@ -256,6 +237,26 @@ public:
 		mMapOperationsTime = t2-t1;mGetCollisionTime = t2-t1;mGetCollaborationTime = t2-t1;
 		mCollisionIterations = 0;mCollaborationIterations = 0;
 		mCSPExpansions = 0;mCSPIterations = 0;
+	}
+
+	std::pair <Vertex, Vertex> getVertexFromGraph(meta_data vertex){
+		Eigen::VectorXd start_config(2);
+		start_config[0] = vertex.start.first;
+		start_config[1] = vertex.start.second;
+
+		Eigen::VectorXd goal_config(2);
+		goal_config[0] = vertex.goal.first;
+		goal_config[1] = vertex.goal.second;
+
+		Vertex s,g; VertexIter ind_vi, ind_vi_end;
+		for (boost::tie(ind_vi, ind_vi_end) = vertices(mGraph); ind_vi != ind_vi_end; ++ind_vi)
+		{
+			if(start_config.isApprox(mGraph[*ind_vi].state))
+				s = *ind_vi;
+			if(goal_config.isApprox(mGraph[*ind_vi].state))
+				g = *ind_vi;
+		}
+		return std::make_pair(s,g);
 	}
 
 	int getStateHash(Eigen::VectorXd state)
@@ -303,21 +304,61 @@ public:
 	}
 
 
-	int countCollaborationConflicts(SearchState &state, SearchState &new_state, 
-		std::vector<std::vector<SearchState> > &paths, std::vector<int> &consider_agents)
+	int countCollaborationConflicts(SearchState &state, int agent_id, std::vector <allowedInterval> taskRanges)
 	{
-		
+		if(state.tasks_completed==mAgentsToTasksList[agent_id].size()) return 0;
+		int tid = mAgentsToTasksList[agent_id][state.tasks_completed];
+
+		int max_time = -1;
+		for(auto pred: mPredecessors[tid]){
+			max_time = std::max(max_time, taskRanges[pred].second);
+		}
+
+		if(taskRanges[tid].first < max_time){
+			return 1;
+		}
+		return 0;
 	}
 
-	bool getCollaborationConstraints(Element &p, std::vector<int> &collaborating_agent_ids, 
-		CollaborationConstraint &constraint_c)
+	bool getCollaborationConstraints(Element &p, int &tid, int &split)
 	{
-		
+		std::vector <std::pair <int, int>> taskRanges(mNumTasks, std::make_pair(100000, -1));
+
+		for(int i=0; i<mNumAgents; i++){
+			for(int j=0; j<p.shortestPaths[i].size(); j++){
+				SearchState state = p.shortestPaths[i][j];
+				if(state.tasks_completed == mAgentsToTasksList[i].size()){
+					continue;
+				}
+				int task_id = mAgentsToTasksList[i][state.tasks_completed];
+				if(state.vertex == mTasksList[task_id].first){
+					taskRanges[task_id].first = std::min(taskRanges[task_id].first, state.timestep);
+				}
+				if(state.vertex == mTasksList[task_id].second){
+					taskRanges[task_id].second = std::max(taskRanges[task_id].second, state.timestep);
+				}
+			}
+		}
+
+		for(int i=0; i<numTasks; i++){
+			int max_time = -1;
+			for(auto pred: mPredecessors[i]){
+				max_time = std::max(max_time, taskRanges[pred].second);
+			}
+
+			if(taskRanges[i].first < max_time){
+				split = std::min(max_time-1, p.nonCollabMap[i].first.maxTime-1);
+				tid = i;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	int countCollisionConflicts(
 		boost::unordered_map <std::pair <int, int>, std::vector<SearchState>> mVertexMap,
-	 	SearchState curr, int task_id, int agent_id){
+	 	SearchState curr, int task_id, int agent_id)
+	{
 		std::pair <int, int> k = std::make_pair(curr.vertex, curr.timestep);
 		if(mVertexMap.find(k)==mVertexMap.end())
 			return 0;
@@ -341,7 +382,7 @@ public:
 		for(int i=0; i<mNumAgents; i++){
 			for(int j=0; j<p.shortestPaths[i].size(); j++){
 				SearchState state = p.shortestPaths[i][j];
-				if(state.tasks_completed == mAgentsToTasksList.size()){
+				if(state.tasks_completed == mAgentsToTasksList[i].size()){
 					SearchState key = SearchState(state.v, i, -1);
 					timestepMap[state.timestep].push_back(key);
 					if(j==p.shortestPaths.size()-1){
@@ -353,7 +394,7 @@ public:
 					}
 					continue;
 				}
-				int task_id = mAgentsToTasksList[state.tasks_completed];
+				int task_id = mAgentsToTasksList[i][state.tasks_completed];
 				SearchState key = SearchState(state.v, i, task_id);
 				timestepMap[state.timestep].push_back(key);
 			}
@@ -362,7 +403,6 @@ public:
 		//check vertex conflict
 		for(int time=0; time<=makespan; time++){
 			boost::unordered_map <Vertex, std::vector<SearchState>> vertexMap;
-			int task1 = -1, task2 = -1;
 			for(state: timestep[time]){
 				vertexMap[state.vertex].push_back(state);
 			}
@@ -378,16 +418,15 @@ public:
 				for(auto a1: agentMap){
 					for(auto a2: agentMap){
 						if(a1.first==a2.first) continue;
-						if(a1.second==a2.second) continue;
+						if(a1!=-1 && a1.second==a2.second) continue;
 						int tid_1 = a1.second, tid_2 = a2.second;
-						for(auto a3: agentMap){
-							if(a3.second == tid_1){
-								collaborating_agent_ids_1.push_back(a3.first);
-							}
-							if(a3.second == tid_2){
-								collaborating_agent_ids_2.push_back(a3.first);
-							}
-						}
+
+						if(tid_1!=-1) collaborating_agent_ids_1 = mTasksToAgentsList[tid_1];
+						else collaborating_agent_ids_1 = std::vector <int> {a1.first};
+
+						if(tid_2!=-1) collaborating_agent_ids_2 = mTasksToAgentsList[tid_2];
+						else collaborating_agent_ids_2 = std::vector <int> {a2.first};
+
 						constraint_1 = CollisionConstraint(v, tid_1, time);
 						constraint_2 = CollisionConstraint(v, tid_2, time);
 						return true;
@@ -398,41 +437,45 @@ public:
 
 		//check edge conflict
 		for(int time=0; time<=makespan-1; time++){
-			boost::unordered_map <Vertex, std::vector<SearchState>> vertexMap;
-			int task1 = -1, task2 = -1;
+			std::vector <std::pair <SearchState, SearchState>> agentLocations (mNumAgents);
 			for(state: timestep[time]){
-				vertexMap[state.vertex].push_back(state);
+				int agent_id = state.timestep;
+				if(state.tasks_completed>agentLocations[agent_id].first.tasks_completed){
+					agentLocations[agent_id].first = state;
+				}
+			}
+			for(state: timestep[time]){
+				int agent_id = state.timestep;
+				if(state.tasks_completed>agentLocations[agent_id].second.tasks_completed){
+					agentLocations[agent_id].second = state;
+				}
 			}
 
-			for(auto it: vertexMap){
-				Vertex v = it.first;
-				std::vector <SearchState> colStates = it.second;
-				std::unordered_map <int, int> agentMap;
-				for(auto state: colStates){
-					agentMap[state.timestep] = std::max(state.tasks_completed, agentMap[state.timestep]);
-				}
+			for(int a1=0; a1<mNumAgents; a1++){
+				for(int a2=a1+1; a2<mNumAgents; a2++){
+					//check if collision
+					if(agentLocations[a1].first.vertex == agentLocations[a2].second.vertex &&
+						agentLocations[a2].first.vertex == agentLocations[a1].second.vertex){
+						//assign conflicts
+						int tid_1 = agentLocations[a1].second.tasks_completed;
+						int tid_2 = agentLocations[a2].second.tasks_completed;
 
-				for(auto a1: agentMap){
-					for(auto a2: agentMap){
-						if(a1.first==a2.first) continue;
-						if(a1.second==a2.second) continue;
-						int tid_1 = a1.second, tid_2 = a2.second;
-						for(auto a3: agentMap){
-							if(a3.second == tid_1){
-								collaborating_agent_ids_1.push_back(a3.first);
-							}
-							if(a3.second == tid_2){
-								collaborating_agent_ids_2.push_back(a3.first);
-							}
-						}
-						constraint_1 = CollisionConstraint(v, tid_1, time);
-						constraint_2 = CollisionConstraint(v, tid_2, time);
+						Edge edge_1 = boost::edge(source_vertices[i],target_vertices[i],mGraphs[0]).first;
+						Edge edge_2 = boost::edge(source_vertices[j],target_vertices[j],mGraphs[0]).first;
+
+						if(tid_1!=-1) collaborating_agent_ids_1 = mTasksToAgentsList[tid_1];
+						else collaborating_agent_ids_1 = std::vector <int> {a1};
+
+						if(tid_2!=-1) collaborating_agent_ids_2 = mTasksToAgentsList[tid_2];
+						else collaborating_agent_ids_2 = std::vector <int> {a2};
+
+						constraint_1 = CollisionConstraint(edge_1, tid_1, time);
+						constraint_2 = CollisionConstraint(edge_2, tid_2, time);
 						return true;
 					}
 				}
 			}
 		}
-
 		return false;
 	}
 
@@ -455,6 +498,7 @@ public:
 				collaborating_agent_ids.end(), agent_id) == 
 				collaborating_agent_ids.end())
 				consider_agents.push_back(agent_id);
+
 		std::vector<boost::unordered_map <CollisionConstraint, int, 
 					collision_hash>> increase_constraints_c = p.nonCollisionMap;
 		std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
@@ -487,11 +531,36 @@ public:
 	}
 
 	Element expandCollaborationConstraint(Element p, 
-		std::vector <int> collaborating_agent_ids, 
 		boost::unordered_map <SearchState, allowedInterval, state_hash> nonCollabMap, 
 		bool &possible)
 	{
 		int current_makespan = getMakespan(p.shortestPaths);
+
+		//find agents violating the nonCollabMap
+		std::set <int> collaborating_agent_set;
+		for(int i=0; i<mNumAgents; i++){
+			for(int j=0; j<p.shortestPaths[i].size(); j++){
+				SearchState state = p.shortestPaths[i][j];
+				if(state.tasks_completed == mAgentsToTasksList[i].size()){
+					continue;
+				}
+				int task_id = mAgentsToTasksList[i][state.tasks_completed];
+				if(state.vertex == mTasksList[task_id].first){
+					if(state.timestep<nonCollabMap[task_id].first.minTime ||
+						state.timestep>nonCollabMap[task_id].first.maxTime)
+							collaborating_agent_set.insert(i);
+				}
+				if(state.vertex == mTasksList[task_id].second){
+					if(state.timestep<nonCollabMap[task_id].second.minTime ||
+						state.timestep>nonCollabMap[task_id].second.maxTime)
+							collaborating_agent_set.insert(i);
+				}
+			}
+		}
+
+		std::vector <int> collaborating_agent_ids;
+		for(auto a: collaborating_agent_set) collaborating_agent_ids.push_back(a);
+
 		std::vector<int> consider_agents;
 		for(int agent_id=0; agent_id<mNumAgents; agent_id++)
 			if(std::find(collaborating_agent_ids.begin(),collaborating_agent_ids.end(), agent_id) 
@@ -537,104 +606,68 @@ public:
 	int getIntegerTime(double time){
 		return (int)((time+0.0001)/mUnitEdgeLength);
 	}
+
 	void updateSchedule(boost::unordered_map <SearchState, allowedInterval, state_hash> &nonCollabMap,
 		bool &possible){
 
+		//go left to right and update
 		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
 		{
 			int task_id = *ii;
-			// std::cout << "TASK ID = " << task_id << std::endl;
-			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
-			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
-			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
 			vector <int> predecessors = mPredecessors[task_id];
 			for(auto pred: predecessors){
-				// std::cout << "PRED = " << pred << std::endl;
-				std::pair <SearchState, SearchState> predTaskStates = mTaskToSearchStates[pred];
-				allowedInterval predInterval = nonCollabMap[predTaskStates.second];
-				curStartInterval.minTime = std::max(
-					curStartInterval.minTime, 
-					predInterval.minTime+
-					getIntegerTime(
-							mAllPairsShortestPathMap[
-							std::make_pair(predTaskStates.second.vertex, curTaskStates.first.vertex)
-							]
-						)
+				nonCollabMap[task_id].first.minTime  = std::max(
+					nonCollabMap[task_id].first.minTime, 
+					nonCollabMap[pred].second.minTime 
+					);
+
+				nonCollabMap[task_id].first.maxTime  = std::min(
+					nonCollabMap[task_id].first.maxTime, 
+					nonCollabMap[pred].second.maxTime 
 					);
 			}
-			// if(task_id==0){
-			// 	std::cout << curStartInterval.minTime << " " << curGoalInterval.minTime << std::endl;
-			// }
-			curGoalInterval.minTime = std::max(
-				curGoalInterval.minTime, 
-				curStartInterval.minTime+
-				getIntegerTime(
-					mAllPairsShortestPathMap[
-						std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
-						]
-					)
-				);	
-			// if(task_id==0){
-			// 	std::cout << getIntegerTime(mAllPairsShortestPathMap[
-			// 			std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
-			// 			]) << std::endl;
-			// 	std::cout << curStartInterval.minTime << " " << curGoalInterval.minTime << std::endl;
-			// }
-			nonCollabMap[curTaskStates.first] = curStartInterval;
-			nonCollabMap[curTaskStates.second] = curGoalInterval;
-			// std::cin.get();
-		}
-
-		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
-		{
-			int task_id = *ii;
-			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
-			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
-			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
-
-			vector <int> successors = mSuccessors[task_id];
-			for(auto succ: successors){
-				std::pair <SearchState, SearchState> succTaskStates = mTaskToSearchStates[succ];
-				allowedInterval succInterval = nonCollabMap[succTaskStates.first];
-
-				curGoalInterval.maxTime = std::min(
-					curGoalInterval.maxTime, 
-					succInterval.maxTime-
+			nonCollabMap[task_id].second.minTime  = std::max(
+					nonCollabMap[task_id].second.minTime, 
+					nonCollabMap[task_id].first.minTime + 
 					getIntegerTime(
-						mAllPairsShortestPathMap[
-							std::make_pair(curTaskStates.second.vertex, succTaskStates.first.vertex)
-							]
-						)
-					);
-			}
-
-			curStartInterval.maxTime = std::min(
-				curStartInterval.maxTime, 
-				curGoalInterval.maxTime-
-				getIntegerTime(
 					mAllPairsShortestPathMap[
-						std::make_pair(curTaskStates.first.vertex, curTaskStates.second.vertex)
+						std::make_pair(mTasksList[task_id].first, mTasksList[task_id].second);
 						]
 					)
 				);
-			
-			nonCollabMap[curTaskStates.first] = curStartInterval;
-			nonCollabMap[curTaskStates.second] = curGoalInterval;
+		}
+
+		//go right to left and update
+		for (container::iterator ii=mTopologicalOrder.begin(); ii!=mTopologicalOrder.end(); ++ii)
+		{
+			int task_id = *ii;
+			vector <int> successors = mSuccessors[task_id];
+			for(auto succ: successors){
+				nonCollabMap[task_id].second.minTime  = std::max(
+					nonCollabMap[task_id].second.minTime,
+					nonCollabMap[pred].first.minTime 
+					);
+
+				nonCollabMap[task_id].second.maxTime  = std::min(
+					nonCollabMap[task_id].second.maxTime,
+					nonCollabMap[pred].first.maxTime 
+					);
+			}
+			nonCollabMap[task_id].first.maxTime  = std::min(
+					nonCollabMap[task_id].first.maxTime, 
+					nonCollabMap[task_id].second.maxTime - 
+					getIntegerTime(
+					mAllPairsShortestPathMap[
+						std::make_pair(mTasksList[task_id].first, mTasksList[task_id].second);
+						]
+					)
+				);
 		}
 
 		//check validity
-		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		for (int task_id = 0; task_id < mNumTasks; task_id++)
 		{
-			int task_id = *ii;
-			std::pair <SearchState, SearchState> curTaskStates = mTaskToSearchStates[task_id];
-			allowedInterval curStartInterval = nonCollabMap[curTaskStates.first];
-			allowedInterval curGoalInterval = nonCollabMap[curTaskStates.second];
-			if(!isValid(curStartInterval)){
-				possible=false;
-				return;
-			}
-
-			if(!isValid(curGoalInterval)){
+			if(!isValid(nonCollabMap[task_id].first) || !isValid(nonCollabMap[task_id].second)){
 				possible=false;
 				return;
 			}
@@ -643,48 +676,26 @@ public:
 	}
 
 	std::pair <Element, Element> expandCollaborationConflict(Element p,
-		std::vector <int> collaborating_agent_ids, CollaborationConstraint constraint,
+		int task_id, int split,
 		bool &possible1, bool &possible2)
 	{
-		SearchState key_state = SearchState(constraint.v,-1,constraint.task_id,constraint.is_pickup);
-		int max_time = constraint.timestep-1, min_time = constraint.timestep;
-
-		allowedInterval curInterval = allowedInterval();
-		if(p.nonCollabMap.find(key_state)!=p.nonCollabMap.end()){
-			curInterval = p.nonCollabMap[key_state];
-		}
+		allowedInterval curInterval = p.nonCollabMap[task_id];
 
 		Element maxNode = p, minNode = p;
-		if(max_time >= curInterval.minTime && max_time <= curInterval.maxTime){
-			allowedInterval newInterval = allowedInterval(curInterval.minTime, max_time);
-			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
-			increasedMap[key_state] = newInterval;
-			updateSchedule(increasedMap, possible1);
-			// printIntervals(increasedMap);
-			// std::cout << "IS IT POSSIBLE? " << possible1 << std::endl;
-			if(possible1)
-				maxNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible1);
-			// printNode(maxNode);
-			// std::cout << possible1 << std::endl;
-		}
-		else{
-			possible1 = false;
-		}
-		
-		if(min_time <= curInterval.maxTime && min_time >= curInterval.minTime){
-			allowedInterval newInterval = allowedInterval(min_time, curInterval.maxTime);
-			boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
-			increasedMap[key_state] = newInterval;
-			updateSchedule(increasedMap, possible2);
-			// printIntervals(increasedMap);
-			// std::cout << possible2 << std::endl;
-			if(possible2)
-				minNode = expandCollaborationConstraint(p, collaborating_agent_ids, increasedMap, possible2);
-		}
-		else{
-			possible2 = false;
-		}
-		// std::cout << possible1 << " " << possible2 << std::endl;
+		allowedInterval newInterval = allowedInterval(curInterval.minTime, split-1);
+		boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
+		increasedMap[key_state] = newInterval;
+		updateSchedule(increasedMap, possible1);
+		if(possible1)
+			maxNode = expandCollaborationConstraint(p, increasedMap, possible1);
+
+		allowedInterval newInterval = allowedInterval(split, curInterval.maxTime);
+		boost::unordered_map <SearchState, allowedInterval, state_hash> increasedMap = p.nonCollabMap;
+		increasedMap[key_state] = newInterval;
+		updateSchedule(increasedMap, possible2);
+		if(possible2)
+			minNode = expandCollaborationConstraint(p, increasedMap, possible2);
+
 		return std::make_pair(maxNode, minNode);
 	}
 
@@ -707,15 +718,9 @@ public:
 		auto solve_start = high_resolution_clock::now();
 		CBSPriorityQueue PQ(mNumAgents);
 
-		std::vector <allowedInterval> nonCollabMap;
+		std::vector <std::pair <allowedInterval, allowedInterval>> nonCollabMap (mNumTasks);
 		std::vector <boost::unordered_map <CollisionConstraint, int, 
 			collision_hash>> nonCollisionMap(mNumAgents);
-
-		for(int i=0; i<mNumTasks; i++)
-		{
-			allowedInterval Interval = allowedInterval();
-			nonCollabMap.push_back(Interval);
-		}
 		// std::cin.get();
 		bool possible;
 		updateSchedule(nonCollabMap, possible);
@@ -779,10 +784,10 @@ public:
 				std::cin.get();
 			}
 
-			int task_id;
+			int task_id, split;
 			CollaborationConstraint constraint;
 
-			if(getCollaborationConstraints(p, task_id))
+			if(getCollaborationConstraints(p, task_id, split))
 			{
 				if(!debug_disabled){
 					std::cout << "-----Colab Conflict Found-----------" << std::endl;
@@ -792,7 +797,7 @@ public:
 
 				bool possible1 = false, possible2 = false;
 				std::pair <Element, Element> colabChildren = 
-					expandCollaborationConflict(p, task_id, possible1, possible2);
+					expandCollaborationConflict(p, task_id, split, possible1, possible2);
 				if(possible1) PQ.insert(colabChildren.first); 
 				if(possible2) PQ.insert(colabChildren.second);
 
@@ -1020,7 +1025,7 @@ public:
 				}
 			}
 
-			if(current_tasks_completed > mTasksList[agent_id].size())
+			if(current_tasks_completed > mAgentsToTasksList[agent_id].size())
 			{
 				std::cout<<"Bruh.";
 				std::cin.get();
