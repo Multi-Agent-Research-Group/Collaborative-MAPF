@@ -137,6 +137,8 @@ public:
 		mComputedPaths = std::vector< std::vector<Vertex> > (mNumAgents,std::vector<Vertex> {}) ;
 		mCosts = std::vector <int> (mNumAgents);
 
+		updateSchedule();
+		std::cout << "ISPS\n";
 		for(int i=0; i<mNumAgents; i++){
 			meta_data *vertex = &get(mProp, i);
 			std::vector<Constraint> v;
@@ -150,7 +152,7 @@ public:
 		}
 
 		// std::cerr << "here\n";
-
+		std::cout << "ISPS\n";
 		updateSchedule();
 		initQueue();
 	}

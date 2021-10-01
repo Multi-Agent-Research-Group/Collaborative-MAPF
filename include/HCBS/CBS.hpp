@@ -384,6 +384,7 @@ public:
 		std::vector<std::vector<Constraint>> constraints(mNumAgents, std::vector<Constraint>());
 		double start_cost;
 
+
 		ISPS planner(mNumAgents,mRoadmapFileNames,mStartConfig,mGoalConfig,
 			mStartVertex, mGoalVertex, constraints);
 
@@ -409,6 +410,7 @@ public:
 		{
 			// PQ.print();
 			numSearches++;
+			std::cout << numSearches << std::endl;
 			PRINT<< numSearches << std::endl;
 			Element p = PQ.pop();
 
