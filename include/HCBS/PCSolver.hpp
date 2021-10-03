@@ -352,12 +352,13 @@ public:
 		CBS planner(mNumAgents,mNumRobots,mRoadmapFileNames,mStartConfig,mGoalConfig,startTimesteps,goalTimesteps, 
 			mStartVertex, mGoalVertex, mImagePath);
 		// std::cout<<"PRESS [ENTER} TO CALL SOLVE!"<<std::endl;std::cin.get();
-		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime);
+		int numSearches = 0;
+		std::vector<std::vector<Eigen::VectorXd>> path = planner.solve(mSolveStartTime, numSearches);
 		
 		// std::cerr<<"returned!"<<std::endl;
 		if(path[0].size() == 0)
 		{
-			std::cout<<"0 ";
+			std::cout<<"0 " << numSearches << " ";
 			return false;
 		}
 		// std::cerr<<"returned!"<<std::endl;
@@ -434,7 +435,7 @@ public:
 			// std::cout<<"Agent ID: "<<i<<" "<<agent_paths[i].size()<<std::endl;
 			ret_makespan = std::max(ret_makespan,(int)agent_paths[i].size());
 		}
-		std::cout<<ret_makespan<<" ";
+		std::cout<<ret_makespan<<" "<<numSearches << " ";;
 
 		// PCOutEdgeIter ei, ei_end;
 
@@ -496,10 +497,10 @@ public:
 		
 		// std::cout<<"Path config: "<<path_configs[0]<<std::endl;
 
-		std::cout<<"Press [ENTER] to display path: \n";
-		std::cin.get();
-		planner.mNumAgents = mNumRobots;
-		planner.displayPath(path_configs);
+		// std::cout<<"Press [ENTER] to display path: \n";
+		// std::cin.get();
+		// planner.mNumAgents = mNumRobots;
+		// planner.displayPath(path_configs);
 
 		// std::cout<<"true!";
 
