@@ -376,7 +376,8 @@ public:
 		return false;
 	}
 
-	std::vector<std::vector<Eigen::VectorXd>> solve(high_resolution_clock::time_point &solve_start_time)
+	std::vector<std::vector<Eigen::VectorXd>> solve(high_resolution_clock::time_point &solve_start_time,
+		int &search_num)
 	{
 		PRINT<<"Solve called!!"<<std::endl;
 		CBSPriorityQueue PQ(mNumAgents);
@@ -410,7 +411,8 @@ public:
 		{
 			// PQ.print();
 			numSearches++;
-			std::cout << numSearches << std::endl;
+			search_num = numSearches;
+			// std::cout << numSearches << std::endl;
 			PRINT<< numSearches << std::endl;
 			Element p = PQ.pop();
 
