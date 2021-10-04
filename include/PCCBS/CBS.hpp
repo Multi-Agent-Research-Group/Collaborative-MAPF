@@ -302,7 +302,7 @@ public:
 
 	int countCollisionConflicts(
 		boost::unordered_map <std::pair <int, int>, std::vector<SearchState>> mVertexMap,
-	 	SearchState curr, int task_id, int agent_id)
+	 	SearchState prev, SearchState curr, int task_id, int agent_id)
 	{
 		std::pair <int, int> k = std::make_pair(curr.vertex, curr.timestep);
 		if(mVertexMap.find(k)==mVertexMap.end())
@@ -330,6 +330,18 @@ public:
 				if(t1==tid_2 && t1!=-1) safe = true;
 			}
 			if(!safe) return 1;
+		}
+
+		if(curr.vertex == prev.vertex) return 0;
+		std::unordered_map <int, int> sourceMap;	
+		k = std::make_pair(curr.vertex, curr.timestep-1);
+		for(auto state: mVertexMap[k]) sourceMap[state.timestep] = 1;
+		std::unordered_map <int, int> targetMap;
+		k = std::make_pair(prev.vertex, curr.timestep);
+		for(auto state: mVertexMap[k]) targetMap[state.timestep] = 1;
+
+		for(auto it: sourceMap){
+			if(sourceMap[it.first] && targetMap[it.first]) return 1;
 		}
 		return 0;
 	}
@@ -506,6 +518,11 @@ public:
 		std::vector< std::vector<SearchState> > shortestPaths_c = p.shortestPaths;
 
 		bool all_paths_exist = true; double cost_c;
+		std::sort( collaborating_agent_ids.begin(), collaborating_agent_ids.end(), 
+			[&]( int first, int second)
+		{
+		   return shortestPaths_c[first].back().timestep >= shortestPaths_c[second].back().timestep;
+		});
 		for(int i=0; i<collaborating_agent_ids.size(); i++)
 		{
 			increase_constraints_c[collaborating_agent_ids[i]][constraint]=1;
@@ -574,6 +591,11 @@ public:
 
 		bool all_paths_exist = true; double cost_c;
 
+		std::sort( collaborating_agent_ids.begin(), collaborating_agent_ids.end(), 
+			[&]( int first, int second)
+		{
+		   return shortestPaths_c[first].back().timestep >= shortestPaths_c[second].back().timestep;
+		});
 		for(int i=0; i<collaborating_agent_ids.size(); i++)
 		{
 			shortestPaths_c[collaborating_agent_ids[i]] = 
@@ -625,10 +647,10 @@ public:
 					nonCollabMap[pred].second.minTime 
 					);
 
-				nonCollabMap[task_id].first.maxTime  = std::min(
-					nonCollabMap[task_id].first.maxTime, 
-					nonCollabMap[pred].second.maxTime 
-					);
+				// nonCollabMap[task_id].first.maxTime  = std::min(
+				// 	nonCollabMap[task_id].first.maxTime, 
+				// 	nonCollabMap[pred].second.maxTime 
+				// 	);
 			}
 			nonCollabMap[task_id].second.minTime  = std::max(
 					nonCollabMap[task_id].second.minTime, 
@@ -647,10 +669,10 @@ public:
 			int task_id = *ii;
 			vector <int> successors = mSuccessors[task_id];
 			for(auto succ: successors){
-				nonCollabMap[task_id].second.minTime  = std::max(
-					nonCollabMap[task_id].second.minTime,
-					nonCollabMap[succ].first.minTime 
-					);
+				// nonCollabMap[task_id].second.minTime  = std::max(
+				// 	nonCollabMap[task_id].second.minTime,
+				// 	nonCollabMap[succ].first.minTime 
+				// 	);
 
 				nonCollabMap[task_id].second.maxTime  = std::min(
 					nonCollabMap[task_id].second.maxTime,
@@ -696,7 +718,7 @@ public:
 		if(possible1)
 			maxNode = expandCollaborationConstraint(p, increasedMap, possible1);
 
-		newInterval = allowedInterval(split+1, curInterval.maxTime);
+		newInterval = allowedInterval(std::max(curInterval.minTime+1, split+1), curInterval.maxTime);
 		increasedMap = p.nonCollabMap;
 		increasedMap[task_id].first = newInterval;
 		updateSchedule(increasedMap, possible2);
@@ -1066,6 +1088,18 @@ public:
 					if(current_timestep < nonCollabMap[task_id].second.minTime ||
 						current_timestep > nonCollabMap[task_id].second.maxTime)
 							allowed = false;
+					int new_task_id;
+					if(current_tasks_completed == mAgentsToTasksList[agent_id].size()-1){
+						new_task_id = -1;
+					}
+					else{
+						new_task_id = mAgentsToTasksList[agent_id][current_tasks_completed+1];
+						if(current_timestep < nonCollabMap[new_task_id].first.minTime ||
+						current_timestep > nonCollabMap[new_task_id].first.maxTime)
+							allowed = false;
+					}
+					CollisionConstraint c2(current_vertex, new_task_id, current_timestep);
+					if(nonCollisionMap.find(c2)!=nonCollisionMap.end()) allowed = false;
 					if(allowed)
 					{
 						SearchState new_state = SearchState(current_vertex, current_timestep, 
@@ -1111,7 +1145,7 @@ public:
 					SearchState new_state = SearchState(successor, current_timestep+1, current_tasks_completed);
 					double new_count_collision_conflicts = 
 						current_count_collision_conflicts +
-						countCollisionConflicts(mVertexMap, new_state, task_id, agent_id);
+						countCollisionConflicts(mVertexMap, current_state, new_state, task_id, agent_id);
 					double new_count_move_actions = current_count_move_actions;
 					if(successor!=current_vertex) new_count_move_actions += mUnitEdgeLength;
 					std::vector<double> new_cost = getHeuristics(agent_id, 

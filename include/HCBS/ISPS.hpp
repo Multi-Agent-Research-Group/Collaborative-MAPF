@@ -118,7 +118,9 @@ public:
 			vector <int> predecessors;
 			for (boost::tie(ei, ei_end) = out_edges(i, mPCGraph_T); ei != ei_end; ++ei) 
 			{
+
 				PCVertex curPred = target(*ei, mPCGraph_T);
+				// std::cout << "Edges source = " << curPred << " Edge target = " << i << std::endl;
 				predecessors.push_back(curPred);
 			}
 
@@ -137,8 +139,6 @@ public:
 		mComputedPaths = std::vector< std::vector<Vertex> > (mNumAgents,std::vector<Vertex> {}) ;
 		mCosts = std::vector <int> (mNumAgents);
 
-		updateSchedule();
-		// std::cout << "ISPS\n";
 		for(int i=0; i<mNumAgents; i++){
 			meta_data *vertex = &get(mProp, i);
 			std::vector<Constraint> v;
@@ -146,13 +146,7 @@ public:
 										mGoalVertex[i], v, vertex->start_time, vertex->end_time,
 										i, vertex->slack);
 			mComputedPaths[i] = path;
-			mCosts[i] = path.size();
-
-			// std::cerr << path.size() << std::endl;
 		}
-
-		// std::cerr << "here\n";
-		// std::cout << "ISPS\n";
 		updateSchedule();
 		initQueue();
 	}
@@ -175,21 +169,12 @@ public:
 				return std::vector< std::vector<Vertex> > (mNumAgents,std::vector<Vertex>());
 			}
 
-			mCosts[agent_id] = path.size();
-			vertex->end_time = vertex->start_time + mCosts[agent_id]-1; //update vertex final time
 			mComputedPaths[agent_id] = path; // update route plan
+			vertex->end_time = vertex->start_time + mComputedPaths[agent_id].size()-1; //update vertex final time
+			
 			mClosedSet.insert(agent_id);
-
-			// std::cout<<"\n\n --- agent id: "<<agent_id<<" ST: "<<vertex->start_time<<" PS: "<<mCosts[agent_id]<<std::endl;
-
 			updateSchedule();
 			initQueue();
-
-			// mPQ.print();
-			// std::cout<<"mClosedSet elements: ";
-			// for(auto i:mClosedSet)
-			// 	std::cout<<i<<" ";
-			// std::cout<<std::endl;
 		}
 
 		int makespan = 0;
@@ -208,6 +193,7 @@ public:
 
 		if(maximum_timestep!=makespan)
 		{
+			std::cout << makespan << " " << maximum_timestep << std::endl;
 			std::cout<<"not equal!";
 			std::cin.get();
 		}
@@ -223,13 +209,7 @@ public:
 			// std::cout<<"\n\nAgent id: "<<agent_id<<std::endl;
 			bool flag = false;
 			meta_data *vertex = &get(mProp, agent_id);
-			// for(auto agent: vertex->agent_list){
-			// 	// if(agent==2) {
-			// 		std::cout << "Start Time agent " << agent << " : " << vertex->start_time<< std::endl;
-			// 		std::cout << "Goal Time agent " << agent << " : " << vertex->start_time + mComputedPaths[agent_id].size()-1<< std::endl;
-			// 		flag=true;
-			// 	// }
-			// }
+
 			if (flag) std::cout << "Path Size " << mComputedPaths[agent_id].size()<< std::endl;
 			vector <int> successors = mSuccessors[agent_id];
 			if(successors.size() == 0){
@@ -246,11 +226,11 @@ public:
 
 			else{
 			// std::cerr << "here1\n";
-				int max_start_time = 0;
+				int max_start_time = 1000000;
 				for(auto suc: mSuccessors[agent_id]){
 					meta_data *suc_vertex = &get(mProp, suc);
 					
-					max_start_time = std::max(suc_vertex->start_time, max_start_time);
+					max_start_time = std::min(suc_vertex->start_time, max_start_time);
 				}
 				// if(flag) std::cout <<max_start_time << std::endl;
 				int cur_path_length = mComputedPaths[agent_id].size();
@@ -265,14 +245,6 @@ public:
 			if (flag) std::cout << "Path Size " << mComputedPaths[agent_id].size()<< std::endl;
 			
 			updateSchedule();
-
-			// for(auto agent: vertex->agent_list){
-			// 	// if(agent==2) {
-			// 		std::cout << "Start Time agent " << agent << " : " << vertex->start_time<< std::endl;
-			// 		std::cout << "Goal Time agent " << agent << " : " << vertex->start_time + mComputedPaths[agent_id].size()-1<< std::endl;
-			// 		flag=true;
-			// 	// }   
-			// }
 		}
 		// std::cin.get();
 		maximum_timestep = 0;
@@ -283,7 +255,9 @@ public:
 		}
 		if(maximum_timestep!=makespan)
 		{
+			std::cout << makespan << " " << maximum_timestep << std::endl;
 			std::cout<<"later not equal!";
+			printSchedule();
 			std::cin.get();
 		}
 		// std::cout<<"Maximum timestep: "<<maximum_timestep<<std::endl;
@@ -327,10 +301,14 @@ public:
 				int makespan = 0;
 				for(auto pred: predecessors){
 					meta_data *pred_vertex = &get(mProp, pred);
-					if(pred_vertex->end_time>makespan){makespan = pred_vertex->end_time;}
+					if(pred_vertex->end_time>makespan){
+						makespan = pred_vertex->end_time;
+					}
 				}
 				vertex->start_time = std::max(makespan, vertex->start_time);
-				vertex->end_time = vertex->start_time+mComputedPaths[agent_id].size()-1;
+				// vertex->end_time = vertex->start_time+mComputedPaths[agent_id].size()-1;
+				vertex->end_time = std::max(vertex->end_time,
+					(int)(vertex->start_time+mComputedPaths[agent_id].size()-1));
 				// std::cerr << "there" << std::endl;
 			}
 			// std::cin.get();
@@ -353,7 +331,6 @@ public:
 				vertex->slack = std::min(vertex->slack, makespan-vertex->end_time);
 			}
 			else{
-				int makespan = -1;
 				for(auto suc: successors){
 					meta_data *suc_vertex = &get(mProp, suc);
 					// vertex->end_time = std::max(suc_vertex->start_time, vertex->end_time);
@@ -362,9 +339,20 @@ public:
 				}
 			}
 		}
+
+		// printSchedule();
 	}
 
-
+	void printSchedule(){
+		for (container::reverse_iterator ii=mTopologicalOrder.rbegin(); ii!=mTopologicalOrder.rend(); ++ii)
+		{
+			int agent_id = *ii;
+			meta_data *vertex = &get(mProp, agent_id);
+			std::cout << "--------------Task No = " << agent_id << std::endl;
+			std::cout << "Start Time = " << vertex->start_time << " End Time = " << vertex->end_time << std::endl;
+		}
+		std::cin.get();
+	}
 	std::vector<Vertex> getNeighbors(Graph &graph, Vertex &v)
 	{
 		std::vector<Vertex> neighbors;
