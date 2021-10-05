@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 
 
-agents = [4, 6]
-tasks = [4, 6]
-degrees = [1, 2]
+agents = [3,4, 6]
+tasks = [2,4, 6,8]
+degrees = [1, 2,3]
 
 problems = ['3_2_3', '3_4_3', '3_6_3',\
 			'6_2_3', '6_4_3', '6_6_3',\
@@ -17,7 +17,9 @@ for agent in agents:
 		for degree in degrees:
 			if agent > task*degree: continue
 			problem = f'{agent}_{task}_{degree}'
+			# print(problem)
 			if problem not in problems: continue
+			print(problem)
 			for o in obstacle_files:
 				o_file = f'/home/kushal/ros_ws/src/CMAPF/data/obstacles/{o}'
 
@@ -31,3 +33,4 @@ for agent in agents:
 				# input()
 				# input()
 				os.system(command)
+				# input()
