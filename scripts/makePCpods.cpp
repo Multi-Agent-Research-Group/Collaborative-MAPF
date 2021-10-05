@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 				}
 			}
 			else{
-				if(cord[1] <= 5){
+				if(cord.second <= 5){
 					q3.push_back(v);
 				}
 				else{
@@ -357,8 +357,8 @@ int main(int argc, char *argv[])
 
 					std::pair <int,int> cord = findCoordinate(graph,taskGoals[pred_task]);
 					std::vector <Vertex> quad;
-					if(cord[0] <= 5){
-						if(cord[1] <= 5){
+					if(cord.first <= 5){
+						if(cord.second <= 5){
 							quad = q1;
 						}
 						else{
@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
 						}
 					}
 					else{
-						if(cord[1] <= 5){
+						if(cord.second <= 5){
 							quad = q3;
 						}
 						else{
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
 
 					for(auto v:vertex_list){
 						if(std::find(quad.begin(),
-							quad.end(), agent_id) != 
+							quad.end(), v) != 
 							quad.end()){
 							if(assigned_vertices.find(v) == assigned_vertices.end()){
 								assigned_vertices[v] = 1;
