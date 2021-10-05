@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-agents = [3,4, 6]
+agents = [2]
 tasks = [2, 3, 4]
 # agents = [3]
 # tasks = [2]
