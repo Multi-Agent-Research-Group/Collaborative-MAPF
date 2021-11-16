@@ -40,6 +40,8 @@ int main(int argc, char *argv[])
 			("obstacles,o", po::value<std::string>()->default_value("./src/CMAPF/data/obstacles/env_obstacles.png"), "Path to Obstacle Image File")
 			("image,i", po::value<std::string>()->default_value("videos/"), "Path to Storing Images")
 			("upper_bound,u", po::value<std::string>()->default_value("1000"), "Upper Bound for Search")
+			("split,s", po::value<std::string>()->default_value("0"), "Split Strategy for Search")
+			("heuristic,h", po::value<std::string>()->default_value("0"), "Heuristic to Leave out for Search")
 	;
 
 	// Read arguments
@@ -65,6 +67,9 @@ int main(int argc, char *argv[])
 	if (file_name == "")
 		obstacle_file_name = "./src/CMAPF/data/obstacles/env_obstacles.png";
 
+	std::string split_strategy(vm["split"].as<std::string>());
+	std::string heuristic_strategy(vm["heuristic"].as<std::string>());
+	
 	ifstream cin(file_name);
 
 	int num_agents; cin >> num_agents;
