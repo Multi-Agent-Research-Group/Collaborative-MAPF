@@ -1,10 +1,15 @@
 import os 
 from pathlib import Path
 
-map_file = '../data/maps/room-64-64-16.map'
-graph_file = '../data/graphs/room.graphml'
-weights_file = '../data/weights/room.txt'
-output_folder = '../data/problems/room/'
+# map_file = '../data/maps/room-64-64-16.map'
+# graph_file = '../data/graphs/room.graphml'
+# weights_file = '../data/weights/room.txt'
+# output_folder = '../data/problems/room/'
+
+map_file = '../data/maps/warehouse-10-20-10-2-2.map'
+graph_file = '../data/graphs/warehouse.graphml'
+weights_file = '../data/weights/warehouse.txt'
+output_folder = '../data/problems/warehouse/'
 
 for agent in [20, 40, 60, 80, 100]:
 	total_tasks = agent*5

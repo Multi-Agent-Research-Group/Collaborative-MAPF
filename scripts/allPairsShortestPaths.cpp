@@ -5,7 +5,7 @@
 #include <sstream>
 #include <queue>
 #include <random>
-
+#include<bits/stdc++.h>
 // Boost libraries
 // #include <boost/shared_ptr.hpp>
 #include <boost/property_map/dynamic_property_map.hpp>
@@ -65,8 +65,83 @@ bool evaluateIndividualEdge(Graph &graph, Edge& e) // returns false if in collis
 	return true;
 }
 
+// void preprocess_graph(Graph &g, std::string output_filepath)
+// {
+// 	int mNumVertices = boost::num_vertices(g);
+// 	std::vector<std::vector<int>> edgeWeights(mNumVertices, std::vector<int>(mNumVertices, INF));
+// 	int mUnitEdgeLength = 1;
+// 	VertexIter vi_1, viend_1;
+// 	VertexIter vi_2, viend_2;
+
+// 	for(int i=0; i<mNumVertices; i++)
+// 		edgeWeights[i][i] = 0;
+
+
+// 	int edge = 0;
+// 	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+// 	{
+// 		Vertex vertex_1 = *vi_1;
+// 		OutEdgeIter ei, ei_end;
+// 		for (boost::tie(ei, ei_end) = out_edges(vertex_1, g); ei != ei_end; ++ei) 
+// 		{
+// 			Vertex vertex_2 = target(*ei, g);
+// 			if(vertex_1==vertex_2){
+// 				std::cout << "ehy\n";
+// 				continue;
+// 			}
+// 			Edge e = *ei;
+// 			if(!g[e].isEvaluated){
+// 				if(evaluateIndividualEdge(g,e)){
+// 					edge += 1;
+// 					edgeWeights[vertex_1][vertex_2] = mUnitEdgeLength;
+// 					edgeWeights[vertex_2][vertex_1] = mUnitEdgeLength;
+// 				}
+// 			}
+// 		}
+// 	}
+// 	// std::cout << edge << std::endl;
+// 	// std::cout << "DONE\n";
+// 	// std::cin.get();
+
+// 	int count = 0;
+
+// 	VertexIter vi_3, viend_3;
+// 	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1){
+// 		count++;
+// 		std::cout << count << std::endl;
+// 		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2){ 
+// 			for (boost::tie(vi_3, viend_3) = vertices(g); vi_3 != viend_3; ++vi_3) 
+// 			{
+// 				Vertex vertex_1 = *vi_1;
+// 				Vertex vertex_2 = *vi_2;
+// 				Vertex vertex_3 = *vi_3;
+// 				if (edgeWeights[vertex_2][vertex_3] + 0.00001 > 
+// 					(edgeWeights[vertex_2][vertex_1] + edgeWeights[vertex_1][vertex_3])
+// 					&& (edgeWeights[vertex_2][vertex_1] != INF && 
+// 						edgeWeights[vertex_1][vertex_3] != INF))
+// 						edgeWeights[vertex_2][vertex_3] = 
+// 							edgeWeights[vertex_2][vertex_1] + edgeWeights[vertex_1][vertex_3];
+// 			}
+// 		}
+// 	}
+
+// 	std::ofstream fout;
+// 	fout.open(output_filepath);
+// 	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
+// 	{
+// 		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2) 
+// 		{
+// 			Vertex vertex_1 = *vi_1;
+// 			Vertex vertex_2 = *vi_2;
+// 			fout << vertex_1 << " " << vertex_2 << " " << edgeWeights[vertex_1][vertex_2] << std::endl;
+// 		}
+// 	}
+// 	fout.close();
+// }
+
 void preprocess_graph(Graph &g, std::string output_filepath)
 {
+	// std::cout << "yo\n";
 	int mNumVertices = boost::num_vertices(g);
 	std::vector<std::vector<int>> edgeWeights(mNumVertices, std::vector<int>(mNumVertices, INF));
 	int mUnitEdgeLength = 1;
@@ -80,51 +155,29 @@ void preprocess_graph(Graph &g, std::string output_filepath)
 	int edge = 0;
 	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
 	{
-		Vertex vertex_1 = *vi_1;
+		Vertex vertex = *vi_1;
 		OutEdgeIter ei, ei_end;
-		for (boost::tie(ei, ei_end) = out_edges(vertex_1, g); ei != ei_end; ++ei) 
-		{
-			Vertex vertex_2 = target(*ei, g);
-			if(vertex_1==vertex_2){
-				std::cout << "ehy\n";
-				continue;
-			}
-			Edge e = *ei;
-			if(!g[e].isEvaluated){
-				if(evaluateIndividualEdge(g,e)){
-					edge += 1;
-					edgeWeights[vertex_1][vertex_2] = mUnitEdgeLength;
-					edgeWeights[vertex_2][vertex_1] = mUnitEdgeLength;
+		std::priority_queue<std::pair<int,int>, std::vector <std::pair<int,int>>, std::greater<std::pair <int,int>>> pq;
+		pq.push(std::make_pair(0, vertex));
+		std::vector <int> visited(mNumVertices);
+		visited[vertex] = 1;
+		while(pq.size()!=0){
+			std::pair <int,int> root = pq.top(); pq.pop();
+			Vertex vertex_1 = root.second;
+			edgeWeights[vertex][vertex_1] = root.first;
+			for (boost::tie(ei, ei_end) = out_edges(vertex_1, g); ei != ei_end; ++ei) 
+			{
+				Vertex vertex_2 = target(*ei, g);
+				Edge e = *ei;
+				if(!visited[vertex_2] && evaluateIndividualEdge(g,e)){
+					visited[vertex_2] = 1;
+					pq.push(std::make_pair(root.first+1, vertex_2));
 				}
 			}
 		}
 	}
-	// std::cout << edge << std::endl;
-	// std::cout << "DONE\n";
-	// std::cin.get();
 
-	int count = 0;
-
-	VertexIter vi_3, viend_3;
-	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1){
-		count++;
-		std::cout << count << std::endl;
-		for (boost::tie(vi_2, viend_2) = vertices(g); vi_2 != viend_2; ++vi_2){ 
-			for (boost::tie(vi_3, viend_3) = vertices(g); vi_3 != viend_3; ++vi_3) 
-			{
-				Vertex vertex_1 = *vi_1;
-				Vertex vertex_2 = *vi_2;
-				Vertex vertex_3 = *vi_3;
-				if (edgeWeights[vertex_2][vertex_3] + 0.00001 > 
-					(edgeWeights[vertex_2][vertex_1] + edgeWeights[vertex_1][vertex_3])
-					&& (edgeWeights[vertex_2][vertex_1] != INF && 
-						edgeWeights[vertex_1][vertex_3] != INF))
-						edgeWeights[vertex_2][vertex_3] = 
-							edgeWeights[vertex_2][vertex_1] + edgeWeights[vertex_1][vertex_3];
-			}
-		}
-	}
-
+	// std::cout << "yo\n";
 	std::ofstream fout;
 	fout.open(output_filepath);
 	for (boost::tie(vi_1, viend_1) = vertices(g); vi_1 != viend_1; ++vi_1) 
@@ -172,7 +225,7 @@ std::vector<std::vector<bool>> extract_map(const std::string map_fname)
             map_line.push_back(line[j] == '.');
             // std::cout << map_line.back() << " ";
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
 
         extracted_map.push_back(map_line);
     }
