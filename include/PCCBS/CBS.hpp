@@ -857,7 +857,7 @@ public:
 		{
 			if(start_shortestPaths.at(agent_id).size()==0)
 			{
-				std::cout << "Couldnt solve problem for agent_id = " << agent_id << std::endl;
+				// std::cout << "Couldnt solve problem for agent_id = " << agent_id << std::endl;
 				auto solve_stop = high_resolution_clock::now();
 				mPlanningTime = (solve_stop - solve_start);
 				std::cout<<0<<" ";
