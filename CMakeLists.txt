@@ -30,6 +30,15 @@ target_link_libraries(examplePCSolverPCCBS
   )
 install(TARGETS examplePCSolverPCCBS RUNTIME DESTINATION bin)
 
+add_executable(examplePCSolverHCBS examples/examplePCSolverHCBS.cpp)
+target_link_libraries(examplePCSolverHCBS 
+  ${OpenCV_LIBS}
+  ${Boost_LIBRARIES}
+  ${DART_LIBRARIES}
+  ${OMPL_LIBRARIES}
+  )
+install(TARGETS examplePCSolverHCBS RUNTIME DESTINATION bin)
+
 # This custom target doesn't affect building the project but is only for
 # displaying the header files in IDEs.
 #FILE(GLOB_RECURSE LibFiles "include/*.hpp")

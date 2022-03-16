@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 			("weights_file,w",po::value<std::string>()->required(), "path to map file")
 			("file,f", po::value<std::string>()->default_value("./src/CMAPF/data/sample_problems/test_6.txt"), "Path to PC Graph Metadata File")
 			("type,t", po::value<std::string>()->default_value("astar"), "Planner Type")
-			("image_file,i", po::value<std::string>()->default_value("astar"), "Planner Type")
+			("image_file,i", po::value<std::string>()->default_value("videos_pccbs/"), "Planner Type")
 	;
 
 	// Read arguments

@@ -110,63 +110,49 @@ int uniform_int_random(int min, int max)
 	return val;
 }
 
-// bool Graph::isCyclicUtil(int v,
-//                 bool visited[], int parent)
-// {
-     
-//     // Mark the current node as visited
-//     visited[v] = true;
+bool isCyclicUtil(std::vector <std::vector <int>> adj, int v, bool visited[], bool *recStack)
+{
+    if(visited[v] == false)
+    {
+        // Mark the current node as visited and part of recursion stack
+        visited[v] = true;
+        recStack[v] = true;
  
-//     // Recur for all the vertices
-//     // adjacent to this vertex
-//     list<int>::iterator i;
-//     for (i = adj[v].begin(); i !=
-//                        adj[v].end(); ++i)
-//     {
-         
-//         // If an adjacent vertex is not visited,
-//         //then recur for that adjacent
-//         if (!visited[*i])
-//         {
-//            if (isCyclicUtil(*i, visited, v))
-//               return true;
-//         }
+        // Recur for all the vertices adjacent to this vertex
+        // list<int>::iterator i;
+        for(auto i: adj[v]){
+            if ( !visited[i] && isCyclicUtil(adj, i, visited, recStack) )
+                return true;
+            else if (recStack[i])
+                return true;
+        }
  
-//         // If an adjacent vertex is visited and
-//         // is not parent of current vertex,
-//         // then there exists a cycle in the graph.
-//         else if (*i != parent)
-//            return true;
-//     }
-//     return false;
-// }
+    }
+    recStack[v] = false;  // remove the vertex from recursion stack
+    return false;
+}
  
-// Returns true if the graph contains
-// a cycle, else false.
-// bool Graph::isCyclic()
-// {
-     
-//     // Mark all the vertices as not
-//     // visited and not part of recursion
-//     // stack
-//     bool *visited = new bool[V];
-//     for (int i = 0; i < V; i++)
-//         visited[i] = false;
+// Returns true if the graph contains a cycle, else false.
+// This function is a variation of DFS() in https://www.geeksforgeeks.org/archives/18212
+bool isCyclic(std::vector <std::vector <int>> adj)
+{
+	int V = adj.size();
+    bool *visited = new bool[V];
+    bool *recStack = new bool[V];
+    for(int i = 0; i < V; i++)
+    {
+        visited[i] = false;
+        recStack[i] = false;
+    }
  
-//     // Call the recursive helper
-//     // function to detect cycle in different
-//     // DFS trees
-//     for (int u = 0; u < V; u++)
-//     {
-       
-//         // Don't recur for u if
-//         // it is already visited
-//         if (!visited[u])
-//           if (isCyclicUtil(u, visited, -1))
-//              return true;
-//     }
-//     return false;
-// }
+    // Call the recursive helper function to detect cycle in different
+    // DFS trees
+    for(int i = 0; i < V; i++)
+        if ( !visited[i] && isCyclicUtil(adj, i, visited, recStack))
+            return true;
+ 
+    return false;
+}
 
 int main(int argc, char *argv[])
 {
@@ -178,11 +164,11 @@ int main(int argc, char *argv[])
 			("graph_file,g",po::value<std::string>()->required(), "path to map file")
 			("weights_file,w",po::value<std::string>()->required(), "path to map file")
 			("output_folder,o",po::value<std::string>()->required(), " path to graphml file")
-			("num_agents,n", po::value<int>()->default_value(50), "Number of Agents")
-			("single_tasks,s", po::value<int>()->default_value(100), "Number of Tasks")
-			("double_tasks,d", po::value<int>()->default_value(0), "Number of Agents")
+			("num_agents,n", po::value<int>()->default_value(10), "Number of Agents")
+			("single_tasks,s", po::value<int>()->default_value(40), "Number of Tasks")
+			("double_tasks,d", po::value<int>()->default_value(10), "Number of Agents")
 			("triple_tasks,t", po::value<int>()->default_value(0), "Number of Tasks")
-			("precedence_constraints,p", po::value<int>()->default_value(20), "Number of Tasks")
+			("precedence_constraints,p", po::value<int>()->default_value(10), "Number of Tasks")
 	;
 
 	// Read arguments
@@ -216,7 +202,7 @@ int main(int argc, char *argv[])
 	int count = 0;
 	srand(unsigned(time(0)));
 	unsigned seed = 0;
-	while (count < 10)
+	while (count < 20)
 	{
 		std::cout << "Start making the problem - " + std::to_string(count) + "\n";
 		// std::cin.get();
@@ -254,10 +240,19 @@ int main(int argc, char *argv[])
 			cur_vertex+=2;
 		}
 
+		for(int j=0; j<doubleTasks; j++){
+			Vertex start_vertex = vertex_list[cur_vertex];
+			Vertex goal_vertex = vertex_list[cur_vertex+1];
+			taskStarts.push_back(start_vertex);
+			taskGoals.push_back(goal_vertex);
+			taskDegrees.push_back(2);
+			cur_vertex+=2;
+		}
+
 		int numTasks = singleTasks+doubleTasks;
 
 		// std::unordered_map <int, int> predMap;
-		std::unordered_map <int, std::vector <int>> predMap;
+		std::vector <std::vector <int>> predMap (numTasks);
 		//make the PC Graph
 
 		// for(int i=0; i<numTasks; i++){
@@ -272,43 +267,21 @@ int main(int argc, char *argv[])
 		while(i<precedenceConstraints){
 			int task_1 = uniform_int_random(0, taskStarts.size()-1);
 			int task_2 = uniform_int_random(0, taskStarts.size()-1);
-			if(predMap[task_2].find(task_1) == predMap[task_2].end()){
+			if(std::find(predMap[task_2].begin(), predMap[task_2].end(), task_1) == predMap[task_2].end()){
 				predMap[task_2].push_back(task_1);
 				i++;
 			}
 			// if(task_1==task_2) std::cout << "same" << std::endl;
 		}
 
+		// std::cout << "stuck after graph construction\n";
 		//check for cycles
-		bool cycle = false;
-		for(int i=0; i<numTasks; i++){
-			std::unordered_map <int, int> markTasks;
-			std::vector <int> cycle_agents;
-			int cur_task = i;
-			while(true){
-				if(markTasks.find(cur_task)!=markTasks.end()){
-					cycle = true;
-					break;
-				}
-				if(predMap.find(cur_task)==predMap.end())
-					break;
-				cycle_agents.push_back(cur_task);
-				markTasks[cur_task] = 1;
-				cur_task = predMap[cur_task];
-			}
-			if(cycle){
-				for(auto agent:cycle_agents){
-					std::cout << agent << " ";
-				}
-				std::cout << std::endl;
-				break;
-			}
-		}
-		if(cycle){
-			std::cout << "Cycle Found in Graph\n";
+		if(isCyclic(predMap)){
+			// std::cout << "Cycle Found in Graph\n";
 			count -= 1;
 			continue;
 		}
+		// std::cout << "stuck after cycle check \n";
 		// continue;
 		std::map <int, std::vector <int>> tasksToAgents;
 		std::map <int, std::pair <int,int>> taskTimes;
@@ -341,18 +314,21 @@ int main(int argc, char *argv[])
 					not_assigned_tasks.push_back(i);
 				}
 			}
-
+			// std::cout << not_assigned_tasks.size() << std::endl;
 			//exit if all tasks assigned
 			if(not_assigned_tasks.size() == 0) break;
 
 			//find times to start node of each task
 			std::map <int, std::vector <std::pair <int,int>>> taskTimeToStart;
 			for (auto task: not_assigned_tasks){
-				if(predMap.find(task) != predMap.end()){
-					int pred_task = predMap[task];
-					if(tasksToAgents.find(pred_task) == tasksToAgents.end())
+				bool allowed = true;
+				for(auto pred_task: predMap[task]){
+					if(tasksToAgents.find(pred_task) == tasksToAgents.end()){
+						allowed = false;
 						continue;
+					}
 				}
+				if(!allowed) continue;
 				taskTimeToStart[task] = std::vector <std::pair <int,int>> {};
 				Vertex goVertex = taskStarts[task];
 
@@ -377,11 +353,16 @@ int main(int argc, char *argv[])
 			for(auto task: not_assigned_tasks){
 				// int pred_task = predMap[task];
 				int collabDegree = taskDegrees[task];
-				if(predMap.find(task) != predMap.end()){
-					int pred_task = predMap[task];
-					if(tasksToAgents.find(pred_task) == tasksToAgents.end())
+				bool allowed = true;
+				int minStartTime = 0;
+				for(auto pred_task: predMap[task]){
+					if(tasksToAgents.find(pred_task) == tasksToAgents.end()){
+						allowed = false;
 						continue;
+					}
+					minStartTime = std::max(minStartTime, taskTimes[pred_task].second);
 				}
+				if(!allowed) continue;
 				//find time to complete Task
 				Vertex startVertex = taskStarts[task];
 				Vertex goalVertex = taskGoals[task];
@@ -391,9 +372,10 @@ int main(int argc, char *argv[])
 				//find the closest Agents
 				std::sort(taskTimeToStart[task].begin(), taskTimeToStart[task].end());
 				
-				
+				minStartTime = std::max(minStartTime,
+					taskTimeToStart[task][collabDegree-1].first);
 				// std::cin.get();
-				int end_time = taskTimeToStart[task][collabDegree-1].first + task_time;
+				int end_time = minStartTime + task_time;
 
 				if(end_time < best_time){
 					best_time = end_time;
@@ -408,8 +390,8 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			std::cerr << "Best Task = " << best_task << std::endl;
-			std::cerr << "Best Time = " << best_time << std::endl;
+			// std::cerr << "Best Task = " << best_task << std::endl;
+			// std::cerr << "Best Time = " << best_time << std::endl;
 			//assign task to agents
 			tasksToAgents[best_task] = best_agents;
 			// std::cerr << "assign task to agents" << std::endl;
@@ -460,11 +442,16 @@ int main(int argc, char *argv[])
 			count -= 1;
 			continue;
 		}
-		std::cout << "possible bubba\n";
-		if(predMap.size()!=precedenceConstraints){
-			std::cerr << predMap.size() << std::endl;
-			std::cin.get();
+		int print_time = 0;
+		for(auto time: taskTimes){
+			print_time = std::max(print_time, time.second.second);
 		}
+		// std::cout << "Max time = " << print_time << std::endl;
+		// std::cout << "possible bubba\n";
+		// if(predMap.size()!=precedenceConstraints){
+		// 	std::cerr << predMap.size() << std::endl;
+		// 	std::cin.get();
+		// }
 		
 		std::ofstream file_stream;
 		std::cout << output_folder + "/" + std::to_string(count) + ".txt" << std::endl;
@@ -481,11 +468,17 @@ int main(int argc, char *argv[])
 				std::to_string(ICTS_task_edges[i].second) + "\n";
 		}
 
-		for(auto it: predMap){
-			if(it.second==-1) 
-				std::cout << "why" << std::endl;
-			file_stream<<std::to_string(it.second) + " " + 
-				std::to_string(it.first) + "\n";
+		// for(auto it: predMap){
+		// 	if(it.second==-1) 
+		// 		std::cout << "why" << std::endl;
+		// 	file_stream<<std::to_string(it.second) + " " + 
+		// 		std::to_string(it.first) + "\n";
+		// }
+		for(int task = 0; task < numTasks; task++){
+			for(auto pred_task: predMap[task]){
+				file_stream<<std::to_string(pred_task) + " " + 
+				std::to_string(task) + "\n";
+			}
 		}
 		file_stream <<"\n";
 		for(int i=0; i<ICTS_tasks.size(); i++)
